@@ -1,6 +1,9 @@
 # para o cmake
 build/*
 
+lex.yy.c
+scanner
+
 .vscode/*
 
 # Prerequisites
