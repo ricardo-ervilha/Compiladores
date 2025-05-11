@@ -1,20 +1,20 @@
 cmake_minimum_required(VERSION 3.10)
 project(Compiladores)
 
+include_directories(include)
+
 set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 
 set(SOURCE_FILES
-    src/Operator.cpp
-    src/Manager.cpp
-    src/Wrapper.cpp
+    src/Scanner.cpp
+    src/Token.cpp
 )
 
 set(HEADER_FILES
-    include/Operator.h
-    include/Manager.h
-    include/Wrapper.h
+    include/Scanner.h
+    include/Token.h
 )
 
-add_executable(${PROJECT_NAME}.exe app/main.cpp)
+add_executable(${PROJECT_NAME}.exe app/main.cpp ${SOURCE_FILES})
