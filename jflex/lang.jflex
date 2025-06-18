@@ -1,111 +1,99 @@
+package parsers;
 
- /*  Esta seção é copiada antes da declaração da classe do analisador léxico.
-  *  É nesta seção que se deve incluir imports e declaração de pacotes.
-  *  Neste exemplo não temos nada a incluir nesta seção.
-  */
-  
+import beaver.newToken;
+import beaver.Scanner;
+
 %%
-
+%public
+%class Lang
+%extends Scanner
+%function nextToken
+%type newToken
+%yylexthrow Scanner.Exception
+%eofval{
+	return newToken(Terminals.EOF, "end-of-file");
+%eofval}
 %unicode
 %line
 %column
-%class LextTest
-%function nextToken
-%type Token
 
 %{
-    
-    /* Código arbitrário pode ser inserido diretamente no analisador dessa forma. 
-     * Aqui podemos declarar variáveis e métodos adicionais que julgarmos necessários. 
-     */
-    private int ntk;
-    
-    public int readedTokens(){
-       return ntk;
-    }
-    private Token symbol(TOKEN_TYPE t) {
-        ntk++;
-        return new Token(t,yytext(), yyline+1, yycolumn+1);
-        
-    }
-    private Token symbol(TOKEN_TYPE t, Object value) {
-        ntk++;
-        return new Token(t, value, yyline+1, yycolumn+1);
-    }
+	private newToken newToken(short id) {
+		return new newToken(id, yyline + 1, yycolumn + 1, yylength());
+	}
+
+	private newToken newToken(short id, Object value) {
+		return new newToken(id, yyline + 1, yycolumn + 1, yylength(), value);
+	}
 %}
-
-%init{
-    ntk = 0; // Isto é copiado direto no construtor do lexer. 
-%init}
-
   
-  /* Agora vamos definir algumas macros */
-  FimDeLinha  = \r|\n|\r\n
-  Brancos     = {FimDeLinha} | [ \t\f]
-  int      = [:digit:] [:digit:]*
-  float    = [:digit:]* \. [:digit:]+
-  char     = \'[^\\']\' | \'\\[ntbr'\\]\' | \'\\[:digit:][:digit:][:digit:]\'
-  true     = "true"
-  false    = "false"
-  null      = "null"
-  identificador = [:lowercase:]([:lowercase:] | [:uppercase:] | [:digit:] | _)*
-  identificadorTipo = [:uppercase:]([:lowercase:] | [:uppercase:] | [:digit:] | _)*
-  LineComment = "--" (.)* {FimDeLinha}?
+  
+FimDeLinha  = \r|\n|\r\n
+Brancos     = {FimDeLinha} | [ \t\f]
+int      = [:digit:] [:digit:]*
+float    = [:digit:]* \. [:digit:]+
+char     = \'[^\\']\' | \'\\[ntbr'\\]\' | \'\\[:digit:][:digit:][:digit:]\'
+true     = "true"
+false    = "false"
+null      = "null"
+identificador = [:lowercase:]([:lowercase:] | [:uppercase:] | [:digit:] | _)*
+identificadorTipo = [:uppercase:]([:lowercase:] | [:uppercase:] | [:digit:] | _)*
+LineComment = "--" (.)* {FimDeLinha}?
   
 %state COMMENT
 
 %%
 
 <YYINITIAL>{
-    "abstract"             { return symbol(TOKEN_TYPE.ABSTRACT); }
-    "data"             { return symbol(TOKEN_TYPE.DATA); }
-    "Int"             { return symbol(TOKEN_TYPE.INT); }
-    "Char"             { return symbol(TOKEN_TYPE.CHAR); }
-    "Float"             { return symbol(TOKEN_TYPE.FLOAT); }
-    "Bool"             { return symbol(TOKEN_TYPE.BOOL); }
-    "if"             { return symbol(TOKEN_TYPE.IF); }
-    "else"             { return symbol(TOKEN_TYPE.ELSE); }
-    "iterate"             { return symbol(TOKEN_TYPE.ITERATE); }
-    "read"             { return symbol(TOKEN_TYPE.READ); }
-    "print"             { return symbol(TOKEN_TYPE.PRINT); }
-    "return"             { return symbol(TOKEN_TYPE.RETURN); }
-    "new"             { return symbol(TOKEN_TYPE.NEW); }
+    "abstract"             { return newToken(Terminals.ABSTRACT); }
+    "data"             { return newToken(Terminals.DATA); }
+    "Int"             { return newToken(Terminals.INT); }
+    "Char"             { return newToken(Terminals.CHAR); }
+    "Float"             { return newToken(Terminals.FLOAT); }
+    "Bool"             { return newToken(Terminals.BOOL); }
+    "if"             { return newToken(Terminals.IF); }
+    "else"             { return newToken(Terminals.ELSE); }
+    "iterate"             { return newToken(Terminals.ITERATE); }
+    "read"             { return newToken(Terminals.READ); }
+    "print"             { return newToken(Terminals.PRINT); }
+    "return"             { return newToken(Terminals.RETURN); }
+    "new"             { return newToken(Terminals.NEW); }
 
-    {int}        { return symbol(TOKEN_TYPE.INT_NUM, Integer.parseInt(yytext()) );  }
-    {float}      { return symbol(TOKEN_TYPE.FLOAT_NUM, Float.parseFloat(yytext()) ); }
-    {char}       {return symbol(TOKEN_TYPE.CHAR_NUM, yytext());}
+    {int}        { return newToken(Terminals.INT_NUM, Integer.parseInt(yytext()) );  }
+    {float}      { return newToken(Terminals.FLOAT_NUM, Float.parseFloat(yytext()) ); }
+    {char}       {return newToken(Terminals.CHAR_NUM, yytext());}
 
-    {true}      {return symbol(TOKEN_TYPE.TRUE);}
-    {false}     {return symbol(TOKEN_TYPE.FALSE);}
-    {null}      {return symbol(TOKEN_TYPE.NULL);}
+    {true}      {return newToken(Terminals.TRUE);}
+    {false}     {return newToken(Terminals.FALSE);}
+    {null}      {return newToken(Terminals.NULL);}
 
-    {identificador} { return symbol(TOKEN_TYPE.ID);   }
-    {identificadorTipo} {return symbol(TOKEN_TYPE.TYID);}
+    {identificador} { return newToken(Terminals.ID);   }
+    {identificadorTipo} {return newToken(Terminals.TYID);}
 
     {LineComment}   {                       }
-    "("             { return symbol(TOKEN_TYPE.OPEN_PARENTHESES);}
-    ")"             { return symbol(TOKEN_TYPE.CLOSE_PARENTHESES);}
-    "["             { return symbol(TOKEN_TYPE.OPEN_BRACKETS);}
-    "]"             { return symbol(TOKEN_TYPE.CLOSE_BRACKETS);}
-    "{"             { return symbol(TOKEN_TYPE.CLOSE_BRACES);}
-    "}"             { return symbol(TOKEN_TYPE.CLOSE_BRACES);}
-    ">"             { return symbol(TOKEN_TYPE.GREATER);}
-    "<"             { return symbol(TOKEN_TYPE.LESS);}
-    ";"             { return symbol(TOKEN_TYPE.SEMICOLON);}
-    ":"             { return symbol(TOKEN_TYPE.DOUBLE_POINTS);}
-    "::"             { return symbol(TOKEN_TYPE.DOUBLE_DOUBLE_POINTS);}
-    "."             { return symbol(TOKEN_TYPE.DOT);}
-    ","             { return symbol(TOKEN_TYPE.COLON);}
-    "=="             { return symbol(TOKEN_TYPE.EQ_EQ);   }
-    "="             { return symbol(TOKEN_TYPE.EQ);   }
-    "*"             { return symbol(TOKEN_TYPE.TIMES); }
-    "/"             { return symbol(TOKEN_TYPE.DIVIDE); }
-    "+"             { return symbol(TOKEN_TYPE.PLUS); }
-    "-"             { return symbol(TOKEN_TYPE.MINUS); }
-    "%"             { return symbol(TOKEN_TYPE.MOD); }
-    "&&"             { return symbol(TOKEN_TYPE.AND); }
-    "!="             { return symbol(TOKEN_TYPE.NOT_EQUAL); }
-    "!"             { return symbol(TOKEN_TYPE.NOT); }
+    "("             { return newToken(Terminals.OPEN_PARENTHESES);}
+    ")"             { return newToken(Terminals.CLOSE_PARENTHESES);}
+    "["             { return newToken(Terminals.OPEN_BRACKETS);}
+    "]"             { return newToken(Terminals.CLOSE_BRACKETS);}
+    "{"             { return newToken(Terminals.CLOSE_BRACES);}
+    "}"             { return newToken(Terminals.CLOSE_BRACES);}
+    ">"             { return newToken(Terminals.GREATER);}
+    "<"             { return newToken(Terminals.LESS);}
+    ";"             { return newToken(Terminals.SEMICOLON);}
+    ":"             { return newToken(Terminals.DOUBLE_POINTS);}
+    "::"             { return newToken(Terminals.DOUBLE_DOUBLE_POINTS);}
+    "."             { return newToken(Terminals.DOT);}
+    ","             { return newToken(Terminals.COLON);}
+    "=="             { return newToken(Terminals.EQ_EQ);   }
+    "="             { return newToken(Terminals.EQ);   }
+    "*"             { return newToken(Terminals.TIMES); }
+    "/"             { return newToken(Terminals.DIVIDE); }
+    "+"             { return newToken(Terminals.PLUS); }
+    "-"             { return newToken(Terminals.MINUS); }
+    "%"             { return newToken(Terminals.MOD); }
+    "&&"             { return newToken(Terminals.AND); }
+    "!="             { return newToken(Terminals.NOT_EQUAL); }
+    "!"             { return newToken(Terminals.NOT); }
 
 
     "{-"            { yybegin(COMMENT);               }
@@ -116,7 +104,6 @@
    "-}"     { yybegin(YYINITIAL); } 
    [^"-}"]* {                     }
 }
-
 
 
 [^]                 { throw new RuntimeException("Illegal character <"+yytext()+">"); }
