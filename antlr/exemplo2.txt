@@ -1,0 +1,9 @@
+abstract data Racional {
+    numerador :: Int ;
+    denominador :: Int ;
+    add ( r1 :: Racional , r2 :: Racional ) : Racional {
+        Racional r = new Racional;
+
+        return r;
+    }
+}

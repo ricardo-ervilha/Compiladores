@@ -75,7 +75,7 @@ LineComment = "--" (.)* {FimDeLinha}?
     ")"             { return newToken(Terminals.CLOSE_PARENTHESES);}
     "["             { return newToken(Terminals.OPEN_BRACKETS);}
     "]"             { return newToken(Terminals.CLOSE_BRACKETS);}
-    "{"             { return newToken(Terminals.CLOSE_BRACES);}
+    "{"             { return newToken(Terminals.OPEN_BRACES);}
     "}"             { return newToken(Terminals.CLOSE_BRACES);}
     ">"             { return newToken(Terminals.GREATER);}
     "<"             { return newToken(Terminals.LESS);}
