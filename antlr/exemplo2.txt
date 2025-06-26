@@ -1,9 +1,10 @@
 abstract data Racional {
     numerador :: Int ;
     denominador :: Int ;
-    add ( r1 :: Racional , r2 :: Racional ) : Racional {
-        Racional r = new Racional;
-
+    add(r1 :: Racional , r2 :: Racional) : Racional {
+        r = new Racional;
+        r.denominador = r1.denominador * r2.denominador;
+        r.numerador = r1.numerador * r2.denominador + r2.numerador * r1.denominador;
         return r;
     }
-}
+ }

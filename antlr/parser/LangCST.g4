@@ -1,4 +1,4 @@
-grammar Lang;
+grammar LangCST;
 
 @parser::header {
     package parser;
@@ -10,56 +10,21 @@ grammar Lang;
     package parser;
 }
 
-prog
-	returns[StmtList ast]:
-	(
-		s1 = def {$ast = new StmtList($s1.ast.getLine(), $s1.ast.getCol(), $s1.ast);}
-	)*;
+prog: (def)*;
 
-def
-	returns[Node ast]:
-	d1 = data {$ast = new Data($d1.ast.getLine(), $d1.ast.getCol(), $d1.ast);}
-	| f1 = fun {$ast = new Fun($f1.ast.getLine(), $f1.ast.getCol(), $f1.ast);};
+def: data | fun;
 
-// data: 'abstract' 'data' TYID '{' (decl | fun)* '}' | data TYID '{' (decl)* '}';
+data:
+	'abstract' 'data' TYID '{' (decl | fun)* '}'
+	| 'data' TYID '{' (decl)* '}';
 
-data
-	returns[Expr ast]
-	@init {
-		List<Node> members = new ArrayList<>();
-	}:
-	abs_data = 'abstract' 'data' TYID '{' (
-		decl { members.add($decl.ast); }
-		| fun { members.add($fun.ast); }
-	)* '}' {
-        	$ast = new AbstractData($abs_data.line, $abs_data.pos, new TYDID($abs_data.line, $abs_data.pos, $TYID.text), members);
-    }
-	| 'data' TYID '{' (decl { members.add($decl.ast); })* '}' {
-				$ast = new Decl($TYID.line, $TYID.pos, members);
-			};
-
-// decl: ID '::' type ';';
-decl
-	returns[Decl ast]:
-	id = ID '::' t = type ';' {
-        $ast = new Decl($id.line, $id.pos, $id.text, $t.ast);
-    };
-
-// fun: ID '(' params? ')' (':' type (',' type)*)? cmd;
-fun
-	returns[Expr ast]:
-	fun_def = ID '(' p = params? ')' (
-		':' type (',' t = type { members.add($t.ast); })*
-	)? cmd {
-		$ast = new Fun($ID.line, $ID.pos, new Params($ID.line, $ID.pos, $p.ast), members, cmd.ast)
-	};
-
+decl: ID '::' type ';';
+fun: ID '(' params? ')' (':' type (',' type)*)? cmd;
 params: ID '::' type (',' ID '::' type)*;
 
 // type: type '['']' | btype;
 type: btype typeLinha;
 typeLinha: '[' ']' typeLinha |;
-
 btype: 'Int' | 'Char' | 'Bool' | 'Float' | TYID;
 block: '{' (cmd)* '}';
 cmd:
@@ -95,11 +60,9 @@ exp:
 expLinha: op exp expLinha |;
 
 op: '&&' | '<' | '==' | '!=' | '+' | '-' | '*' | '/' | '%';
-// lvalue: ID | lvalue '[' exp ']' | lvalue '.' ID | TYID ID;
+// lvalue: ID | lvalue '[' exp ']' | lvalue '.' ID;
 
-lvalue:
-	ID lvalueLinha
-	| TYID ID lvalueLinha; // nos criamos essa regra
+lvalue: ID lvalueLinha;
 
 lvalueLinha: '[' exp ']' lvalueLinha | '.' ID lvalueLinha |;
 exps: exp (',' exp)*;
