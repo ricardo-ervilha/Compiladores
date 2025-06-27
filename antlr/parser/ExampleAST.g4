@@ -1,4 +1,4 @@
-grammar Exemplo;
+grammar ExampleAST;
 
 @parser::header
 {
