@@ -1,4 +1,4 @@
-package ast;
+package ast_old;
 
 /*
  * Esta classe representa uma Operção binária.

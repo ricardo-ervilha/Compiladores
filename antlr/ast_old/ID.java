@@ -1,28 +1,29 @@
-package ast;
+package ast_old;
 
 /*
  * Esta classe representa um comando de Impressão.
  * Expr
- */ 
+ */
+ 
 import java.util.HashMap; 
 
-public class Num extends Expr {
+public class ID extends Expr {
       
-      private int l;
+      private String l;
      
-      public  Num(int l, int c, int v){
+      public ID(int l, int c, String name){
            super(l,c);
-           this.l = v;
+           this.l = name;
       }
       
-      public int getValue(){ return l;}
+      public String getName(){ return l;}
       
       //@Override
       public String toString(){
-         return   "" + l ; 
+         return   l; 
       }
       
       public int interpret(HashMap<String,Integer> m){
-            return l;
+          return m.get(l);
       }
 }

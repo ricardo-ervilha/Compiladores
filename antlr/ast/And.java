@@ -1,27 +1,26 @@
 package ast;
 
 /*
- * Esta classe representa uma expressão de soma.
+ * Esta classe representa uma expressão de conjunção.
  * Expr + Expr
  */
 
 import visitors.Visitor;
 
-public class Add extends BinOP {
+public class And extends BinOP {
 
-      public Add(int line, int col, Expr l, Expr r){
-           super(line, col, l,r);
+      public And(int line, int col, Expr l, Expr r){
+          super(line, col, l,r);
       }
-      
+
       public String toString(){
          String s = getLeft().toString();
          String ss = getRight().toString();
          if(getRight() instanceof Add){
             ss = "(" + ss + ")";
          }
-         return   s + " + " + ss;
+         return   s + " & " + ss;
       }
       
       public void accept(Visitor v){ v.visit(this);}
-            
 }

@@ -1,4 +1,4 @@
-package ast;
+package ast_old;
 
 /*
  * Esta classe representa um comando de Impressão.

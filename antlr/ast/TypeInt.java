@@ -2,10 +2,10 @@ package ast;
 
 import visitors.Visitor;
 
-public class TYID extends Type {
+public class TypeInt extends Type {
 
-    public TYID(int l, int c, String name) {
-        super(l, c);
+    public TypeInt(int line, int col) {
+        super(line, col);
     }
 
     public void accept(Visitor v) {

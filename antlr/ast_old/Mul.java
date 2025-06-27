@@ -1,21 +1,21 @@
-package ast;
+package ast_old;
 
 /*
  * Esta classe representa uma expressão de Multiplicação.
  * Expr * Expr
  */
-import visitors.Visitor;
+import java.util.HashMap; 
 
 public class Mul extends BinOP {
-      public Mul(int line, int col, Expr l, Expr r){
-          super(line, col, l,r);
+      public Mul(int lin, int col, Expr l, Expr r){
+           super(lin,col,l,r);
       }
       
       //@Override
       public String toString(){
          String s = getLeft().toString();
          if(getLeft() instanceof Mul || getLeft() instanceof Add){
-            s = "(" + s + ")";
+            s += "(" + s + ")";
          }
          String ss = getRight().toString();
          if( getRight() instanceof Add){
@@ -24,5 +24,7 @@ public class Mul extends BinOP {
          return   s + " * " + ss;
       }
       
-      public void accept(Visitor v){ v.visit(this);}
+      public int interpret(HashMap<String,Integer> m){
+          return getLeft().interpret(m) * getRight().interpret(m);
+      }
 }

@@ -11,17 +11,23 @@ grammar Lang;
 }
 
 // prog: (def)*;
-prog
-	returns[StmtList ast]:
-	(
-		s1 = def {$ast = new StmtList($s1.ast.getLine(), $s1.ast.getCol(), $s1.ast);}
-	)*;
+prog returns [Program ast]
+        @init {
+            List<Def> defList = new ArrayList<>();
+        }:
+        (
+            s1 = def { defList.add($s1.ast); }
+        )*
+        {
+            $ast = new Program($start.getLine(), $start.getCharPositionInLine(), defList);
+        }
+;
 
 // def: data | fun;
-def
-	returns[Node ast]:
-	d1 = data {$ast = new Data($d1.ast.getLine(), $d1.ast.getCol(), $d1.ast);}
-	| f1 = fun {$ast = new Fun($f1.ast.getLine(), $f1.ast.getCol(), $f1.ast);};
+def returns [Def ast]
+    : d1 = data { $ast = $d1.ast; }
+    | f1 = fun  { $ast = $f1.ast; }
+    ;
 
 // data: 'abstract' 'data' TYID '{' (decl | fun)* '}' | 'data' TYID '{' (decl)* '}';
 
@@ -158,7 +164,7 @@ exp
 
 expLinha
 	returns[Expr ast]:
-	op exp expLinha { $ast = new Expr($op.ast.getLine(), $op.ast.getCol(), $op.ast, $exp.ast, $expLinha.ast); 
+	op exp expLinha { $ast = new Expr($op.ast.getLine(), $op.ast.getCol(), $op.ast, $exp.ast, $expLinha.ast);
 		}
 	|;
 
@@ -194,9 +200,9 @@ exps
 	@init {
     	List<LValue> expsValues = new ArrayList<>();
   	}: 
-	e1=exp {expsValues.add($e1.ast);} 
-	(',' e2=exp {expsValues.add($e2.ast);})* 
-		{$ast = new Expr($e1.ast.getLine(), $e1.ast.getCol(), expsValues);} 
+	e1=exp {expsValues.add($e1.ast);}
+	(',' e2=exp {expsValues.add($e2.ast);})*
+		{$ast = new Expr($e1.ast.getLine(), $e1.ast.getCol(), expsValues);}
 	;
 
 //REGRAS LÉXICAS LITERAIS

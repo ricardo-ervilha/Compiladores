@@ -1,16 +1,16 @@
 package ast;
 
 /*
- * Esta classe representa uma expressão de soma.
- * Expr + Expr
+ * Esta classe representa uma operação de comparação.
+ * Expr < Expr
  */
-
+ 
 import visitors.Visitor;
 
-public class Add extends BinOP {
+public class Lt extends BinOP {
 
-      public Add(int line, int col, Expr l, Expr r){
-           super(line, col, l,r);
+      public Lt(int line, int col, Expr l, Expr r){
+          super(line, col, l,r);
       }
       
       public String toString(){

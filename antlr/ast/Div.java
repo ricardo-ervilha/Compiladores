@@ -1,16 +1,16 @@
 package ast;
 
 /*
- * Esta classe representa uma expressão de soma.
+ * Esta classe representa uma operação de divisão.
  * Expr + Expr
  */
 
 import visitors.Visitor;
 
-public class Add extends BinOP {
+public class Div extends BinOP {
 
-      public Add(int line, int col, Expr l, Expr r){
-           super(line, col, l,r);
+      public Div(int line, int col, Expr l, Expr r){
+          super(line, col, l,r);
       }
       
       public String toString(){
@@ -19,9 +19,8 @@ public class Add extends BinOP {
          if(getRight() instanceof Add){
             ss = "(" + ss + ")";
          }
-         return   s + " + " + ss;
+         return   s + " / " + ss;
       }
       
       public void accept(Visitor v){ v.visit(this);}
-            
 }
