@@ -10,32 +10,34 @@ grammar Lang;
     package parser;
 }
 
+// prog: (def)*;
 prog
 	returns[StmtList ast]:
 	(
 		s1 = def {$ast = new StmtList($s1.ast.getLine(), $s1.ast.getCol(), $s1.ast);}
 	)*;
 
+// def: data | fun;
 def
 	returns[Node ast]:
 	d1 = data {$ast = new Data($d1.ast.getLine(), $d1.ast.getCol(), $d1.ast);}
 	| f1 = fun {$ast = new Fun($f1.ast.getLine(), $f1.ast.getCol(), $f1.ast);};
 
-// data: 'abstract' 'data' TYID '{' (decl | fun)* '}' | data TYID '{' (decl)* '}';
+// data: 'abstract' 'data' TYID '{' (decl | fun)* '}' | 'data' TYID '{' (decl)* '}';
 
 data
-	returns[Expr ast]
+	returns[Data ast]
 	@init {
 		List<Node> members = new ArrayList<>();
 	}:
-	abs_data = 'abstract' 'data' TYID '{' (
+	abs = 'abstract' 'data' TYID '{' (
 		decl { members.add($decl.ast); }
 		| fun { members.add($fun.ast); }
 	)* '}' {
-        	$ast = new AbstractData($abs_data.line, $abs_data.pos, new TYDID($abs_data.line, $abs_data.pos, $TYID.text), members);
+        	$ast = new AbstractData($abs.line, $abs.pos, new TYID($TYID.line, $TYID.pos, $TYID.text), members);
     }
-	| 'data' TYID '{' (decl { members.add($decl.ast); })* '}' {
-				$ast = new Decl($TYID.line, $TYID.pos, members);
+	| d = 'data' TYID '{' (decl { members.add($decl.ast); })* '}' {
+				$ast = new Data(d.line, d.pos, new TYID($TYID.line, $TYID.pos, $TYID.text), members);
 			};
 
 // decl: ID '::' type ';';
@@ -47,62 +49,155 @@ decl
 
 // fun: ID '(' params? ')' (':' type (',' type)*)? cmd;
 fun
-	returns[Expr ast]:
+	returns[Fun ast]
+	@init {
+    	List<Type> members = new ArrayList<>();
+  	}:
 	fun_def = ID '(' p = params? ')' (
-		':' type (',' t = type { members.add($t.ast); })*
+		':' t1 = type { members.add($t1.ast); } (
+			',' t = type { members.add($t.ast); }
+		)*
 	)? cmd {
-		$ast = new Fun($ID.line, $ID.pos, new Params($ID.line, $ID.pos, $p.ast), members, cmd.ast)
+		$ast = new Fun($fun_def.line, $fun_def.pos, new ID($ID.line, $ID.pos, $ID.text), new Params($fun_def.line, $fun_def.pos, $p.ast), members, cmd.ast)
 	};
 
-params: ID '::' type (',' ID '::' type)*;
+// params: ID '::' type (',' ID '::' type)*;
 
-// type: type '['']' | btype;
-type: btype typeLinha;
-typeLinha: '[' ']' typeLinha |;
+params
+	returns[Params ast]:
+	id1 = ID '::' t1 = type {$ast = new Params($id1.line, $id1.pos, $id1.text, $t1.ast);} (
+		id2 = ID '::' t2 = type {$ast = new Params($id2.line, $id2.pos, $ast, $id2.text, $t2.ast);}
+	)*;
+// params returns[Params ast] @init { List<Param> listParam = new ArrayList<>(); }: id = ID '::' t1
+// = type {listParam.add(new Param($id, $t1))} ( ',' ID '::' t2 = type {members.add($t2.ast)} )* {
+// $ast = new Params($id.line, $id.pos, members);} ;
 
-btype: 'Int' | 'Char' | 'Bool' | 'Float' | TYID;
-block: '{' (cmd)* '}';
-cmd:
-	block
-	| 'if' '(' exp ')' cmd
-	| 'if' '(' exp ')' cmd 'else' cmd
-	| 'iterate' '(' itcond ')' cmd
-	| 'read' lvalue ';'
-	| 'print' exp ';'
-	| 'return' exp (',' exp)* ';'
-	| lvalue '=' exp ';'
-	| ID '(' exps? ')' ('<' lvalue (',' lvalue)* '>')? ';';
+// type: type '['']' | btype; type: btype typeLinha;
+type
+	returns[Type ast]:
+	btype typeLinha {$ast = new Type($btype.ast.getLine(), $btype.ast.getCol(), $btype.ast, $typeLinha.ast);
+		};
 
-itcond: ID ':' exp | exp;
+//typeLinha: '[' ']' typeLinha |;
+typeLinha
+	returns[TypeLinha ast]:
+	'[' ']' typeLinha {$ast = new TypeLinha($typeLinha.ast.getLine(), $typeLinha.ast.getCol(), $typeLinha.ast);
+		}
+	|;
+
+// btype: 'Int' | 'Char' | 'Bool' | 'Float' | TYID;
+btype
+	returns[Btype ast]:
+	Int = 'Int' {$ast = new NumInt($Int.line, $Int.pos, Integer.parseInt($Int.text));}
+	| Char = 'Char' {$ast = new NumChar($Char.line, $Char.pos, $Char.text);}
+	| Bool = 'Bool' {$ast = new NumBool($Bool.line, $Bool.pos, Boolean.parseBoolean($Bool.text));}
+	| Float = 'Float' {$ast = new NumFloat($Float.line, $Float.pos, Float.parseFloat($Float.text));}
+	| TYID {$ast = new TYID($TYID.line, $TYID.pos, $TYID.text);};
+
+// block: '{' (cmd)* '}';
+block
+	returns[Block ast]:
+	'{' (
+		c1 = cmd {$ast = new Cmd($c1.ast.getLine(), $c1.ast.getCol(), $c1.ast); }
+	)* '}';
+
+cmd
+	returns[Cmd ast]
+	@init {
+    	List<LValue> membersLvalue = new ArrayList<>();
+  	}:
+	block { $ast = new Block($block.ast.getLine(), $block.ast.getCol(), $block.ast);}
+	| ifCond = 'if' '(' exp ')' cmd { $ast = new If($ifCond.line, $ifCond.pos, $exp.ast, $cmd.ast);}
+	| ifCond = 'if' '(' exp ')' cmd1 = cmd 'else' cmd2 = cmd { $ast = new If($ifCond.line, $ifCond.pos, $exp.ast, $cmd1.ast, $cmd2.ast );
+		}
+	| it = 'iterate' '(' itcond ')' cmd { $ast = new Iterate($it.line, $it.pos, $itcond.ast, $cmd.ast );
+		}
+	| rd = 'read' lvalue ';' { $ast = new Read($rd.line, $rd.pos, $lvalue.ast); }
+	| prt = 'print' exp ';' { $ast = new Print($prt.line, $prt.pos, $exp.ast); }
+	| rt = 'return' exp { $ast = new Return($rt.line, $rt.pos, $exp.ast);} (
+		',' exp { $ast = new Return($rt.line, $rt.pos, $exp.ast);}
+	)* ';'
+	| lvalue '=' exp ';' { $ast = new LValue($lvalue.ast.getLine(), $lvalue.ast.getCol(), $lvalue.ast, $exp.ast);
+		}
+	// | ID '(' exps? ')' ('<' lvalue (',' lvalue)* '>')? ';'
+	| ID '(' exps? ')' (
+		'<' l1 = lvalue { membersLvalue.add($l1.ast) } (
+			',' l2 = lvalue { membersLvalue.add($l2.ast) }
+		)* '>' {$ast = new CallFunction($ID.line, $ID.pos,new ID($ID.line, $ID.pos, $ID.text), $exps.ast, membersLvalue );
+			}
+	)? ';';
+
+itcond
+	returns[Expr ast]:
+	ID ':' exp { $ast = new ItCond($ID.line, $ID.pos, new ID($ID.line, $ID.pos, $ID.text), $exp.ast);
+		}
+	| exp { $ast = new ItCond($exp.ast.getLine(), $exp.ast.getCol(), $exp.ast);};
 
 // exp: exp op exp | '!' exp | '-' exp | lvalue | '(' exp ')' | 'new' type ('[' exp ']')? | ID '('
 // (exps)? ')' '[' exp ']' | 'true' | 'false' | 'null' | INT | FLOAT | CHAR;
 
-exp:
-	'!' exp expLinha
-	| '-' exp expLinha
-	| lvalue expLinha
-	| '(' exp ')' expLinha
-	| 'new' type ('[' exp ']')? expLinha
-	| ID '(' (exps)? ')' '[' exp ']' expLinha
-	| 'true' expLinha
-	| 'false' expLinha
-	| 'null' expLinha
-	| INT expLinha
-	| FLOAT expLinha
-	| CHAR expLinha;
+exp
+	returns[Expr ast]:
+	not = '!' exp expLinha { $ast = new NotExpr($not.line, $not.pos, $exp.ast, $expLinha.ast);}
+	| minus = '-' exp expLinha { $ast = new MinusExpr($minus.line, $minus.pos, $exp.ast, $expLinha.ast);
+		}
+	| lvalue expLinha { $ast = new LValue($lvalue.ast.getLine(), $lvalue.ast.getCol(), $lvalue.ast, $expLinha.ast);
+		}
+	| '(' exp ')' expLinha { $ast = new Expr($exp.ast.getLine(), $exp.ast.getCol(), $exp.ast, $expLinha.ast);
+		}
+	| 'new' type ('[' exp ']')? expLinha { $ast = new NewVarExpr($type.ast.getLine(), $type.ast.getCol(), $type.ast, $exp.ast, $expLinha.ast);
+		}
+	| ID '(' (exps)? ')' '[' exp ']' expLinha { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ast,$exp.ast, $expLinha.ast);
+		}
+	| t = 'true' expLinha { $ast = new TrueValue($t.line, $t.pos, $expLinha.ast);}
+	| f = 'false' expLinha { $ast = new TrueValue($f.line, $f.pos, $expLinha.ast);}
+	| n = 'null' expLinha { $ast = new NullValue($n.line, $n.pos, $expLinha.ast);}
+	| INT expLinha { $ast = new IntValue($INT.line, $INT.pos, $INT.text, $expLinha.ast);}
+	| FLOAT expLinha { $ast = new FloatValue($FLOAT.line, $FLOAT.pos, $FLOAT.text, $expLinha.ast);}
+	| CHAR expLinha { $ast = new CharValue($CHAR.line, $CHAR.pos, $CHAR.text, $expLinha.ast);};
 
-expLinha: op exp expLinha |;
+expLinha
+	returns[Expr ast]:
+	op exp expLinha { $ast = new Expr($op.ast.getLine(), $op.ast.getCol(), $op.ast, $exp.ast, $expLinha.ast); 
+		}
+	|;
 
-op: '&&' | '<' | '==' | '!=' | '+' | '-' | '*' | '/' | '%';
+op
+	returns[Operator ast]:
+	andOp = '&&' {$ast = new Operator($andOp.line, $andOp.pos, $andOp.text);}
+	| lessOp = '<' {$ast = new Operator($lessOp.line, $lessOp.pos, $lessOp.text);}
+	| equalOp = '==' {$ast = new Operator($equalOp.line, $equalOp.pos, $equalOp.text);}
+	| diffOp = '!=' {$ast = new Operator($diffOp.line, $diffOp.pos, $diffOp.text);}
+	| plusOp = '+' {$ast = new Operator($plusOp.line, $plusOp.pos, $plusOp.text);}
+	| minusOp = '-' {$ast = new Operator($minusOp.line, $minusOp.pos, $minusOp.text);}
+	| multOp = '*' {$ast = new Operator($multOp.line, $multOp.pos, $multOp.text);}
+	| divOp = '/' {$ast = new Operator($divOp.line, $divOp.pos, $divOp.text);}
+	| modOp = '%' {$ast = new Operator($modOp.line, $modOp.pos, $modOp.text);};
 // lvalue: ID | lvalue '[' exp ']' | lvalue '.' ID | TYID ID;
 
-lvalue:
-	ID lvalueLinha
-	| TYID ID lvalueLinha; // nos criamos essa regra
+lvalue
+	returns[LValue ast]:
+	ID lvalueLinha { $ast = new LValue($ID.line, $ID.pos, new ID($ID.line, $ID.pos, $ID.text), $lvalueLinha.ast);
+		};
 
-lvalueLinha: '[' exp ']' lvalueLinha | '.' ID lvalueLinha |;
-exps: exp (',' exp)*;
+//
+lvalueLinha
+	returns[LValue ast]:
+	'[' exp ']' lvalueLinha { $ast = new LValue($exp.ast.getLine(), $exp.ast.getCol(), exp.ast, $lvalueLinha.ast);
+		}
+	| '.' ID lvalueLinha { $ast = new LValue($ID.pos, $ID.line, new ID($ID.line, $ID.pos, $ID.text), $lvalueLinha.ast);
+		}
+	|;
+
+exps
+	returns[Expr ast]
+	@init {
+    	List<LValue> expsValues = new ArrayList<>();
+  	}: 
+	e1=exp {expsValues.add($e1.ast);} 
+	(',' e2=exp {expsValues.add($e2.ast);})* 
+		{$ast = new Expr($e1.ast.getLine(), $e1.ast.getCol(), expsValues);} 
+	;
 
 //REGRAS LÉXICAS LITERAIS
 INT: [0-9]+;
