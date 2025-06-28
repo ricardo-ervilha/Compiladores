@@ -1,0 +1,15 @@
+package ast;
+
+import visitors.Visitor;
+
+public class VarExpr extends Expr{
+    private Expr exp;
+    private Type type;
+    public VarExpr(int line, int col, Type type, Expr exp){
+        super(line,col);
+        this.exp = exp;
+        this.type = type;
+    }
+    
+    public void accept(Visitor v){ v.visit(this);}
+}
