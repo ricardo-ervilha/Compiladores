@@ -65,7 +65,7 @@ fun
 			',' t = type { members.add($t.ast); }
 		)*
 	)? cmd {
-		$ast = new Fun($fun_def.line, $fun_def.pos, $fun_def.text, $p.ast, members, $cmd.ast);
+		$ast = new Fun($fun_def.line, $fun_def.pos, $fun_def.text, $p.ctx != null ? $p.ast : null, members, $cmd.ast);
 	};
 
 // params: ID '::' type (',' ID '::' type)*;
@@ -151,7 +151,7 @@ exp
 	| lvalue { $ast = $lvalue.ast;
 		}
 	| '(' exp ')' { $ast = $exp.ast; }
-	| 'new' type ('[' exp ']')? { $ast = new VarExpr($exp.ast.getLine(), $exp.ast.getCol(), $type.ast, $exp.ast);
+	| 'new' type ('[' e = exp ']')? { $ast = new VarExpr($exp.ast.getLine(), $exp.ast.getCol(), $type.ast, $e.ctx != null ? $e.ast : null);
 		}
 	| ID '(' (exps)? ')' '[' exp ']'  { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ast, $exp.ast);
 		}
