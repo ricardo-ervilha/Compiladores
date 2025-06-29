@@ -54,7 +54,7 @@ decl
         $ast = new Decl($id.line, $id.pos, $id.text, $t.ast);
     };
 
-// fun: ID '(' params? ')' (':' type (',' type)*)? cmd;
+fun2: ID '(' params? ')' (':' type (',' type)*)? cmd;
 fun
 	returns[Fun ast]
 	@init {
@@ -121,7 +121,7 @@ cmd
 	| ID '(' exps? ')' (
 		'<' l1 = lvalue { membersLValue.add($l1.ast) ;} (
 			',' l2 = lvalue { membersLValue.add($l2.ast) ;}
-		)* '>' {$ast = new CmdFuncCall($ID.line, $ID.pos,$ID.text, $exps.ast, membersLValue );
+		)* '>' {$ast = new CmdFuncCall($ID.line, $ID.pos,$ID.text, $exps.ctx != null ? $exps.ast : null, membersLValue );
 			}
 	)? ';';
 
@@ -153,7 +153,7 @@ exp
 	| '(' exp ')' { $ast = $exp.ast; }
 	| 'new' type ('[' e = exp ']')? { $ast = new VarExpr($exp.ast.getLine(), $exp.ast.getCol(), $type.ast, $e.ctx != null ? $e.ast : null);
 		}
-	| ID '(' (exps)? ')' '[' exp ']'  { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ast, $exp.ast);
+	| ID '(' (exps)? ')' '[' exp ']'  { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ctx !=null ? $exps.ast : null , $exp.ast);
 		}
 	| t = 'true'  { $ast = new TrueValue($t.line, $t.pos);}
 	| f = 'false'  { $ast = new FalseValue($f.line, $f.pos);}
