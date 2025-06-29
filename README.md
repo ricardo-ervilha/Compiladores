@@ -1,5 +1,11 @@
 # Compiladores
-Repositório associado ao trabalho da - Gerar o 
+Repositório associado ao trabalho de Compiladores 
+
+make clean
+
+make compile
+
+make run exemplo1.txt
 
 Excluir class gerados
     find . -name "*.class" -delete
