@@ -75,7 +75,7 @@ params
 	    List<Param> listParam = new ArrayList<>();
 	}:
 	id1 = ID '::' t1 = type {listParam.add(new Param($id1.text, $t1.ast));}
-	( ',' id2 = ID '::' t2 = type {listParam.add(new Param($id1.text, $t2.ast));})* {
+	( ',' id2 = ID '::' t2 = type {listParam.add(new Param($id2.text, $t2.ast));})* {
 		$ast = new Params($id1.line, $id1.pos, listParam);
 	}
 	;
