@@ -6,9 +6,9 @@ import visitors.Visitor;
 
 public class DataDecl extends Def {
     private String typeId;
-    private List<Decl> declarations;
+    private List<Node> declarations;
 
-    public DataDecl(int line, int col, String typeId, List<Decl> declarations) {
+    public DataDecl(int line, int col, String typeId, List<Node> declarations) {
         super(line, col);
         this.typeId = typeId;
         this.declarations = declarations;
@@ -18,7 +18,7 @@ public class DataDecl extends Def {
         return typeId;
     }
 
-    public List<Decl> getDeclarations() {
+    public List<Node> getDeclarations() {
         return declarations;
     }
 

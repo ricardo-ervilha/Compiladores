@@ -2,17 +2,17 @@ package ast;
 
 import visitors.Visitor;
 
-public class FieldLvalue  extends Lvalue{
-    private Lvalue lvalue;
+public class FieldLValue extends LValue {
+    private LValue lvalue;
     private String field;
 
-    public FieldLvalue(int line, int col, Lvalue lvalue, String field) {
+    public FieldLValue(int line, int col, LValue lvalue, String field) {
         super(line, col);
         this.lvalue = lvalue;
         this.field = field;
     }
 
-    public Lvalue getLvalue() {
+    public LValue getLvalue() {
         return lvalue;
     }
 

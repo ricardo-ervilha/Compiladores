@@ -2,17 +2,17 @@ package ast;
 
 import visitors.Visitor;
 
-public class LvalueExp extends Lvalue{
-    private Lvalue lvalue;  // O array ou objeto que contém o elemento
+public class LValueExp extends LValue {
+    private LValue lvalue;  // O array ou objeto que contém o elemento
     private Expr index;      // O índice de acesso ao array
 
-    public LvalueExp(int line, int col, Lvalue lvalue, Expr exp) {
+    public LValueExp(int line, int col, LValue lvalue, Expr exp) {
         super(line, col);
         this.lvalue = lvalue;
         this.index = exp;
     }
 
-    public Lvalue getLvalue() {
+    public LValue getLvalue() {
         return lvalue;
     }
 

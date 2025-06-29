@@ -1,4 +1,7 @@
 
+import ast.IntValue;
+import ast.Mul;
+import ast.Node;
 import parser.*;
 
 import org.antlr.v4.runtime.*;
@@ -16,8 +19,16 @@ public class Teste {
         // create a parser that feeds off the tokens buffer
         LangParser parser = new LangParser(tokens);
 
+        // tell ANTLR to does not automatically build an AST
+        parser.setBuildParseTree(false);
 
-        ParseTree tree = parser.prog();
-        System.out.println(tree.toStringTree(parser));
+        Node ast = parser.prog().ast;
+        Mul mult = new Mul(0,0, new IntValue(0,0, "2"), new IntValue(0,0, "3") );
+
+        System.out.println(mult);
+
+
+//        ParseTree tree = parser.prog();
+//        System.out.println(tree.toStringTree(parser));
     }
 }

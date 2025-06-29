@@ -2,17 +2,14 @@ package ast;
 
 import visitors.Visitor;
 
-public class IdItcond extends Itcond {
-    private String id;
+public class ExpItCond extends Itcond {
     private Expr expression;
 
-    public IdItcond(int line, int col, String id, Expr expression) {
+    public ExpItCond(int line, int col, Expr expression) {
         super(line, col);
-        this.id = id;
         this.expression = expression;
     }
 
-    public String getId() { return id; }
     public Expr getExpression() { return expression; }
 
     public void accept(Visitor v) {

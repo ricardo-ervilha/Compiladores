@@ -2,11 +2,11 @@ package ast;
 
 import visitors.Visitor;
 
-public class IdLvalue extends Lvalue{
+public class IdLValue extends LValue {
     private String id;
-    private Lvalue lvalue;
+    private LValue lvalue;
 
-    public IdLvalue(int line, int col, Lvalue lvalue, String id) {
+    public IdLValue(int line, int col, LValue lvalue, String id) {
         super(line, col);
         this.id = id;
         this.lvalue = lvalue;

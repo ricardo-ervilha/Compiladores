@@ -5,8 +5,8 @@ import java.util.List;
 
 public class CallFunctionAccess extends Expr{
     private Expr exp;
-    private List<Expr> exps;
-    public CallFunctionAccess(int line, int col, String id, List<Expr> exps, Expr exp){
+    private Exps exps;
+    public CallFunctionAccess(int line, int col, String id, Exps exps, Expr exp){
         super(line,col);
         this.exp = exp;
         this.exps = exps;

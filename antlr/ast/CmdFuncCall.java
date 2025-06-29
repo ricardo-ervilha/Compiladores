@@ -7,19 +7,19 @@ import java.util.List;
 public class CmdFuncCall extends  Cmd{
 
     private String id;
-    private List<Expr> arguments;
-    private List<Lvalue> lvalues;
+    private Exps exps;
+    private List<LValue> LValues;
 
-    public CmdFuncCall(int line, int col, String id, List<Expr> arguments, List<Lvalue> lvalues) {
+    public CmdFuncCall(int line, int col, String id,Exps exps, List<LValue> LValues) {
         super(line, col);
         this.id = id;
-        this.arguments = arguments;
-        this.lvalues = lvalues;
+        this.exps = exps;
+        this.LValues = LValues;
     }
 
     public String getId() { return id; }
-    public List<Expr> getArguments() { return arguments; }
-    public List<Lvalue> getLvalues() { return lvalues; }
+    public Exps getExps() { return exps; }
+    public List<LValue> getLvalues() { return LValues; }
 
     public void accept(Visitor v) {
         v.visit(this);

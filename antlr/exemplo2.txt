@@ -7,4 +7,4 @@ abstract data Racional {
         r.numerador = r1.numerador * r2.denominador + r2.numerador * r1.denominador;
         return r;
     }
- }
+}

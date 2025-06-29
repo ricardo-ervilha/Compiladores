@@ -4,14 +4,14 @@ import visitors.Visitor;
 
 public class CmdRead extends  Cmd{
 
-    private Lvalue lvalue;
+    private LValue lvalue;
 
-    public CmdRead(int line, int col, Lvalue lvalue) {
+    public CmdRead(int line, int col, LValue lvalue) {
         super(line, col);
         this.lvalue = lvalue;
     }
 
-    public Lvalue getLvalue() { return lvalue; }
+    public LValue getLvalue() { return lvalue; }
 
     public void accept(Visitor v) {
         v.visit(this);
