@@ -71,16 +71,16 @@ fun
 params 
 	returns[Params ast] 
 	@init { List<Param> listParam = new ArrayList<>(); }: 
-	id = ID '::' t1 = type {listParam.add(new Param($id, $t1))} 
+	id = ID '::' t1 = type {listParam.add(new Param($id, $t1.ast))}
 	( ',' ID '::' t2 = type {members.add($t2.ast)} )* {
 		$ast = new Params($id.line, $id.pos, members);
-	} 	
+	}
 	;
 
 // type: type '['']' | btype; type: btype typeLinha;
 type
 	returns[Type ast]:
-	type '[' ']' {$ast = new ArrayType($type.ast.getLine(), $type.ast.getCol(), $type.ast)}
+	t1=type '[' ']' {$ast = new ArrayType($t1.ast.getLine(), $t1.ast.getCol());}
 	| Int = 'Int' {$ast = new TypeInt($Int.line, $Int.pos, Integer.parseInt($Int.text));}
 	| Char = 'Char' {$ast = new TypeChar($Char.line, $Char.pos, $Char.text);}
 	| Bool = 'Bool' {$ast = new TypeBool($Bool.line, $Bool.pos, Boolean.parseBoolean($Bool.text));}
@@ -110,7 +110,7 @@ cmd
 	| rd = 'read' lvalue ';' { $ast = new CmdRead($rd.line, $rd.pos, $lvalue.ast); }
 	| prt = 'print' exp ';' { $ast = new CmdPrint($prt.line, $prt.pos, $exp.ast); }
 	| rt = 'return' exp { membersReturn.add($exp.ast) } (
-		',' exp {membersReturn.add($exp.ast)} 
+		',' exp {membersReturn.add($exp.ast)}
 	)* { $ast = new CmdReturn($rt.line, $rt.pos, $exp.ast, membersReturn);} ';'
 	| lvalue '=' exp ';' { $ast = new LvalueExp($lvalue.ast.getLine(), $lvalue.ast.getCol(), $lvalue.ast, $exp.ast);
 		}
@@ -126,23 +126,30 @@ itcond
 	returns[Expr ast]:
 	ID ':' exp { $ast = new IdItCond($ID.line, $ID.pos, $ID.text, $exp.ast);
 		}
-	| exp { $ast = new ExpItCond($exp.ast.getLine(), $exp.ast.getCol(), $exp.ast);};
+	| exp { $ast = new ExpItCond($exp.ast.getLine(), $exp.ast.getCol(), $exp.ast);}
+	;
 
 // exp: exp op exp | '!' exp | '-' exp | lvalue | '(' exp ')' | 'new' type ('[' exp ']')? | ID '('
 // (exps)? ')' '[' exp ']' | 'true' | 'false' | 'null' | INT | FLOAT | CHAR;
 
 exp
 	returns[Expr ast]:
-	exp1=exp op exp2=exp { $ast = new BinOP($op.ast.getLine(), $op.ast.getCol(), $exp1.ast, $op.text, $exp2.ast);
-		}
+	  exp1=exp op = '*' exp2=exp { $ast = new Mult($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	| exp1=exp op = '/' exp2=exp { $ast = new Div($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	| exp1=exp op = '%' exp2=exp { $ast = new Mod($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	| exp1=exp op = '+' exp2=exp { $ast = new Add($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	| exp1=exp op = '-' exp2=exp { $ast = new Sub($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	| exp1=exp op = '<' exp2=exp { $ast = new Lt($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	| exp1=exp op = '==' exp2=exp { $ast = new Eq($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	| exp1=exp op = '!=' exp2=exp { $ast = new Diff($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	| exp1=exp op = '&&' exp2=exp { $ast = new And($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| not = '!' exp { $ast = new NotExpr($not.line, $not.pos, $exp.ast);}
-	| minus = '-' exp { $ast = new MinusExpr($minus.line, $minus.pos, $exp.ast);
-		}
+	| minus = '-' exp { $ast = new MinusExpr($minus.line, $minus.pos, $exp.ast);}
 	| lvalue { $ast = new LValue($lvalue.ast.getLine(), $lvalue.ast.getCol(), $lvalue.ast);
 		}
 	| '(' exp ')' { $ast = new Expr($exp.ast.getLine(), $exp.ast.getCol(), $exp.ast);
 		}
-	| 'new' type ('[' exp ']')? { $ast = new NewVarExpr($type.ast.getLine(), $type.ast.getCol(), $type.ast, $exp.ast);
+	| 'new' type ('[' exp ']')? { $ast = new NewVarExpr($exp.ast.getLine(),$exp.ast.getCol(), $exp.ast, $exp.ast);
 		}
 	| ID '(' (exps)? ')' '[' exp ']'  { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ast,$exp.ast);
 		}
@@ -154,31 +161,17 @@ exp
 	| CHAR { $ast = new CharValue($CHAR.line, $CHAR.pos, $CHAR.text);};
 
 
-op
-	returns[Operator ast]:
-	andOp = '&&' {$ast = new Operator($andOp.line, $andOp.pos, $andOp.text);}
-	| lessOp = '<' {$ast = new Operator($lessOp.line, $lessOp.pos, $lessOp.text);}
-	| equalOp = '==' {$ast = new Operator($equalOp.line, $equalOp.pos, $equalOp.text);}
-	| diffOp = '!=' {$ast = new Operator($diffOp.line, $diffOp.pos, $diffOp.text);}
-	| plusOp = '+' {$ast = new Operator($plusOp.line, $plusOp.pos, $plusOp.text);}
-	| minusOp = '-' {$ast = new Operator($minusOp.line, $minusOp.pos, $minusOp.text);}
-	| multOp = '*' {$ast = new Operator($multOp.line, $multOp.pos, $multOp.text);}
-	| divOp = '/' {$ast = new Operator($divOp.line, $divOp.pos, $divOp.text);}
-	| modOp = '%' {$ast = new Operator($modOp.line, $modOp.pos, $modOp.text);};
 // lvalue: ID | lvalue '[' exp ']' | lvalue '.' ID | TYID ID;
-
-lvalue
-	returns[LValue ast]:
-	ID { $ast = new ID($ID.line, $ID.pos,$ID.texxt);}
-	| lvalue '[' exp ']' {$ast = new LvalueExp($lvalue.ast.getLine(), $lvalue.ast.getCol(), $lvalue.ast, $exp.ast)}
-	| lvalue '.' ID {$ast = new IdLvalue($lvalue.ast.getLine(), $lvalue.ast.getCol(), $lvalue.ast, $ID.text)}	
+lvalue returns[Lvalue ast]:
+	ID { $ast = new ID($ID.line, $ID.pos, $ID.text);}
+	| l1 = lvalue '[' exp ']' {$ast = new LvalueExp($l1.ast.getLine(), $l1.ast.getCol(), $l1.ast, $exp.ast)}
+	| l1=lvalue '.' ID {$ast = new IdLvalue($l1.ast.getLine(), $l1.ast.getCol(), $l1.ast, $ID.text)}
 		;
 
-exps
-	returns[Exps ast]
+exps returns[Exps ast]
 	@init {
     	List<Expr> expsValues = new ArrayList<>();
-  	}: 
+  	}:
 	e1=exp {expsValues.add($e1.ast);}
 	(',' e2=exp {expsValues.add($e2.ast);})*
 		{$ast = new Exps($e1.ast.getLine(), $e1.ast.getCol(), expsValues);}

@@ -11,7 +11,7 @@ public abstract class BinOP extends Expr {
       private Expr r;
       private String oper;
       
-      public BinOP(int lin, int col, Expr l, String oper, Expr r){
+      public BinOP(int lin, int col, Expr l, Expr r){
            super(lin,col);
            this.l = l;
            this.r = r;

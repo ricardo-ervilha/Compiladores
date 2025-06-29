@@ -10,7 +10,7 @@ import visitors.Visitor;
 public class And extends BinOP {
 
       public And(int line, int col, Expr l, Expr r){
-          super(line, col, l,r);
+          super(line, col, l, r);
       }
 
       public String toString(){
