@@ -1,9 +1,9 @@
+package src;
 import ast.Node;
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
-import parser.LangLexer;
-import parser.LangParser;
+import parser.*;
 import util.SyntaxErrorListener;
 import visitors.InterpretVisitor;
 
@@ -21,6 +21,7 @@ public class Main {
         try {
             // Criar o stream de caracteres do arquivo
             CharStream stream = CharStreams.fromFileName(filePath);
+
 
             // Inicializar lexer e parser
             LangLexer lex = new LangLexer(stream);
@@ -46,7 +47,7 @@ public class Main {
 
                 case "-i":
                     // Tenta fazer o parse do programa
-                    ast = parser.prog().ast;
+                    ast = parser.cmd().ast;
                     InterpretVisitor iv = new InterpretVisitor();
                     ast.accept(iv);
                     break;

@@ -1,3 +1,5 @@
+package src;
+
 import ast.Node;
 import parser.*;
 
