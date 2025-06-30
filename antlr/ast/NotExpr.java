@@ -9,5 +9,9 @@ public class NotExpr extends Expr{
         this.exp = exp;
     }
     
+    public Expr getExpression(){
+        return this.exp;
+    }
+
     public void accept(Visitor v){ v.visit(this);}
 }

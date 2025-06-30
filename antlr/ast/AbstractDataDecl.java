@@ -17,7 +17,7 @@ public class AbstractDataDecl extends Def {
         return typeId;
     }
 
-    public List<Node> getElements() {
+    public List<Node> getDeclFuns() {
         return declFun;
     }
 

@@ -1,4 +1,4 @@
-data Racional { 
-    numerador :: Int ;
-    denominador :: Int ;
+data Racional {
+    numerador::Int;
+    denominador::Int;
 }

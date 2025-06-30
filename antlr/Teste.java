@@ -6,10 +6,15 @@ import parser.*;
 
 import org.antlr.v4.runtime.*;
 import org.antlr.v4.runtime.tree.*;
+import visitors.InterpretVisitor;
+
+import java.util.HashMap;
 
 public class Teste {
 
     public static void main(String args[]) throws Exception {
+        HashMap<String, Integer> h = new HashMap<>();
+
         // Create a ANTLR CharStream from a file
         CharStream stream = CharStreams.fromFileName(args[0]);
         // create a lexer that feeds off of stream
@@ -23,12 +28,9 @@ public class Teste {
         parser.setBuildParseTree(false);
 
         Node ast = parser.prog().ast;
-        Mul mult = new Mul(0,0, new IntValue(0,0, "2"), new IntValue(0,0, "3") );
 
-        System.out.println(mult);
+        InterpretVisitor iv = new InterpretVisitor();
+        ast.accept(iv);
 
-
-//        ParseTree tree = parser.prog();
-//        System.out.println(tree.toStringTree(parser));
     }
 }

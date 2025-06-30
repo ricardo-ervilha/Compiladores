@@ -19,6 +19,10 @@ public class Fun extends Def {
         this.cmd = cmd;
     }
 
+    public String getID(){
+        return this.id;
+    }
+
     public void accept(Visitor v) {
         v.visit(this);
     }

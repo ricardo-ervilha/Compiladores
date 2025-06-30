@@ -13,6 +13,10 @@ public class CmdReturn extends  Cmd{
         this.expressions = expressions;
     }
 
+    public List<Expr> getExpressions() {
+        return expressions;
+    }
+
     public void accept(Visitor v) {
         v.visit(this);
     }
