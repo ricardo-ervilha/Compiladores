@@ -54,7 +54,6 @@ decl
         $ast = new Decl($id.line, $id.pos, $id.text, $t.ast);
     };
 
-fun2: ID '(' params? ')' (':' type (',' type)*)? cmd;
 fun
 	returns[Fun ast]
 	@init {

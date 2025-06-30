@@ -1,6 +1,7 @@
 package visitors;
 
 import ast.*;
+import util.AbstractFunctionData;
 
 import java.util.HashMap;
 import java.util.List;
@@ -22,9 +23,9 @@ public class InterpretVisitor extends Visitor {
     // Hashmap com os valores temporários das operações.
     private Stack<Object> operands;
 
-    // Hashmap para guardar quais tipos foram declarados (Abstratos e não abstratos) e suas variáveis/funções disponíveis.
+    // Hashmap para guardar quais tipos foram declarados (Não abstratos) e suas variáveis/funções disponíveis.
     private HashMap<String, HashMap<String, Object>> dataTypesEnv = new HashMap<String, HashMap<String, Object>>();
-    private Stack<String> namesStack = new Stack<>();
+    private Stack<String> namesStack = new Stack<>(); // Stack para ajudar a percorrer Decl E fun
 
     private boolean retMode, debug;
 
@@ -43,9 +44,22 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Program p) {
-        for (Def d : p.getDefinitions()) {
-            d.accept(this);
+        Node main = null;
+        for(Def f : p.getDefinitions()){
+            if(f instanceof Fun){
+                Fun funcao = (Fun) f;
+                funcs.put(funcao.getID(), funcao);
+                if(funcao.getID().equals("main")){
+                    main = f;
+                }
+            }else {
+                f.accept(this);
+            }
         }
+        if(main == null){
+            throw new RuntimeException( "Não há uma função chamada main... Abortando ! ");
+        }
+        main.accept(this);
     }
 
     @Override
@@ -65,6 +79,7 @@ public class InterpretVisitor extends Visitor {
     public void visit(AbstractDataDecl p) {
         String name = p.getTypeId();
         dataTypesEnv.put(name, new HashMap<>());
+        namesStack.push(name);
         for(Node d: p.getDeclFuns()){
             if(d instanceof Decl){
                 Decl x = (Decl) d;
@@ -81,7 +96,7 @@ public class InterpretVisitor extends Visitor {
         String nameData = namesStack.peek();
         String nameVar = p.getId();
         dataTypesEnv.get(nameData).put(nameVar, null);
-        namesStack.push(nameData);
+        namesStack.push(nameVar);
         p.getType().accept(this);
     }
 
@@ -93,9 +108,39 @@ public class InterpretVisitor extends Visitor {
     }
 
     @Override
-    public void visit(Fun p) {
-
+    public void visit(TYID e) {
+        String nameVar = namesStack.pop();
+        String nameData = namesStack.peek();
+        dataTypesEnv.get(nameData).put(nameVar, e);
     }
+
+    @Override
+    public void visit(TypeBool e) {
+        String nameVar = namesStack.pop();
+        String nameData = namesStack.peek();
+        dataTypesEnv.get(nameData).put(nameVar, e);
+    }
+
+    @Override
+    public void visit(TypeChar e) {
+        String nameVar = namesStack.pop();
+        String nameData = namesStack.peek();
+        dataTypesEnv.get(nameData).put(nameVar, e);
+    }
+
+    @Override
+    public void visit(TypeFloat e) {
+        String nameVar = namesStack.pop();
+        String nameData = namesStack.peek();
+        dataTypesEnv.get(nameData).put(nameVar, e);
+    }
+
+//    @Override
+//    public void visit(Fun p) {
+//        String nameData = namesStack.peek();
+//        String nameFun = p.getID();
+//        dataTypesEnv.get(nameData).put(nameFun, p);
+//    }
 
     @Override
     public void visit(Params e) {
@@ -220,10 +265,7 @@ public class InterpretVisitor extends Visitor {
 
     }
 
-    @Override
-    public void visit(ExpItCond e) {
 
-    }
 
     @Override
     public void visit(MinusExpr e) {
@@ -270,26 +312,6 @@ public class InterpretVisitor extends Visitor {
     }
 
     @Override
-    public void visit(TYID e) {
-
-    }
-
-    @Override
-    public void visit(TypeBool e) {
-
-    }
-
-    @Override
-    public void visit(TypeChar e) {
-
-    }
-
-    @Override
-    public void visit(TypeFloat e) {
-
-    }
-
-    @Override
     public void visit(CharValue e) {
 
     }
@@ -319,11 +341,6 @@ public class InterpretVisitor extends Visitor {
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
-    }
-
-    @Override
-    public void visit(IdItCond e) {
-
     }
 
     @Override
@@ -429,13 +446,24 @@ public class InterpretVisitor extends Visitor {
     public void visit(CmdIterate e) {
         try {
             e.getCondition().accept(this);
-            while ((Boolean) operands.pop()) {
+            int i = (Integer) operands.pop();;
+            while (i >= 0) {
                 e.getBody().accept(this);
-                e.getCondition().accept(this);
+                i--;
             }
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
+    }
+
+    @Override
+    public void visit(IdItCond e) {
+
+    }
+
+    @Override
+    public void visit(ExpItCond e) {
+        e.getExpression().accept(this);
     }
 
     public void visit(CmdPrint e) {
@@ -467,25 +495,18 @@ public class InterpretVisitor extends Visitor {
 //        }
 //    }
 
-//    public void visit(Func f) {
-//        HashMap<String, Object> localEnv = new HashMap<String, Object>();
-//        for (int i = f.getParams().length - 1; i >= 0; i--) {
-//            localEnv.put(f.getParams()[i].getID(), operands.pop());
-//        }
-//        env.push(localEnv);
-//        f.getBody().accept(this);
-//        if (debug && f.getID().equals("inicio")) {
-//
-//            Object[] x = env.peek().keySet().toArray();
-//            System.out.println("-------------- Memoria ----------------");
-//            for (int i = 0; i < x.length; i++) {
-//                System.out.println(((String) x[i]) + " : " + env.peek().get(x[i]).toString());
-//            }
-//        }
-//        env.pop();
-//        retMode = false;
-//
-//    }
+    public void visit(Fun f) {
+        HashMap<String, Object> localEnv = new HashMap<String, Object>();
+        if(f.getParams() != null) {
+            for (int i = f.getParams().getParamList().size() - 1; i >= 0; i--) {
+                localEnv.put(f.getParams().getParamList().get(i).getId(), operands.pop());
+            }
+        }
+        env.push(localEnv);
+        f.getCmd().accept(this);
+        env.pop();
+        retMode = false;
+    }
 
 //    public void visit(Inst e) {
 //        try {

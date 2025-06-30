@@ -13,6 +13,10 @@ public class Params extends Node {
         this.paramList = paramList;
     }
 
+    public List<Param> getParamList() {
+        return paramList;
+    }
+
     public void accept(Visitor v) {
         v.visit(this);
     }
