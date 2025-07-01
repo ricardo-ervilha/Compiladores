@@ -166,7 +166,7 @@ public class InterpretVisitor extends Visitor {
             Number esq, dir;
             dir = (Number) operands.pop();
             esq = (Number) operands.pop();
-            operands.push(new Integer(esq.intValue() + dir.intValue()));
+            operands.push(esq.intValue() + dir.intValue());
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -179,7 +179,7 @@ public class InterpretVisitor extends Visitor {
             Number esq, dir;
             dir = (Number) operands.pop();
             esq = (Number) operands.pop();
-            operands.push(new Integer(esq.intValue() - dir.intValue()));
+            operands.push(esq.intValue() - dir.intValue());
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -192,7 +192,7 @@ public class InterpretVisitor extends Visitor {
             Number esq, dir;
             dir = (Number) operands.pop();
             esq = (Number) operands.pop();
-            operands.push(new Integer(esq.intValue() * dir.intValue()));
+            operands.push(esq.intValue() * dir.intValue());
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -205,7 +205,7 @@ public class InterpretVisitor extends Visitor {
             Number esq, dir;
             dir = (Number) operands.pop();
             esq = (Number) operands.pop();
-            operands.push(new Float(esq.intValue() / dir.intValue()));
+            operands.push(esq.intValue() / (float) dir.intValue());
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -218,7 +218,7 @@ public class InterpretVisitor extends Visitor {
             Number esq, dir;
             dir = (Number) operands.pop();
             esq = (Number) operands.pop();
-            operands.push(new Integer(esq.intValue() % dir.intValue()));
+            operands.push(esq.intValue() % dir.intValue());
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -231,7 +231,7 @@ public class InterpretVisitor extends Visitor {
             Object esq, dir;
             dir = operands.pop();
             esq = operands.pop();
-            operands.push(new Boolean((Boolean) esq && (Boolean) dir));
+            operands.push((Boolean) esq && (Boolean) dir);
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -244,7 +244,7 @@ public class InterpretVisitor extends Visitor {
             Object esq, dir;
             dir = operands.pop();
             esq = operands.pop();
-            operands.push(new Boolean((Integer) esq < (Integer) dir));
+            operands.push((boolean) ((Integer) esq < (Integer) dir));
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -254,7 +254,7 @@ public class InterpretVisitor extends Visitor {
         try {
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            operands.push(new Boolean(operands.pop().equals(operands.pop())));
+            operands.push((boolean) (operands.pop().equals(operands.pop())));
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -275,7 +275,7 @@ public class InterpretVisitor extends Visitor {
     public void visit(NotExpr e) {
         try {
             e.getExpression().accept(this);
-            operands.push(new Boolean(!(Boolean) operands.pop()));
+            operands.push((boolean)(!(Boolean) operands.pop()));
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -337,7 +337,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(TrueValue e) {
         try {
-            operands.push(new Boolean(true));
+            operands.push(true);
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -355,7 +355,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(FalseValue e) {
         try {
-            operands.push(new Boolean(false));
+            operands.push(false);
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -368,7 +368,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(IntValue e) {
         try {
-            operands.push(new Integer(e.getValue()));
+            operands.push(Integer.valueOf(e.getValue()));
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -381,7 +381,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(FloatValue e) {
         try {
-            operands.push(new Float(e.getValue()));
+            operands.push(Float.valueOf(e.getValue()));
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
