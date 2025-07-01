@@ -17,7 +17,8 @@ public class Main {
 
         String directive = args[0];
         String filePath = args[1];
-
+        SyntaxErrorListener errorListener = SyntaxErrorListener.INSTANCE;
+        errorListener.reset();
         try {
             // Criar o stream de caracteres do arquivo
             CharStream stream = CharStreams.fromFileName(filePath);
@@ -25,6 +26,9 @@ public class Main {
 
             // Inicializar lexer e parser
             LangLexer lex = new LangLexer(stream);
+            lex.removeErrorListeners();
+            lex.addErrorListener(SyntaxErrorListener.INSTANCE);
+
             CommonTokenStream tokens = new CommonTokenStream(lex);
             LangParser parser = new LangParser(tokens);
 
@@ -40,7 +44,11 @@ public class Main {
             switch (directive) {
                 case "-syn":
                     // Tenta fazer o parse do programa
-                    ast = parser.prog().ast;
+                    parser.prog();
+                    if (errorListener.hasErrors()) {
+                        System.out.println("reject");
+                        System.exit(1);
+                    }
                     System.out.println("accept");
 
                     break;
@@ -48,6 +56,10 @@ public class Main {
                 case "-i":
                     // Tenta fazer a interpretação do
                     ast = parser.cmd().ast;
+                    if (errorListener.hasErrors()) {
+                        System.out.println("reject");
+                        System.exit(1);
+                    }
                     InterpretVisitor iv = new InterpretVisitor();
                     ast.accept(iv);
                     break;

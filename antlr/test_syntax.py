@@ -5,7 +5,7 @@ import sys
 # Verifica se o diretório foi passado como argumento
 if len(sys.argv) != 2:
     print("Uso: python test_syntax.py <diretorio_de_testes>")
-    print("Exemplo: python test_syntax.py examples/tests/sintaxe/certo")
+    print("Exemplo: python test_syntax.py examples/tests/sintaxe/errado")
     sys.exit(1)
 
 TEST_DIR = sys.argv[1]
@@ -38,10 +38,10 @@ for filename in os.listdir(TEST_DIR):
             )
             output = result.stdout.strip()
             if output == "accept":
-                print(f"[PASS] {filename}")
+                print(f"[ACCECPT] {filename}")
                 pass_count += 1
             else:
-                print(f"[FAIL] {filename} -> Output: {output}")
+                print(f"[REJECT] {filename} -> Output: {output}")
                 fail_count += 1
         except Exception as e:
             print(f"[ERROR] {filename} -> {e}")

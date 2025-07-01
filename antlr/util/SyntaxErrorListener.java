@@ -10,7 +10,9 @@ public class SyntaxErrorListener extends BaseErrorListener {
     public boolean hasErrors() {
         return hasErrors;
     }
-
+    public void reset() {
+        hasErrors = false;
+    }
     @Override
     public void syntaxError(Recognizer<?, ?> recognizer,
                             Object offendingSymbol,
@@ -18,6 +20,6 @@ public class SyntaxErrorListener extends BaseErrorListener {
                             String msg,
                             RecognitionException e) {
         hasErrors = true;
-        throw new RuntimeException("Erro de sintaxe na linha " + line + ":" + charPositionInLine + " - " + msg);
+        throw new RuntimeException("Erro na linha " + line + ":" + charPositionInLine + " - " + msg);
     }
 }
