@@ -77,18 +77,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(AbstractDataDecl p) {
-        String name = p.getTypeId();
-        dataTypesEnv.put(name, new HashMap<>());
-        namesStack.push(name);
-        for(Node d: p.getDeclFuns()){
-            if(d instanceof Decl){
-                Decl x = (Decl) d;
-                x.accept(this);
-            }else if(d instanceof Fun){
-                Fun  x = (Fun) d;
-                x.accept(this);
-            }
-        }
+        //
     }
 
     @Override
@@ -135,12 +124,10 @@ public class InterpretVisitor extends Visitor {
         dataTypesEnv.get(nameData).put(nameVar, e);
     }
 
-//    @Override
-//    public void visit(Fun p) {
-//        String nameData = namesStack.peek();
-//        String nameFun = p.getID();
-//        dataTypesEnv.get(nameData).put(nameFun, p);
-//    }
+    @Override
+    public void visit(FunAbstractData p) {
+        //
+    }
 
     @Override
     public void visit(Params e) {
@@ -163,10 +150,20 @@ public class InterpretVisitor extends Visitor {
         try {
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            Number esq, dir;
-            dir = (Number) operands.pop();
-            esq = (Number) operands.pop();
-            operands.push(new Integer(esq.intValue() + dir.intValue()));
+            if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
+                // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
+                Number esq, dir;
+                dir = (Number) operands.pop();
+                esq = (Number) operands.pop();
+                operands.push(esq.floatValue() + dir.floatValue());
+            }else{
+                // Caso em que são os dois Integer.
+                Number esq, dir;
+                dir = (Number) operands.pop();
+                esq = (Number) operands.pop();
+                operands.push(esq.intValue() + dir.intValue());
+            }
+
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -176,10 +173,19 @@ public class InterpretVisitor extends Visitor {
         try {
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            Number esq, dir;
-            dir = (Number) operands.pop();
-            esq = (Number) operands.pop();
-            operands.push(new Integer(esq.intValue() - dir.intValue()));
+            if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
+                // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
+                Number esq, dir;
+                dir = (Number) operands.pop();
+                esq = (Number) operands.pop();
+                operands.push(esq.floatValue() - dir.floatValue());
+            }else{
+                // Caso em que são os dois Integer.
+                Number esq, dir;
+                dir = (Number) operands.pop();
+                esq = (Number) operands.pop();
+                operands.push(esq.intValue() - dir.intValue());
+            }
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -189,10 +195,19 @@ public class InterpretVisitor extends Visitor {
         try {
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            Number esq, dir;
-            dir = (Number) operands.pop();
-            esq = (Number) operands.pop();
-            operands.push(new Integer(esq.intValue() * dir.intValue()));
+            if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
+                // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
+                Number esq, dir;
+                dir = (Number) operands.pop();
+                esq = (Number) operands.pop();
+                operands.push(esq.floatValue() * dir.floatValue());
+            }else{
+                // Caso em que são os dois Integer.
+                Number esq, dir;
+                dir = (Number) operands.pop();
+                esq = (Number) operands.pop();
+                operands.push(esq.intValue() * dir.intValue());
+            }
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -202,10 +217,19 @@ public class InterpretVisitor extends Visitor {
         try {
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            Number esq, dir;
-            dir = (Number) operands.pop();
-            esq = (Number) operands.pop();
-            operands.push(new Float(esq.intValue() / dir.intValue()));
+            if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
+                // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
+                Number esq, dir;
+                dir = (Number) operands.pop();
+                esq = (Number) operands.pop();
+                operands.push(esq.floatValue() / dir.floatValue());
+            }else{
+                // Caso em que são os dois Integer.
+                Number esq, dir;
+                dir = (Number) operands.pop();
+                esq = (Number) operands.pop();
+                operands.push(esq.intValue() / dir.intValue());
+            }
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -218,7 +242,7 @@ public class InterpretVisitor extends Visitor {
             Number esq, dir;
             dir = (Number) operands.pop();
             esq = (Number) operands.pop();
-            operands.push(new Integer(esq.intValue() % dir.intValue()));
+            operands.push(esq.intValue() % dir.intValue());
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -241,10 +265,11 @@ public class InterpretVisitor extends Visitor {
         try {
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            Object esq, dir;
-            dir = operands.pop();
-            esq = operands.pop();
-            operands.push(new Boolean((Integer) esq < (Integer) dir));
+            Number esq, dir;
+            dir = (Number) operands.pop();
+            esq = (Number) operands.pop();
+            //Converto os dois para Float, pois no final serão convertidos para Boolean. Isso trata o caso de tipos diferentes.
+            operands.push((boolean) (esq.floatValue() < dir.floatValue()));
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -254,7 +279,7 @@ public class InterpretVisitor extends Visitor {
         try {
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            operands.push(new Boolean(operands.pop().equals(operands.pop())));
+            operands.push(operands.pop().equals(operands.pop()));
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -262,7 +287,13 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(Diff e) {
-
+        try {
+            e.getLeft().accept(this);
+            e.getRight().accept(this);
+            operands.push(!operands.pop().equals(operands.pop()));
+        } catch (Exception x) {
+            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+        }
     }
 
 
@@ -275,7 +306,7 @@ public class InterpretVisitor extends Visitor {
     public void visit(NotExpr e) {
         try {
             e.getExpression().accept(this);
-            operands.push(new Boolean(!(Boolean) operands.pop()));
+            operands.push(!(Boolean) (operands.pop()));
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -308,7 +339,23 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(ID e) {
-
+        try {
+            Object r = env.peek().get(e.getName()); // acessa a pilha e pega o objeto que o ID representa lá.
+            if (r != null) {
+//                if (e.getIdx() != null) { // CASO DO VETOR.
+//                    for (Expr exp : e.getIdx()) {
+//                        exp.accept(this);
+//                        r = ((ArrayList) r).get((Integer) operands.pop());
+//                    }
+//                }
+                operands.push(r);
+            } else {
+                throw new RuntimeException(
+                        " (" + e.getLine() + ", " + e.getCol() + ") variável não declarada " + e.getName());
+            }
+        } catch (Exception x) {
+            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+        }
     }
 
     @Override
@@ -337,7 +384,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(TrueValue e) {
         try {
-            operands.push(new Boolean(true));
+            operands.push(true);
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -345,7 +392,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(IdLValue e) {
-
+        e.getLvalue().accept(this);
     }
 
     @Override
@@ -355,7 +402,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(FalseValue e) {
         try {
-            operands.push(new Boolean(false));
+            operands.push(false);
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }

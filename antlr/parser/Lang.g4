@@ -11,7 +11,8 @@ grammar Lang;
 }
 
 // prog: (def)*;
-prog returns [Program ast]
+prog
+returns [Program ast]
         @init {
             List<Def> defList = new ArrayList<>();
         }:
@@ -38,7 +39,7 @@ data
 	}:
 	abs = 'abstract' 'data' TYID '{' (
 		decl { members.add($decl.ast); }
-		| fun { members.add($fun.ast); }
+		| fun_abstract_data { members.add($fun_abstract_data.ast); }
 	)* '}' {
         	$ast = new AbstractDataDecl($abs.line, $abs.pos, $TYID.text, members);
     }
@@ -54,6 +55,22 @@ decl
         $ast = new Decl($id.line, $id.pos, $id.text, $t.ast);
     };
 
+// RICARDO: Adicionei isso para poder existir separação entre a Função de um tipo Abstrato e uma função normal.
+// Assim, ficará mais fácil tratar esse caso.
+fun_abstract_data
+    returns[FunAbstractData ast]
+	@init {
+    	List<Type> members = new ArrayList<>();
+  	}:
+	fun_def = ID '(' p = params? ')' (
+		':' t1 = type { members.add($t1.ast); } (
+			',' t = type { members.add($t.ast); }
+		)*
+	)? cmd {
+		$ast = new FunAbstractData($fun_def.line, $fun_def.pos, $fun_def.text, $p.ctx != null ? $p.ast : null, members, $cmd.ast);
+	};
+
+// Ricardo: Essas são as funções tradicionais.
 fun
 	returns[Fun ast]
 	@init {

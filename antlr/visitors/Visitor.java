@@ -11,6 +11,7 @@ public abstract class Visitor {
     public abstract void visit(AbstractDataDecl p);
     public abstract void visit(Decl p);
     public abstract void visit(Fun p);
+    public abstract void visit(FunAbstractData p);
     public abstract void visit(Params e);
 
     // --- Commands (Statements) ---
