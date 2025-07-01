@@ -46,22 +46,22 @@ public class Main {
                     break;
 
                 case "-i":
-                    // Tenta fazer o parse do programa
+                    // Tenta fazer a interpretação do
                     ast = parser.cmd().ast;
                     InterpretVisitor iv = new InterpretVisitor();
                     ast.accept(iv);
                     break;
 
                 case "-t":
-                    System.out.println("Executa a verifica ̧c ̃ao de tipos do programa.");
+                    System.out.println("Executa a verifica ção de tipos do programa.");
                     break;
 
                 case "-src":
-                    System.out.println("Gera c ́odigo de alto n ́ıvel");
+                    System.out.println("Gera código de alto n ível");
                     break;
 
                 case "-gen":
-                    System.out.println("Gera c ́odigo para uma arquitetura alvo.");
+                    System.out.println("Gera código para uma arquitetura alvo.");
                     break;
 
                 default:

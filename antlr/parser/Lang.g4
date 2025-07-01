@@ -108,11 +108,18 @@ type
 
 // block: '{' (cmd)* '}';
 block
-	returns[Block ast]
-	@init{List<Cmd> listCmd = new ArrayList<>();}:
-	'{' (
-		c1 = cmd {listCmd.add($c1.ast);}
-	)*  {$ast = new Block($c1.ast.getLine(), $c1.ast.getCol(), listCmd); } '}';
+    returns [Block ast]
+    @init { List<Cmd> listCmd = new ArrayList<>(); int line = -1; int col = -1; }
+    : '{'
+            (c1=cmd {
+                if (line == -1) { line = $c1.ast.getLine(); col = $c1.ast.getCol(); }
+                listCmd.add($c1.ast);
+            })*
+        '}'
+    {
+        $ast = new Block(line, col, listCmd);
+    }
+    ;
 
 cmd
 	returns[Cmd ast]
@@ -167,8 +174,7 @@ exp
 	| lvalue { $ast = $lvalue.ast;
 		}
 	| '(' exp ')' { $ast = $exp.ast; }
-	| 'new' type ('[' e = exp ']')? { $ast = new VarExpr($exp.ast.getLine(), $exp.ast.getCol(), $type.ast, $e.ctx != null ? $e.ast : null);
-		}
+	| 'new' type ('[' e = exp ']')? { $ast = new VarExpr($type.ast.getLine(), $type.ast.getCol(), $type.ast, $e.ctx != null ? $e.ast : null);}
 	| ID '(' (exps)? ')' '[' exp ']'  { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ctx !=null ? $exps.ast : null , $exp.ast);
 		}
 	| t = 'true'  { $ast = new TrueValue($t.line, $t.pos);}
