@@ -3,15 +3,11 @@ package visitors;
 import ast.*;
 import util.AbstractFunctionData;
 
-import java.util.HashMap;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
+import java.util.stream.Collectors;
 
 public class InterpretVisitor extends Visitor {
 
-    // Lista de flags.
-    int tipoUsoId; // 0: Id sendo usado para declaração. | 1: Id sendo usado para operações.
 
     // Hashmap para gerenciar o escopo de funções.
     private Stack<HashMap<String, Object>> env;
@@ -102,30 +98,30 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(TYID e) {
-        String nameVar = namesStack.pop();
-        String nameData = namesStack.peek();
-        dataTypesEnv.get(nameData).put(nameVar, e);
+//        String nameVar = namesStack.pop();
+//        String nameData = namesStack.peek();
+//        dataTypesEnv.get(nameData).put(nameVar, e);
     }
 
     @Override
     public void visit(TypeBool e) {
-        String nameVar = namesStack.pop();
-        String nameData = namesStack.peek();
-        dataTypesEnv.get(nameData).put(nameVar, e);
+//        String nameVar = namesStack.pop();
+//        String nameData = namesStack.peek();
+//        dataTypesEnv.get(nameData).put(nameVar, e);
     }
 
     @Override
     public void visit(TypeChar e) {
-        String nameVar = namesStack.pop();
-        String nameData = namesStack.peek();
-        dataTypesEnv.get(nameData).put(nameVar, e);
+//        String nameVar = namesStack.pop();
+//        String nameData = namesStack.peek();
+//        dataTypesEnv.get(nameData).put(nameVar, e);
     }
 
     @Override
     public void visit(TypeFloat e) {
-        String nameVar = namesStack.pop();
-        String nameData = namesStack.peek();
-        dataTypesEnv.get(nameData).put(nameVar, e);
+//        String nameVar = namesStack.pop();
+//        String nameData = namesStack.peek();
+//        dataTypesEnv.get(nameData).put(nameVar, e);
     }
 
     @Override
@@ -147,17 +143,38 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(CmdAssign p) {
-        tipoUsoId = 0; // já indica q irá ser declaração.
+        if(p.getLvalue() instanceof ID){
+            System.out.println("Acessou a linha 148");
+            String nameVar = ((ID)p.getLvalue()).getName();
 
-        p.getLvalue().accept(this);
-        p.getExpression().accept(this);
+            System.out.println("Acessou a linha 150");
 
-        env.peek().put(namesStack.pop(), operands.pop());
+            p.getExpression().accept(this);
+
+            System.out.println("Acessou a linha 154: " + nameVar);
+
+            env.peek().put(nameVar, operands.pop());
+            System.out.println("Acessou a linha 153");
+
+        }else if(p.getLvalue() instanceof IdLValue){
+            System.out.println("Acessou a linha 153");
+            IdLValue lvalue = ((IdLValue) p.getLvalue());
+            String namevar = ((ID) lvalue.getLvalue()).getName();
+            String nameAtributo = lvalue.getId();
+
+            p.getExpression().accept(this);
+
+            Object value = env.peek().get(namevar);
+            if (value instanceof HashMap<?, ?>) {
+                @SuppressWarnings("unchecked")
+                HashMap<String, Object> map = (HashMap<String, Object>) value;
+                map.put(nameAtributo, operands.pop());
+            }
+        }
     }
 
     public void visit(Add e) {
         try {
-            tipoUsoId = 1;
             e.getLeft().accept(this);
             e.getRight().accept(this);
             if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
@@ -307,7 +324,6 @@ public class InterpretVisitor extends Visitor {
     }
 
 
-
     @Override
     public void visit(MinusExpr e) {
 
@@ -344,24 +360,39 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(VarExpr e) {
+        Object type = e.getType();
 
+        if(type instanceof TypeInt || type instanceof TypeFloat || type instanceof TypeBool || type instanceof TypeChar){
+            operands.push(null);
+        }else if(type instanceof TYID){
+            System.out.println("Acessou a linha 361");
+            // alocar a memória do novo tipo.
+            /*
+                data Racional{
+                    numerador::Int;
+                    denominador::Int;
+                }
+                ------------------------
+                'numerador': null,
+                'denominador': null
+             */
+                // gerar uma copia do hasmap
+            String nomeTipo = ((TYID) type).getName();
+            HashMap<String, Object> original = dataTypesEnv.get(nomeTipo);
+            HashMap<String, Object> copia = new HashMap<>();
+            for(Map.Entry<String, Object> entry: original.entrySet()){
+                String chave = entry.getKey();
+                copia.put(chave, null);
+            }
+            operands.push(copia);
+            System.out.println("Acessou a linha 380");
+        }
     }
 
     @Override
     public void visit(ID e) {
-        if(tipoUsoId == 0){
-            if(env.peek().containsKey(e.getName())){
-                // o ID está lá na pilha, ou seja, está reservado na memória.
-                namesStack.push(e.getName());
-            }else{
-                // o ID não está lá na pilha, ou seja, não está reservado na memória.
-                // e.g: x = new Int.
-                env.peek().put(e.getName(), null);
-                namesStack.push(e.getName()); // guardo quem foi o último id inserido no hashmap.
-            }
-        }else{
-            operands.push(env.peek().get(e.getName()));
-        }
+        Object val = env.peek().get(e.getName());
+        operands.push(val);
     }
 
     @Override
@@ -398,12 +429,16 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(IdLValue e) {
-        e.getLvalue().accept(this);
+
     }
 
     @Override
     public void visit(NullValue e) {
-
+        try {
+            operands.push(null);
+        } catch (Exception x) {
+            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+        }
     }
 
     public void visit(FalseValue e) {
@@ -521,7 +556,6 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(CmdPrint e) {
         try {
-            tipoUsoId = 1;
             e.getExpression().accept(this);
             System.out.println(operands.pop().toString());
         } catch (Exception x) {
@@ -558,6 +592,11 @@ public class InterpretVisitor extends Visitor {
         }
         env.push(localEnv);
         f.getCmd().accept(this);
+        /*Aqui q printa a memória*/
+        Object[] x = env.peek().keySet().toArray();
+        for(int i =0; i < x.length; i++){
+            System.out.println(((String) x[i]) + " : " + env.peek().get(x[i]).toString());
+        }
         env.pop();
         retMode = false;
     }

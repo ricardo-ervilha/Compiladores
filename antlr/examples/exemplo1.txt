@@ -1,4 +1,10 @@
+data Racional{
+    num :: Int;
+    den :: Int;
+}
+
 main(){
-    x = 4;
-    print x;
+    x = new Racional;
+    x.num = 1;
+    x.den = 2;
 }
