@@ -4,10 +4,14 @@ import ast.*;
 import util.AbstractFunctionData;
 
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Stack;
 
 public class InterpretVisitor extends Visitor {
+
+    // Lista de flags.
+    int tipoUsoId; // 0: Id sendo usado para declaração. | 1: Id sendo usado para operações.
 
     // Hashmap para gerenciar o escopo de funções.
     private Stack<HashMap<String, Object>> env;
@@ -143,11 +147,17 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(CmdAssign p) {
+        tipoUsoId = 0; // já indica q irá ser declaração.
 
+        p.getLvalue().accept(this);
+        p.getExpression().accept(this);
+
+        env.peek().put(namesStack.pop(), operands.pop());
     }
 
     public void visit(Add e) {
         try {
+            tipoUsoId = 1;
             e.getLeft().accept(this);
             e.getRight().accept(this);
             if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
@@ -339,22 +349,18 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(ID e) {
-        try {
-            Object r = env.peek().get(e.getName()); // acessa a pilha e pega o objeto que o ID representa lá.
-            if (r != null) {
-//                if (e.getIdx() != null) { // CASO DO VETOR.
-//                    for (Expr exp : e.getIdx()) {
-//                        exp.accept(this);
-//                        r = ((ArrayList) r).get((Integer) operands.pop());
-//                    }
-//                }
-                operands.push(r);
-            } else {
-                throw new RuntimeException(
-                        " (" + e.getLine() + ", " + e.getCol() + ") variável não declarada " + e.getName());
+        if(tipoUsoId == 0){
+            if(env.peek().containsKey(e.getName())){
+                // o ID está lá na pilha, ou seja, está reservado na memória.
+                namesStack.push(e.getName());
+            }else{
+                // o ID não está lá na pilha, ou seja, não está reservado na memória.
+                // e.g: x = new Int.
+                env.peek().put(e.getName(), null);
+                namesStack.push(e.getName()); // guardo quem foi o último id inserido no hashmap.
             }
-        } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+        }else{
+            operands.push(env.peek().get(e.getName()));
         }
     }
 
@@ -515,6 +521,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(CmdPrint e) {
         try {
+            tipoUsoId = 1;
             e.getExpression().accept(this);
             System.out.println(operands.pop().toString());
         } catch (Exception x) {
