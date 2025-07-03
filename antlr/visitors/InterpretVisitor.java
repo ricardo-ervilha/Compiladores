@@ -423,6 +423,17 @@ public class InterpretVisitor extends Visitor {
     @Override
     public void visit(IdLValue e) {
 
+        String namevar = ((ID) e.getLvalue()).getName(); // primeiro faço o cast do Lvalue para o tipo concreto ID e pego o nome do registro = nameVar
+        String nameAtributo = e.getId(); // pego o nome do atributo que esta dentro = nameAtributo
+
+        Object value = env.peek().get(namevar); //pego o hashmap que  está na pilha
+        if (value instanceof HashMap<?, ?>) {// certifico que é um hashmap com nomes dos atributos e valores dele
+            @SuppressWarnings("unchecked")
+            HashMap<String, Object> map = (HashMap<String, Object>) value;
+            operands.push(map.get(nameAtributo));
+        }
+
+
     }
 
     @Override
@@ -577,6 +588,32 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(CmdRead p) {
+        Scanner scanner = new Scanner(System.in);
+        String valorLido = scanner.nextLine();
+
+
+        if (p.getLvalue() instanceof ID){
+            String nameVar =  ((ID) p.getLvalue()).getName();
+
+            this.env.peek().put(nameVar, valorLido);
+
+            // precisa chamar o accept aqui, considerando que o visit do ID vai jogar o valor que está no env pro operands?
+            // p.getLvalue().accept(this);
+
+        } else if(p.getLvalue() instanceof IdLValue){
+            // nameVar.nameAtributo
+            IdLValue lvalue = ((IdLValue) p.getLvalue()); //pego a implementação concreta de IdLValue
+
+            String namevar = ((ID) lvalue.getLvalue()).getName(); // pego o nome do registro = nameVar
+            String nameAtributo = lvalue.getId(); // pego o nome do atributo que esta dentro = nameAtributo
+
+            Object value = env.peek().get(namevar);
+            if (value instanceof HashMap<?, ?>) {
+                @SuppressWarnings("unchecked")
+                HashMap<String, Object> map = (HashMap<String, Object>) value;
+                map.put(nameAtributo, valorLido);
+            }
+        }
 
     }
 
