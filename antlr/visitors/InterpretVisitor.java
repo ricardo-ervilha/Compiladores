@@ -545,21 +545,14 @@ public class InterpretVisitor extends Visitor {
                     i--;
                 }
             }else{
-                System.out.println("teste1");
-                String name = ((IdItCond) e.getCondition()).getId();
-
-                System.out.println("teste2");
-                int max = (Integer) operands.pop();
-
-                System.out.println("teste3");
-                env.peek().put(name, 0);
-
-                System.out.println("teste4");
-                while((Integer) env.peek().get(name) < max){
+                IdItCond cond = (IdItCond) e.getCondition();
+                String nameVar = cond.getId();
+                int counter = (Integer) env.peek().get(nameVar);
+                while(counter > 0){
                     e.getBody().accept(this);
-                    env.peek().put(name, (Integer) env.peek().get(name) + 1);
+                    counter--;
+                    env.peek().put(nameVar, counter); // atualiza na memória o valor.
                 }
-                System.out.println("teste3");
             }
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
@@ -568,8 +561,9 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(IdItCond e) {
-        // tratar aqui dentro pro iterate funcionar !!!
-        // resolver o idItCond
+        String name = e.getId();
+        e.getExpression().accept(this);
+        env.peek().put(name, operands.pop());
     }
 
     @Override
