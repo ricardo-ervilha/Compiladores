@@ -144,20 +144,15 @@ public class InterpretVisitor extends Visitor {
     @Override
     public void visit(CmdAssign p) {
         if(p.getLvalue() instanceof ID){
-            System.out.println("Acessou a linha 148");
             String nameVar = ((ID)p.getLvalue()).getName();
 
-            System.out.println("Acessou a linha 150");
 
             p.getExpression().accept(this);
 
-            System.out.println("Acessou a linha 154: " + nameVar);
 
             env.peek().put(nameVar, operands.pop());
-            System.out.println("Acessou a linha 153");
 
         }else if(p.getLvalue() instanceof IdLValue){
-            System.out.println("Acessou a linha 153");
             IdLValue lvalue = ((IdLValue) p.getLvalue());
             String namevar = ((ID) lvalue.getLvalue()).getName();
             String nameAtributo = lvalue.getId();
@@ -365,7 +360,6 @@ public class InterpretVisitor extends Visitor {
         if(type instanceof TypeInt || type instanceof TypeFloat || type instanceof TypeBool || type instanceof TypeChar){
             operands.push(null);
         }else if(type instanceof TYID){
-            System.out.println("Acessou a linha 361");
             // alocar a memória do novo tipo.
             /*
                 data Racional{
@@ -385,7 +379,6 @@ public class InterpretVisitor extends Visitor {
                 copia.put(chave, null);
             }
             operands.push(copia);
-            System.out.println("Acessou a linha 380");
         }
     }
 
@@ -534,10 +527,28 @@ public class InterpretVisitor extends Visitor {
     public void visit(CmdIterate e) {
         try {
             e.getCondition().accept(this);
-            int i = (Integer) operands.pop();;
-            while (i >= 0) {
-                e.getBody().accept(this);
-                i--;
+            if(e.getCondition() instanceof ExpItCond){
+                int i = (Integer) operands.pop();
+                while (i > 0) {
+                    e.getBody().accept(this);
+                    i--;
+                }
+            }else{
+                System.out.println("teste1");
+                String name = ((IdItCond) e.getCondition()).getId();
+
+                System.out.println("teste2");
+                int max = (Integer) operands.pop();
+
+                System.out.println("teste3");
+                env.peek().put(name, 0);
+
+                System.out.println("teste4");
+                while((Integer) env.peek().get(name) < max){
+                    e.getBody().accept(this);
+                    env.peek().put(name, (Integer) env.peek().get(name) + 1);
+                }
+                System.out.println("teste3");
             }
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
@@ -546,7 +557,8 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(IdItCond e) {
-
+        // tratar aqui dentro pro iterate funcionar !!!
+        // resolver o idItCond
     }
 
     @Override

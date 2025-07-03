@@ -1,10 +1,5 @@
-data Racional{
-    num :: Int;
-    den :: Int;
-}
-
 main(){
-    x = new Racional;
-    x.num = 1;
-    x.den = 2;
+    iterate(x:3){
+        print x;
+    }
 }
