@@ -1,0 +1,10 @@
+soma(a::Int, b::Int){
+    x = a+b;
+
+    return x;
+}
+main(){
+    x = 2 + 3;
+    y= soma(1000,30)[0];
+    print y;
+}

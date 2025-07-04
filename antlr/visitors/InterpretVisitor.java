@@ -348,8 +348,25 @@ public class InterpretVisitor extends Visitor {
 
     }
 
-    @Override
+    // ID '(' (exps)? ')' '[' exp ']' - ch
     public void visit(CallFunctionAccess e) {
+        try {
+            // pegar a função pelo name no hashmap de funções
+            Fun f = funcs.get(e.getFunctionName());
+            if (f != null) {
+                for (Expr exp : e.getExps().getExpressions()) {
+                    exp.accept(this); // empilho cada valor avaliado pela expressão na pilha de operandos
+                }
+                f.accept(this);// visito o Fun
+
+            } else {
+                throw new RuntimeException(
+                        " (" + e.getLine() + ", " + e.getCol() + ") Função não definida " + e.getFunctionName());
+            }
+
+        } catch (Exception x) {
+            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+        }
 
     }
 
@@ -393,6 +410,9 @@ public class InterpretVisitor extends Visitor {
 
     }
 
+    /*
+        cmd --> ID '(' exps? ')' ('<' lvalue (',' lvalue)* '>')? ';'
+     */
     public void visit(CmdFuncCall e) {
         try {
             Fun f = funcs.get(e.getId());
