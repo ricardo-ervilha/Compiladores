@@ -1,10 +1,9 @@
-soma(a::Int, b::Int){
-    x = a+b;
-
-    return x;
+f(x :: Int) {
+   y = 2*x  + 1;
+   print y;
 }
-main(){
-    x = 2 + 3;
-    y= soma(1000,30)[0];
-    print y;
+
+main() {
+  z = 10;
+  f(z);
 }

@@ -144,9 +144,7 @@ cmd
 	| ID '(' exps? ')' (
 		'<' l1 = lvalue { membersLValue.add($l1.ast) ;} (
 			',' l2 = lvalue { membersLValue.add($l2.ast) ;}
-		)* '>' {$ast = new CmdFuncCall($ID.line, $ID.pos,$ID.text, $exps.ctx != null ? $exps.ast : null, membersLValue );
-			}
-	)? ';';
+		)* '>')? {$ast = new CmdFuncCall($ID.line, $ID.pos,$ID.text, $exps.ctx != null ? $exps.ast : null, membersLValue );} ';';
 
 itcond
 	returns[Itcond ast]:

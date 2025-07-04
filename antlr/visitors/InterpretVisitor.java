@@ -656,10 +656,10 @@ public class InterpretVisitor extends Visitor {
         env.push(localEnv);
         f.getCmd().accept(this);
         /*Aqui q printa a memória*/
-        Object[] x = env.peek().keySet().toArray();
-        for(int i =0; i < x.length; i++){
-            System.out.println(((String) x[i]) + " : " + env.peek().get(x[i]).toString());
-        }
+//        Object[] x = env.peek().keySet().toArray();
+//        for(int i =0; i < x.length; i++){
+//            System.out.println(((String) x[i]) + " : " + env.peek().get(x[i]).toString());
+//        }
         env.pop();
         retMode = false;
     }
