@@ -170,20 +170,31 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(Add e) {
         try {
+            // Visita os operandos da esquerda e da direita
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
-                // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
-                Number esq, dir;
-                dir = (Number) operands.pop();
-                esq = (Number) operands.pop();
-                operands.push(esq.floatValue() + dir.floatValue());
-            }else{
-                // Caso em que são os dois Integer.
-                Number esq, dir;
-                dir = (Number) operands.pop();
-                esq = (Number) operands.pop();
-                operands.push(esq.intValue() + dir.intValue());
+
+            // Pega os valores avaliados da pilha
+            Object dir = operands.pop();
+            Object esq = operands.pop();
+
+            // Verifica se ambos são instâncias de Number
+            if (!(esq instanceof Number) || !(dir instanceof Number)) {
+                throw new RuntimeException("Operandos não numéricos");
+            }
+
+            Number esqNum = (Number) esq;
+            Number dirNum = (Number) dir;
+
+            // Se algum for Float ou Double, faz soma em ponto flutuante
+            if (esqNum instanceof Float || dirNum instanceof Float ||
+                    esqNum instanceof Double || dirNum instanceof Double) {
+                float resultado = esqNum.floatValue() + dirNum.floatValue();
+                operands.push(resultado);
+            } else {
+                // Caso contrário, faz soma inteira
+                int resultado = esqNum.intValue() + dirNum.intValue();
+                operands.push(resultado);
             }
 
         } catch (Exception x) {
@@ -215,21 +226,33 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(Mul e) {
         try {
+            // Visita os operandos da esquerda e da direita
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
-                // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
-                Number esq, dir;
-                dir = (Number) operands.pop();
-                esq = (Number) operands.pop();
-                operands.push(esq.floatValue() * dir.floatValue());
-            }else{
-                // Caso em que são os dois Integer.
-                Number esq, dir;
-                dir = (Number) operands.pop();
-                esq = (Number) operands.pop();
-                operands.push(esq.intValue() * dir.intValue());
+
+            // Pega os valores avaliados da pilha
+            Object dir = operands.pop();
+            Object esq = operands.pop();
+
+            // Verifica se ambos são instâncias de Number
+            if (!(esq instanceof Number) || !(dir instanceof Number)) {
+                throw new RuntimeException("Operandos não numéricos");
             }
+
+            Number esqNum = (Number) esq;
+            Number dirNum = (Number) dir;
+
+            // Se algum for Float ou Double, faz soma em ponto flutuante
+            if (esqNum instanceof Float || dirNum instanceof Float ||
+                    esqNum instanceof Double || dirNum instanceof Double) {
+                float resultado = esqNum.floatValue() * dirNum.floatValue();
+                operands.push(resultado);
+            } else {
+                // Caso contrário, faz soma inteira
+                int resultado = esqNum.intValue() * dirNum.intValue();
+                operands.push(resultado);
+            }
+
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -237,21 +260,33 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(Div e) {
         try {
+            // Visita os operandos da esquerda e da direita
             e.getLeft().accept(this);
             e.getRight().accept(this);
-            if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
-                // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
-                Number esq, dir;
-                dir = (Number) operands.pop();
-                esq = (Number) operands.pop();
-                operands.push(esq.floatValue() / dir.floatValue());
-            }else{
-                // Caso em que são os dois Integer.
-                Number esq, dir;
-                dir = (Number) operands.pop();
-                esq = (Number) operands.pop();
-                operands.push(esq.intValue() / dir.intValue());
+
+            // Pega os valores avaliados da pilha
+            Object dir = operands.pop();
+            Object esq = operands.pop();
+
+            // Verifica se ambos são instâncias de Number
+            if (!(esq instanceof Number) || !(dir instanceof Number)) {
+                throw new RuntimeException("Operandos não numéricos");
             }
+
+            Number esqNum = (Number) esq;
+            Number dirNum = (Number) dir;
+
+            // Se algum for Float ou Double, faz soma em ponto flutuante
+            if (esqNum instanceof Float || dirNum instanceof Float ||
+                    esqNum instanceof Double || dirNum instanceof Double) {
+                float resultado = esqNum.floatValue() / dirNum.floatValue();
+                operands.push(resultado);
+            } else {
+                // Caso contrário, faz soma inteira
+                int resultado = esqNum.intValue() / dirNum.intValue();
+                operands.push(resultado);
+            }
+
         } catch (Exception x) {
             throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -358,6 +393,13 @@ public class InterpretVisitor extends Visitor {
                     exp.accept(this); // empilho cada valor avaliado pela expressão na pilha de operandos
                 }
                 f.accept(this);// visito o Fun
+
+                ArrayList retornos = (ArrayList) operands.pop();
+
+                e.getExp().accept(this);// avaliar a expressão que pega o indice
+                int idx = (int) operands.pop(); // pegar o indice do topo da pilha
+
+                operands.push(retornos.get(idx));// pegar o elemento pelo indice avaliado
 
             } else {
                 throw new RuntimeException(
@@ -695,9 +737,12 @@ public class InterpretVisitor extends Visitor {
 //    }
 
     public void visit(CmdReturn e) {
+        List<Object> retornos = new ArrayList<>();
         for(Expr r: e.getExpressions()){
-            r.accept(this);
+            r.accept(this);//aqui eu adiciono no operands
+            retornos.add(operands.pop()); //aqui eu removo e adiciono na lista
         }
+        operands.push(retornos);
         retMode = true;
     }
 }

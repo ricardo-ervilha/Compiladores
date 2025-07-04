@@ -1,9 +1,10 @@
-f(x :: Int) {
+f(x :: Int) : Int, Float{
    y = 2*x  + 1;
-   print y;
+   return y, 1.5;
 }
 
 main() {
   z = 10;
-  f(z);
+  h = 2*f(z)[0] + f(z)[1];
+  print h;
 }
