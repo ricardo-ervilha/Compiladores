@@ -49,8 +49,42 @@ public class Tester {
         return !errorListener.hasErrors();
     }
 
+    public static boolean checkInterpretor(String filePath) {
+        try {
+            // Criar o stream de caracteres do arquivo
+            CharStream stream = CharStreams.fromFileName(filePath);
+
+            // Inicializar lexer e parser
+            LangLexer lex = new LangLexer(stream);
+            CommonTokenStream tokens = new CommonTokenStream(lex);
+            LangParser parser = new LangParser(tokens);
+
+            // Remover os listeners padrão e adicionar o customizado
+            parser.removeErrorListeners();
+            parser.addErrorListener(SyntaxErrorListener.INSTANCE);
+
+            // Não construa árvore sintática padrão (usando AST customizada)
+            parser.setBuildParseTree(false);
+
+            // Tenta fazer o parse do programa
+            Node ast = parser.prog().ast;
+
+            // Interpretação (se desejar)
+            InterpretVisitor iv = new InterpretVisitor();
+            ast.accept(iv);
+
+            // Se chegou até aqui, não houve erro sintático
+            return true;
+
+        } catch (Exception e) {
+            return false;
+        }
+
+    }
+
     @Test
     public void testSyntaxCorrectFiles() {
+        System.out.println("Testando sintática dos corretos");
         File dir = new File("examples/tests/sintaxe/certo");
         File[] files = dir.listFiles((d, name) -> name.endsWith(".lan"));
         assertNotNull("Diretório 'certo' não encontrado ou erro ao listar arquivos", files);
@@ -63,6 +97,7 @@ public class Tester {
 
     @Test
     public void testSyntaxIncorrectFiles() {
+        System.out.println("Testando sintática dos errados");
         File dir = new File("examples/tests/sintaxe/errado");
         File[] files = dir.listFiles((d, name) -> name.endsWith(".lan"));
         assertNotNull("Diretório 'errado' não encontrado ou erro ao listar arquivos", files);
@@ -72,4 +107,17 @@ public class Tester {
             assertFalse("Arquivo deveria ser rejeitado: " + file.getPath(), result);
         }
     }
+
+//    @Test
+//    public void testInterpretorCorrectFiles(){
+//        System.out.println("Testando interpretador nos exemplos corretos");
+//        File dir = new File("examples/tests/sintaxe/certo");
+//        File[] files = dir.listFiles((d, name) -> name.endsWith(".lan"));
+//        assertNotNull("Diretório 'certo' não encontrado ou erro ao listar arquivos", files);
+//
+//        for (File file : files) {
+//            boolean result = checkInterpretor(file.getPath());
+//            assertTrue("Arquivo deveria ser aceito: " + file.getPath(), result);
+//        }
+//    }
 }

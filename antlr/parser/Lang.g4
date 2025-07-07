@@ -172,7 +172,7 @@ exp
 	| lvalue { $ast = $lvalue.ast;
 		}
 	| '(' exp ')' { $ast = $exp.ast; }
-	| 'new' type ('[' e = exp ']')? { $ast = new VarExpr($type.ast.getLine(), $type.ast.getCol(), $type.ast, $e.ctx != null ? $e.ast : null);}
+	| 'new' type ('[' e = exp ']') { $ast = new VarExpr($type.ast.getLine(), $type.ast.getCol(), $type.ast, $e.ctx != null ? $e.ast : null);}
 	| ID '(' (exps)? ')' '[' exp ']'  { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ctx !=null ? $exps.ast : null , $exp.ast);
 		}
 	| t = 'true'  { $ast = new TrueValue($t.line, $t.pos);}
