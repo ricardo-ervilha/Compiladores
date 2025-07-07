@@ -1,3 +1,5 @@
+JUNIT_CP = junit-4.13.2.jar:hamcrest-core-1.3.jar
+
 all: genparser compile
 
 genparser: parser/Lang.g4
@@ -6,6 +8,7 @@ genparser: parser/Lang.g4
 compile: genparser src/Teste.java src/Main.java
 	javac -cp .:antlr-4.8-complete.jar src/Teste.java
 	javac -cp .:antlr-4.8-complete.jar src/Main.java
+	javac -cp .:antlr-4.8-complete.jar:$(JUNIT_CP) src/Tester.java
 
 run: compile
 	java -cp .:antlr-4.8-complete.jar src/Teste examples/$(file)
@@ -15,6 +18,10 @@ run_main_syn: compile
 
 run_main_interp: compile
 	java -cp .:antlr-4.8-complete.jar src/Main -i examples/$(file)
+
+junit: compile
+	java -cp src:.:antlr-4.8-complete.jar:$(JUNIT_CP) \
+      org.junit.runner.JUnitCore src.Tester
 
 clean:
 	@echo "Limpando arquivos compilados e temporários..."
