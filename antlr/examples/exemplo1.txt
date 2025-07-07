@@ -1,8 +1,13 @@
-main() {
-  v = new Int[10];
-  iterate (i : v){
-     print '*';
-     c = c + 1;
-  }
-  print '\n';
+main(){
+    x = new Int[10];
+    print x[1];
 }
+
+--main() {
+--  v = new Int[10];
+--  iterate (i : v){
+--     print '*';
+--     c = c + 1;
+--  }
+--  print '\n';
+-- }

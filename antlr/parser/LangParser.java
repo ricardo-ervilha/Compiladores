@@ -1321,7 +1321,7 @@ public class LangParser extends Parser {
 				setState(300);
 				match(T__11);
 				}
-				 ((ExpContext)_localctx).ast =  new VarExpr(((ExpContext)_localctx).type.ast.getLine(), ((ExpContext)_localctx).type.ast.getCol(), ((ExpContext)_localctx).type.ast, ((ExpContext)_localctx).e != null ? ((ExpContext)_localctx).e.ast : null);
+				 ((ExpContext)_localctx).ast =  new ArrayExpr(((ExpContext)_localctx).type.ast.getLine(), ((ExpContext)_localctx).type.ast.getCol(), ((ExpContext)_localctx).type.ast, ((ExpContext)_localctx).e != null ? ((ExpContext)_localctx).e.ast : null);
 				}
 				break;
 			case 6:
@@ -1330,7 +1330,7 @@ public class LangParser extends Parser {
 				match(T__34);
 				setState(305);
 				((ExpContext)_localctx).btype = btype();
-				 ((ExpContext)_localctx).ast =  new VarExpr(((ExpContext)_localctx).btype.ast.getLine(), ((ExpContext)_localctx).btype.ast.getCol(), ((ExpContext)_localctx).btype.ast, ((ExpContext)_localctx).e != null ? ((ExpContext)_localctx).e.ast : null);
+				 ((ExpContext)_localctx).ast =  new VarExpr(((ExpContext)_localctx).btype.ast.getLine(), ((ExpContext)_localctx).btype.ast.getCol(), ((ExpContext)_localctx).btype.ast);
 				}
 				break;
 			case 7:

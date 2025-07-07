@@ -13,6 +13,7 @@ public abstract class Visitor {
     public abstract void visit(Fun p);
     public abstract void visit(FunAbstractData p);
     public abstract void visit(Params e);
+    public abstract void visit(ArrayExpr e);
 
     // --- Commands (Statements) ---
     public abstract void visit(Block b);

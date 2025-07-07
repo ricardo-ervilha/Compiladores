@@ -383,6 +383,20 @@ public class InterpretVisitor extends Visitor {
 
     }
 
+    @Override
+    public void visit(ArrayExpr e){
+        Object type = e.getType();
+        Object array = null;
+        e.getExp().accept(this); // encontra tamanho do array.
+        int size =  (int) operands.pop();
+        if(type instanceof IntValue){
+            array = new int[size];
+        }else if(type instanceof FloatValue){
+            array = new float[size];
+        }
+        operands.push(array);
+    }
+
     // ID '(' (exps)? ')' '[' exp ']' - ch
     public void visit(CallFunctionAccess e) {
         try {
@@ -534,7 +548,14 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(LValueExp e) {
-
+        if(e.getLvalue() instanceof ID){
+            ID  id = (ID) e.getLvalue();
+            Object array = env.peek().get(id);
+            e.getIndex().accept(this);
+            int idx = (int) operands.pop();
+            if(array instanceof int[])
+                operands.push(((int[]) array)[idx]);
+        }
     }
 
     public void visit(FloatValue e) {
