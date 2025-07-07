@@ -100,11 +100,17 @@ params
 type
 	returns[Type ast]:
 	t1=type '[' ']' {$ast = new ArrayType($t1.ast.getLine(), $t1.ast.getCol());}
-	| Int1 = 'Int' {$ast = new TypeInt($Int1.line, $Int1.pos);}
+	| b=btype {$ast = $b.ast;}
+	;
+
+btype
+    returns[BType ast]:
+	Int1 = 'Int' {$ast = new TypeInt($Int1.line, $Int1.pos);}
 	| Char1 = 'Char' {$ast = new TypeChar($Char1.line, $Char1.pos);}
 	| Bool1 = 'Bool' {$ast = new TypeBool($Bool1.line, $Bool1.pos);}
 	| Float1 = 'Float' {$ast = new TypeFloat($Float1.line, $Float1.pos);}
-	| TYID {$ast = new TYID($TYID.line, $TYID.pos, $TYID.text);};
+	| TYID {$ast = new TYID($TYID.line, $TYID.pos, $TYID.text);}
+	;
 
 // block: '{' (cmd)* '}';
 block
@@ -173,6 +179,7 @@ exp
 		}
 	| '(' exp ')' { $ast = $exp.ast; }
 	| 'new' type ('[' e = exp ']') { $ast = new VarExpr($type.ast.getLine(), $type.ast.getCol(), $type.ast, $e.ctx != null ? $e.ast : null);}
+	| 'new' btype                  { $ast = new VarExpr($btype.ast.getLine(), $btype.ast.getCol(), $btype.ast, $e.ctx != null ? $e.ast : null);}
 	| ID '(' (exps)? ')' '[' exp ']'  { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ctx !=null ? $exps.ast : null , $exp.ast);
 		}
 	| t = 'true'  { $ast = new TrueValue($t.line, $t.pos);}

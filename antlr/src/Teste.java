@@ -9,6 +9,7 @@ import visitors.InterpretVisitor;
 
 public class Teste {
     public static void main(String[] args) {
+
         try {
             // Criar o stream de caracteres do arquivo
             CharStream stream = CharStreams.fromFileName(args[0]);
@@ -29,7 +30,7 @@ public class Teste {
             Node ast = parser.prog().ast;
 
             // Interpretação (se desejar)
-            InterpretVisitor iv = new InterpretVisitor();
+            InterpretVisitor iv = new InterpretVisitor(args);
             ast.accept(iv);
 
             // Se chegou até aqui, não houve erro sintático

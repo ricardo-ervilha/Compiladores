@@ -60,7 +60,7 @@ public class Main {
                         System.out.println("reject");
                         System.exit(1);
                     }
-                    InterpretVisitor iv = new InterpretVisitor();
+                    InterpretVisitor iv = new InterpretVisitor(args);
                     ast.accept(iv);
                     break;
 

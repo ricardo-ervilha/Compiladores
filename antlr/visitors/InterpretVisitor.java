@@ -7,7 +7,7 @@ import java.util.*;
 import java.util.stream.Collectors;
 
 public class InterpretVisitor extends Visitor {
-
+    String[] args;
 
     // Hashmap para gerenciar o escopo de funções.
     private Stack<HashMap<String, Object>> env;
@@ -29,17 +29,17 @@ public class InterpretVisitor extends Visitor {
 
     private boolean retMode, debug;
 
-    public InterpretVisitor() {
+    public InterpretVisitor(String[] args) {
         env = new Stack<HashMap<String, Object>>();
         env.push(new HashMap<String, Object>());
         funcs = new HashMap<String, Fun>();
         operands = new Stack<Object>();
         retMode = false;
         debug = false;
+        this.args = args; /* ARGUMENTOS DO TERMINAL QUE VÃO PARA A MAIN */
     }
 
     public InterpretVisitor(boolean debug) {
-        this();
         this.debug = debug;
     }
 
@@ -56,10 +56,10 @@ public class InterpretVisitor extends Visitor {
                 f.accept(this);
             }
         }
-        if(main == null){
-            throw new RuntimeException( "Não há uma função chamada main... Abortando ! ");
+
+        if(main != null){
+            main.accept(this);
         }
-        main.accept(this);
     }
 
     @Override
@@ -449,7 +449,11 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(CharValue e) {
-
+        try {
+            operands.push(e.getValue());
+        } catch (Exception x) {
+            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+        }
     }
 
     /*
@@ -689,12 +693,29 @@ public class InterpretVisitor extends Visitor {
 //    }
 
     public void visit(Fun f) {
+
         HashMap<String, Object> localEnv = new HashMap<String, Object>();
-        if(f.getParams() != null) {
-            for (int i = f.getParams().getParamList().size() - 1; i >= 0; i--) {
-                localEnv.put(f.getParams().getParamList().get(i).getId(), operands.pop());
+        if(f.getID().equals("main")){
+            /*SE FOR A MAIN, OS PARÂMETROS TEM QUE VIR DO ARGS.*/
+            if(f.getParams() != null) {
+                for (int i = f.getParams().getParamList().size() - 1; i >= 0; i--) {
+                    Param p = f.getParams().getParamList().get(i);
+                    Object value = null;
+                    if(p.getType() instanceof TypeInt)
+                        value = Integer.valueOf( this.args[i+1] );
+                    else if(p.getType() instanceof TypeFloat)
+                        value = Float.valueOf( this.args[i+1] );
+                    localEnv.put(p.getId(), value); // PEGA i+1 POR CAUSA DO PRIMEIRO PARÂMETRO Ser o caminho até o exemplo de teste.
+                }
+            }
+        }else{
+            if(f.getParams() != null) {
+                for (int i = f.getParams().getParamList().size() - 1; i >= 0; i--) {
+                    localEnv.put(f.getParams().getParamList().get(i).getId(), operands.pop());
+                }
             }
         }
+
         env.push(localEnv);
         f.getCmd().accept(this);
         /*Aqui q printa a memória*/

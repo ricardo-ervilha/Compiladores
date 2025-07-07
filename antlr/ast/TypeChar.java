@@ -2,7 +2,7 @@ package ast;
 
 import visitors.Visitor;
 
-public class TypeChar extends Type {
+public class TypeChar extends BType {
 
     public TypeChar(int line, int col) {
         super(line, col);

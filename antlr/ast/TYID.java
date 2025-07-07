@@ -2,7 +2,7 @@ package ast;
 
 import visitors.Visitor;
 
-public class TYID extends Type {
+public class TYID extends BType {
 
     String name;
 

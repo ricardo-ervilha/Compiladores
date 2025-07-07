@@ -2,7 +2,7 @@ package ast;
 
 import visitors.Visitor;
 
-public class TypeFloat extends Type {
+public class TypeFloat extends BType {
 
     public TypeFloat(int line, int col) {
         super(line, col);

@@ -11,7 +11,7 @@ compile: genparser src/Teste.java src/Main.java
 	javac -cp .:antlr-4.8-complete.jar:$(JUNIT_CP) src/Tester.java
 
 run: compile
-	java -cp .:antlr-4.8-complete.jar src/Teste examples/$(file)
+	java -cp .:antlr-4.8-complete.jar src/Teste examples/$(file) $(args)
 
 run_main_syn: compile
 	java -cp .:antlr-4.8-complete.jar src/Main -syn examples/$(file)

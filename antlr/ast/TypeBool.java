@@ -2,7 +2,7 @@ package ast;
 
 import visitors.Visitor;
 
-public class TypeBool extends Type {
+public class TypeBool extends BType {
 
     public TypeBool(int line, int col) {
         super(line, col);
