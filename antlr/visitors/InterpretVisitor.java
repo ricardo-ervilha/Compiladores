@@ -1,10 +1,9 @@
 package visitors;
 
 import ast.*;
-import util.AbstractFunctionData;
+import util.InterpretException;
 
 import java.util.*;
-import java.util.stream.Collectors;
 
 public class InterpretVisitor extends Visitor {
     String[] args;
@@ -24,6 +23,7 @@ public class InterpretVisitor extends Visitor {
     private Stack<Object> operands;
 
     // Hashmap para guardar quais tipos foram declarados (Não abstratos) e suas variáveis/funções disponíveis.
+    // É apenas um template que será usado para criar as variaveis do tipo Registro/Abstrato
     private HashMap<String, HashMap<String, Object>> dataTypesEnv = new HashMap<String, HashMap<String, Object>>();
     private Stack<String> namesStack = new Stack<>(); // Stack para ajudar a percorrer Decl E fun
 
@@ -64,10 +64,10 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(DataDecl p) {
-        String name = p.getTypeId();
+        String name = p.getTypeId();// nome do tipo Registro
 
         dataTypesEnv.put(name, new HashMap<>());
-        namesStack.push(name);
+        namesStack.push(name);// guardo o nome na pilha para saber depois de qual Registro são essas declarações
         for(Node d: p.getDeclarations()){
             Decl x = (Decl) d;
             x.accept(this);
@@ -83,9 +83,9 @@ public class InterpretVisitor extends Visitor {
     @Override
     public void visit(Decl p) {
         String nameData = namesStack.peek();
-        String nameVar = p.getId();
-        dataTypesEnv.get(nameData).put(nameVar, null);
-        namesStack.push(nameVar);
+        String nameVar = p.getId();// nome do atributo do Registro/Tipo Abstrato
+        dataTypesEnv.get(nameData).put(nameVar, null);//coloco null pq ainda não sei o tipo
+        namesStack.push(nameVar);// guardo no namesStack pois ao visitar os Type vou precisar saber o nome do atributo
         p.getType().accept(this);
     }
 
@@ -93,7 +93,7 @@ public class InterpretVisitor extends Visitor {
     public void visit(TypeInt e) {
         String nameVar = namesStack.pop();
         String nameData = namesStack.peek();
-        dataTypesEnv.get(nameData).put(nameVar, e);
+        dataTypesEnv.get(nameData).put(nameVar, e);// guardando o Tipo do atributo
     }
 
     @Override
@@ -180,7 +180,7 @@ public class InterpretVisitor extends Visitor {
 
             // Verifica se ambos são instâncias de Number
             if (!(esq instanceof Number) || !(dir instanceof Number)) {
-                throw new RuntimeException("Operandos não numéricos");
+                throw new InterpretException("Operandos não numéricos");
             }
 
             Number esqNum = (Number) esq;
@@ -198,7 +198,7 @@ public class InterpretVisitor extends Visitor {
             }
 
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -220,7 +220,7 @@ public class InterpretVisitor extends Visitor {
                 operands.push(esq.intValue() - dir.intValue());
             }
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -236,7 +236,7 @@ public class InterpretVisitor extends Visitor {
 
             // Verifica se ambos são instâncias de Number
             if (!(esq instanceof Number) || !(dir instanceof Number)) {
-                throw new RuntimeException("Operandos não numéricos");
+                throw new InterpretException("Operandos não numéricos");
             }
 
             Number esqNum = (Number) esq;
@@ -254,7 +254,7 @@ public class InterpretVisitor extends Visitor {
             }
 
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -270,7 +270,7 @@ public class InterpretVisitor extends Visitor {
 
             // Verifica se ambos são instâncias de Number
             if (!(esq instanceof Number) || !(dir instanceof Number)) {
-                throw new RuntimeException("Operandos não numéricos");
+                throw new InterpretException("Operandos não numéricos");
             }
 
             Number esqNum = (Number) esq;
@@ -288,7 +288,7 @@ public class InterpretVisitor extends Visitor {
             }
 
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -301,7 +301,7 @@ public class InterpretVisitor extends Visitor {
             esq = (Number) operands.pop();
             operands.push(esq.intValue() % dir.intValue());
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -314,7 +314,7 @@ public class InterpretVisitor extends Visitor {
             esq = operands.pop();
             operands.push((Boolean) esq && (Boolean) dir);
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -328,7 +328,7 @@ public class InterpretVisitor extends Visitor {
             //Converto os dois para Float, pois no final serão convertidos para Boolean. Isso trata o caso de tipos diferentes.
             operands.push((boolean) (esq.floatValue() < dir.floatValue()));
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -338,7 +338,7 @@ public class InterpretVisitor extends Visitor {
             e.getRight().accept(this);
             operands.push(operands.pop().equals(operands.pop()));
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -349,7 +349,7 @@ public class InterpretVisitor extends Visitor {
             e.getRight().accept(this);
             operands.push(!operands.pop().equals(operands.pop()));
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -364,7 +364,7 @@ public class InterpretVisitor extends Visitor {
             e.getExpression().accept(this);
             operands.push(!(Boolean) (operands.pop()));
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -416,12 +416,12 @@ public class InterpretVisitor extends Visitor {
                 operands.push(retornos.get(idx));// pegar o elemento pelo indice avaliado
 
             } else {
-                throw new RuntimeException(
+                throw new InterpretException(
                         " (" + e.getLine() + ", " + e.getCol() + ") Função não definida " + e.getFunctionName());
             }
 
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
 
     }
@@ -466,7 +466,7 @@ public class InterpretVisitor extends Visitor {
         try {
             operands.push(e.getValue());
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -483,12 +483,12 @@ public class InterpretVisitor extends Visitor {
                 f.accept(this);
 
             } else {
-                throw new RuntimeException(
+                throw new InterpretException(
                         " (" + e.getLine() + ", " + e.getCol() + ") Função não definida " + e.getId());
             }
 
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -496,24 +496,31 @@ public class InterpretVisitor extends Visitor {
         try {
             operands.push(true);
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
     @Override
     public void visit(IdLValue e) {
-
         String namevar = ((ID) e.getLvalue()).getName(); // primeiro faço o cast do Lvalue para o tipo concreto ID e pego o nome do registro = nameVar
         String nameAtributo = e.getId(); // pego o nome do atributo que esta dentro = nameAtributo
 
-        Object value = env.peek().get(namevar); //pego o hashmap que  está na pilha
+        Object value = env.peek().get(namevar); // pego o hashmap que  está na pilha
+
+        if (value == null) {
+            throw new InterpretException("Variável <" + namevar + "> não foi definida: linha " + e.getLine() + ", coluna " + e.getCol());
+        }
+
         if (value instanceof HashMap<?, ?>) {// certifico que é um hashmap com nomes dos atributos e valores dele
             @SuppressWarnings("unchecked")
             HashMap<String, Object> map = (HashMap<String, Object>) value;
+            if(!map.containsKey(nameAtributo)){
+                throw new InterpretException("O atributo <"+nameAtributo+"> não existe no registro: linha " + e.getLine() + ", coluna " + e.getCol());
+            }
             operands.push(map.get(nameAtributo));
+        }else {
+            throw new InterpretException("Variável <" + namevar + "> não é um registro: linha " + e.getLine() + ", coluna " + e.getCol());
         }
-
-
     }
 
     @Override
@@ -521,7 +528,7 @@ public class InterpretVisitor extends Visitor {
         try {
             operands.push(null);
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -529,7 +536,7 @@ public class InterpretVisitor extends Visitor {
         try {
             operands.push(false);
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -542,7 +549,7 @@ public class InterpretVisitor extends Visitor {
         try {
             operands.push(Integer.valueOf(e.getValue()));
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -562,7 +569,7 @@ public class InterpretVisitor extends Visitor {
         try {
             operands.push(Float.valueOf(e.getValue()));
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -578,11 +585,11 @@ public class InterpretVisitor extends Visitor {
 //                }
 //                operands.push(r);
 //            } else {
-//                throw new RuntimeException(
+//                throw new InterpretException(
 //                        " (" + e.getLine() + ", " + e.getCol() + ") variável não declarada " + e.getName());
 //            }
 //        } catch (Exception x) {
-//            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+//            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
 //        }
 //    }
 
@@ -605,7 +612,7 @@ public class InterpretVisitor extends Visitor {
 //            }
 //
 //        } catch (Exception x) {
-//            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+//            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
 //        }
 //    }
 
@@ -618,7 +625,7 @@ public class InterpretVisitor extends Visitor {
                 e.getElseCmd().accept(this);
             }
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -642,7 +649,7 @@ public class InterpretVisitor extends Visitor {
                 }
             }
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -660,10 +667,13 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(CmdPrint e) {
         try {
-            e.getExpression().accept(this);
+            e.getExpression().accept(this);//vai para um dos visit de Expressão, por exemplo,IdLValue, Add, ID, etc
+            if (operands.isEmpty() || operands.peek() == null) {
+                throw new InterpretException("Pilha vazia ao tentar imprimir (linha " + e.getLine() + ", coluna " + e.getCol() + ")");
+            }
             System.out.println(operands.pop().toString());
         } catch (Exception x) {
-            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
@@ -709,7 +719,7 @@ public class InterpretVisitor extends Visitor {
 //            }
 //            e.getCmd2().accept(this);
 //        } catch (Exception x) {
-//            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+//            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
 //        }
 //    }
 
@@ -774,7 +784,7 @@ public class InterpretVisitor extends Visitor {
 //            }
 //
 //        } catch (Exception x) {
-//            throw new RuntimeException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+//            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
 //        }
 //    }
 

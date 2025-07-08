@@ -4,6 +4,7 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import parser.*;
+import util.InterpretException;
 import util.SyntaxErrorListener;
 import visitors.InterpretVisitor;
 
@@ -39,8 +40,6 @@ public class Main {
             // Não construa árvore sintática padrão (usando AST customizada)
             parser.setBuildParseTree(false);
 
-
-            Node ast;
             switch (directive) {
                 case "-syn":
                     // Tenta fazer o parse do programa
@@ -55,7 +54,7 @@ public class Main {
 
                 case "-i":
                     // Tenta fazer a interpretação do
-                    ast = parser.cmd().ast;
+                    Node ast = parser.prog().ast;
                     if (errorListener.hasErrors()) {
                         System.out.println("reject");
                         System.exit(1);
@@ -65,7 +64,7 @@ public class Main {
                     break;
 
                 case "-t":
-                    System.out.println("Executa a verifica ção de tipos do programa.");
+                    System.out.println("Executa a verificação de tipos do programa.");
                     break;
 
                 case "-src":
@@ -81,6 +80,10 @@ public class Main {
                     System.exit(1);
             }
 
+        } catch (InterpretException interpretException){
+            System.out.println("Erro ao interpretar o programa...");
+            System.err.println(interpretException.getMessage());
+            System.exit(1);
         } catch (Exception e) {
             System.err.println(e.getMessage());
             System.out.println("reject");
