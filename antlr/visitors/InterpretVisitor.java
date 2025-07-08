@@ -145,26 +145,18 @@ public class InterpretVisitor extends Visitor {
     public void visit(CmdAssign p) {
         if(p.getLvalue() instanceof ID){
             String nameVar = ((ID)p.getLvalue()).getName();
-
-
             p.getExpression().accept(this);
-
-
             env.peek().put(nameVar, operands.pop());
 
-        }else if(p.getLvalue() instanceof IdLValue){
+        }else if(p.getLvalue() instanceof IdLValue){// Se for acesso a um atributo de um registro
             IdLValue lvalue = ((IdLValue) p.getLvalue());
             String namevar = ((ID) lvalue.getLvalue()).getName();
             String nameAtributo = lvalue.getId();
 
-            p.getExpression().accept(this);
+            p.getExpression().accept(this); // chamando o accept pro lado direito, ou seja, a expressão
 
-            Object value = env.peek().get(namevar);
-            if (value instanceof HashMap<?, ?>) {
-                @SuppressWarnings("unchecked")
-                HashMap<String, Object> map = (HashMap<String, Object>) value;
-                map.put(nameAtributo, operands.pop());
-            }
+            Object dataHashMap = this.getVarFromEnv(namevar, lvalue.getLine(), lvalue.getCol());
+            this.putAttributeOnDataHashMap(dataHashMap, nameAtributo, operands.pop(), lvalue.getLine(), lvalue.getCol());
         }
     }
 
@@ -505,22 +497,10 @@ public class InterpretVisitor extends Visitor {
         String namevar = ((ID) e.getLvalue()).getName(); // primeiro faço o cast do Lvalue para o tipo concreto ID e pego o nome do registro = nameVar
         String nameAtributo = e.getId(); // pego o nome do atributo que esta dentro = nameAtributo
 
-        Object value = env.peek().get(namevar); // pego o hashmap que  está na pilha
+        Object value = getVarFromEnv(namevar, e.getLine(), e.getCol()); // pego o hashmap que  está na pilha
 
-        if (value == null) {
-            throw new InterpretException("Variável <" + namevar + "> não foi definida: linha " + e.getLine() + ", coluna " + e.getCol());
-        }
+        operands.push(this.getAttributeFromDataHashMap(value, nameAtributo, e.getLine(), e.getCol()));
 
-        if (value instanceof HashMap<?, ?>) {// certifico que é um hashmap com nomes dos atributos e valores dele
-            @SuppressWarnings("unchecked")
-            HashMap<String, Object> map = (HashMap<String, Object>) value;
-            if(!map.containsKey(nameAtributo)){
-                throw new InterpretException("O atributo <"+nameAtributo+"> não existe no registro: linha " + e.getLine() + ", coluna " + e.getCol());
-            }
-            operands.push(map.get(nameAtributo));
-        }else {
-            throw new InterpretException("Variável <" + namevar + "> não é um registro: linha " + e.getLine() + ", coluna " + e.getCol());
-        }
     }
 
     @Override
@@ -698,12 +678,8 @@ public class InterpretVisitor extends Visitor {
             String namevar = ((ID) lvalue.getLvalue()).getName(); // pego o nome do registro = nameVar
             String nameAtributo = lvalue.getId(); // pego o nome do atributo que esta dentro = nameAtributo
 
-            Object value = env.peek().get(namevar);
-            if (value instanceof HashMap<?, ?>) {
-                @SuppressWarnings("unchecked")
-                HashMap<String, Object> map = (HashMap<String, Object>) value;
-                map.put(nameAtributo, valorLido);
-            }
+            Object dataHashMap = this.getVarFromEnv(namevar, lvalue.getLine(), lvalue.getCol());
+            this.putAttributeOnDataHashMap(dataHashMap, nameAtributo, operands.pop(), lvalue.getLine(), lvalue.getCol());
         }
 
     }
@@ -796,5 +772,65 @@ public class InterpretVisitor extends Visitor {
         }
         operands.push(retornos);
         retMode = true;
+    }
+
+    /**
+     * @param name nome da variavel no hashMap que está no topo do env
+     * @param line linha onde ocorreu o erro
+     * @param col coluna onde ocorreu o erro
+     * @return o valor armazenado no hashmap do topo do env
+     */
+    public Object getVarFromEnv(String name, int line, int col){
+        if (env.isEmpty()) {
+            throw new InterpretException("Ambiente de variáveis está vazio: linha " + line + ", coluna " + col);
+        }
+
+        Object value = env.peek().get(name); // pego o hashmap do topo e pego o valor associado  a chave com nome name
+
+        if (value == null) {
+            throw new InterpretException("Variável <" + name + "> não foi definida: linha "+line+", coluna "+col);
+        }
+
+        return value;
+    }
+
+    /**
+     * @param dataHashMap hashMap que contem todos os atributos de um tipo Registro
+     * @param nameAtributo nome do atributo dentro de um Registro
+     * @param line linha onde ocorreu o erro
+     * @param col coluna onde ocorreu o erro
+     * @return retorna o valor associado a nameAtributo do registro
+     */
+    public Object getAttributeFromDataHashMap(Object dataHashMap, String nameAtributo, int line, int col){
+        if (dataHashMap instanceof HashMap<?, ?>) {// certifico que é um hashmap
+            @SuppressWarnings("unchecked")
+            HashMap<String, Object> map = (HashMap<String, Object>) dataHashMap;
+            if(!map.containsKey(nameAtributo)){
+                throw new InterpretException("O atributo <"+nameAtributo+"> não existe no registro acessado: linha " + line + ", coluna " + col);
+            }
+            return map.get(nameAtributo);
+        }else {
+            throw new InterpretException("Variável <" + dataHashMap + "> não é um registro: linha " + line + ", coluna " + col);
+        }
+    }
+
+    /**
+     * @param dataHashMap hashMap que contem todos os atributos de um tipo Registro
+     * @param nameAtributo nome do atributo dentro de um Registro
+     * @param valorAtributo valor que sera colocado no atributo
+     * @param line linha onde ocorreu o erro
+     * @param col coluna onde ocorreu o erro
+     */
+    public void putAttributeOnDataHashMap(Object dataHashMap, String nameAtributo, Object valorAtributo, int line, int col){
+        if (dataHashMap instanceof HashMap<?, ?>) {
+            @SuppressWarnings("unchecked")
+            HashMap<String, Object> map = (HashMap<String, Object>) dataHashMap;
+            if(!map.containsKey(nameAtributo)){
+                throw new InterpretException("O atributo <"+nameAtributo+"> não existe no registro acessado: linha " + line + ", coluna " + col);
+            }
+            map.put(nameAtributo, valorAtributo);
+        }else {
+            throw new InterpretException("Variável <" + dataHashMap + "> não é um registro: linha " + line + ", coluna " + col);
+        }
     }
 }
