@@ -1,35 +1,101 @@
-# Compiladores
-Repositório associado ao trabalho de Compiladores 
+# 🛠️ Compiladores – Projeto da Disciplina DCC045
 
-Limpar arquivos compilados gerados
+Repositório relacionado ao trabalho da disciplina **DCC045 - Teoria de Compiladores**, contendo o analisador sintático e interpretador construídos com ANTLR 4.8 para uma linguagem definida pelo arquivo `Lang.g4`.
 
-    make clean
+---
 
-Rodar o analisador sintático
+## 📁 Estrutura do Projeto
 
-     make run_main_syn file=exemploD.txt
+```
+.
+├── ast/                      # Classes da AST
+├── docs/                     # documentações do projeto
+├── examples/                 # Arquivos de teste da linguagem
+├── parser/                   # Gramática ANTLR (Lang.g4)
+├── src/                      # Código-fonte principal (Main.java)
+├── util/                     # Classes utiliárias
+├── visitors/                 # Classes que implementam o padrão de projeto visitor
+├── antlr-4.8-complete.jar    # Biblioteca do ANTLR
+├── Makefile                  # Automatização de tarefas
+└── README.md                 # Este arquivo
+```
 
-Rodar o interpretador
+---
 
-     make run_main_interp file=exemploD.txt
+## ⚙️ Requisitos
 
-Excluir class geradas
+- Java 17
+- ANTLR 4.8
+- `make`
 
-    find . -name "*.class" -delete
+---
 
-Gerar o parser
+## 🧪 Comandos Úteis
 
-    java -jar antlr-4.8-complete.jar ./parser/Lang.g4
+### 🔄 Limpar arquivos compilados
 
-Compilar Main.java
+Remove todos os arquivos `.class` gerados:
 
-    javac -cp .:antlr-4.8-complete.jar Teste.java
-    javac -cp .:antlr-4.8-complete.jar Main.java
+```bash
+make clean
+# ou manualmente:
+find . -name "*.class" -delete
+```
 
-Rodar Sintático
-    
-    java -cp .:antlr-4.8-complete.jar src/Main -syn examples/exemploD.txt
+---
 
-Rodar Interpretador
-    
-    java -cp .:antlr-4.8-complete.jar src/Main -i examples/exemploD.txt
+### 🧰 Gerar o Parser com ANTLR
+
+Gera os analisadores léxico e sintático a partir da gramática `Lang.g4`:
+
+```bash
+java -jar antlr-4.8-complete.jar ./parser/Lang.g4
+```
+
+---
+
+### 🧱 Compilar os arquivos Java
+
+```bash
+javac -cp .:antlr-4.8-complete.jar src/Teste.java
+javac -cp .:antlr-4.8-complete.jar src/Main.java
+```
+
+> ⚠️ **Atenção:** Em sistemas Windows, use `;` em vez de `:` no classpath (`-cp`).
+
+---
+
+### 🚀 Executar o Analisador Sintático
+
+```bash
+make run_main_syn file=exemploD.txt
+# ou diretamente:
+java -cp .:antlr-4.8-complete.jar src/Main -syn examples/exemploD.txt
+```
+
+---
+
+### 🧮 Executar o Interpretador
+
+```bash
+make run_main_interp file=exemploD.txt
+# ou diretamente:
+java -cp .:antlr-4.8-complete.jar src/Main -i examples/exemploD.txt
+```
+
+---
+
+## 👥 Alunos
+
+- **Lucas Silva Santana**
+- **Ricardo Ervilha Silva**
+
+---
+
+## 📚 Disciplina
+
+**DCC045 - Teoria de Compiladores**  
+Departamento de Ciência da Computação  - UFJF
+
+
+
