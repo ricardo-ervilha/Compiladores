@@ -1,31 +1,35 @@
 # Compiladores
 Repositório associado ao trabalho de Compiladores 
 
-make clean
+Limpar arquivos compilados gerados
 
-make all
+    make clean
 
-Teste
+Rodar o analisador sintático
 
-    make run exemplo1.txt
-Rodar sintatico com Main
+     make run_main_syn file=exemploD.txt
 
-    make run_main_syn exemplo1.txt
+Rodar o interpretador
 
-Excluir class gerados
+     make run_main_interp file=exemploD.txt
+
+Excluir class geradas
 
     find . -name "*.class" -delete
 
-parser dentro da parser
+Gerar o parser
 
     java -jar antlr-4.8-complete.jar ./parser/Lang.g4
 
-Compilar Teste.java
+Compilar Main.java
 
     javac -cp .:antlr-4.8-complete.jar Teste.java
     javac -cp .:antlr-4.8-complete.jar Main.java
 
-Rodar Teste
+Rodar Sintático
+    
+    java -cp .:antlr-4.8-complete.jar src/Main -syn examples/exemploD.txt
 
-    java -cp .:antlr-4.8-complete.jar Teste examples/exemplo1.txt
-    java -cp .:antlr-4.8-complete.jar Main -syn examples/exemplo1.txt 
+Rodar Interpretador
+    
+    java -cp .:antlr-4.8-complete.jar src/Main -i examples/exemploD.txt
