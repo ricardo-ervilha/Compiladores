@@ -1,6 +1,6 @@
 main(){
     x = new Int[10];
-    print x[1];
+    x[0] = 1;
 }
 
 --main() {

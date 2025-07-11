@@ -157,6 +157,19 @@ public class InterpretVisitor extends Visitor {
 
             Object dataHashMap = this.getVarFromEnv(namevar, lvalue.getLine(), lvalue.getCol());
             this.putAttributeOnDataHashMap(dataHashMap, nameAtributo, operands.pop(), lvalue.getLine(), lvalue.getCol());
+        } else if(p.getLvalue() instanceof LValueExp){
+            p.getLvalue().accept(this);
+            AbstractMap.SimpleEntry<String, Integer> tup = (AbstractMap.SimpleEntry<String, Integer>) operands.pop();
+            p.getExpression().accept(this);
+
+            String nameVar = tup.getKey();
+            Object value = env.peek().get(nameVar);
+            if (value instanceof int[]) {
+                int[] array = (int[]) value;
+                int index = tup.getValue();
+                int operand = (int) operands.pop();
+                array[index] = operand;
+            }
         }
     }
 
@@ -381,11 +394,13 @@ public class InterpretVisitor extends Visitor {
         Object array = null;
         e.getExp().accept(this); // encontra tamanho do array.
         int size =  (int) operands.pop();
-        if(type instanceof IntValue){
+        System.out.println(type);
+        if(type instanceof TypeInt){
             array = new int[size];
-        }else if(type instanceof FloatValue){
+        }else if(type instanceof TypeFloat){
             array = new float[size];
         }
+        System.out.println(array);
         operands.push(array);
     }
 
@@ -535,13 +550,11 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(LValueExp e) {
+        e.getIndex().accept(this); // resolve a expressão. TEM QUE DEVOLVER INTEIRO...
         if(e.getLvalue() instanceof ID){
-            ID  id = (ID) e.getLvalue();
-            Object array = env.peek().get(id);
-            e.getIndex().accept(this);
-            int idx = (int) operands.pop();
-            if(array instanceof int[])
-                operands.push(((int[]) array)[idx]);
+            String name =  ((ID) e.getLvalue()).getName();
+            AbstractMap.SimpleEntry<String, Integer> tup = new AbstractMap.SimpleEntry<>(name, (Integer) operands.pop());
+            operands.push(tup);
         }
     }
 
@@ -726,10 +739,34 @@ public class InterpretVisitor extends Visitor {
         env.push(localEnv);
         f.getCmd().accept(this);
         /*Aqui q printa a memória*/
-//        Object[] x = env.peek().keySet().toArray();
-//        for(int i =0; i < x.length; i++){
-//            System.out.println(((String) x[i]) + " : " + env.peek().get(x[i]).toString());
-//        }
+        Object[] keys = env.peek().keySet().toArray();
+        for (Object keyObj : keys) {
+            String key = (String) keyObj;
+            Object value = env.peek().get(key);
+
+            String valueStr;
+            if (value != null && value.getClass().isArray()) {
+                if (value instanceof int[]) {
+                    valueStr = Arrays.toString((int[]) value);
+                } else if (value instanceof float[]) {
+                    valueStr = Arrays.toString((float[]) value);
+                } else if (value instanceof double[]) {
+                    valueStr = Arrays.toString((double[]) value);
+                } else if (value instanceof char[]) {
+                    valueStr = Arrays.toString((char[]) value);
+                } else if (value instanceof boolean[]) {
+                    valueStr = Arrays.toString((boolean[]) value);
+                } else if (value instanceof Object[]) {
+                    valueStr = Arrays.deepToString((Object[]) value);
+                } else {
+                    valueStr = "Unsupported array type";
+                }
+            } else {
+                valueStr = String.valueOf(value);
+            }
+
+            System.out.println(key + " : " + valueStr);
+        }
         env.pop();
         retMode = false;
     }
