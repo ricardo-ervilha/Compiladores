@@ -1,13 +1,6 @@
 main(){
     x = new Int[10];
     x[0] = 1;
+    x[3] = 5;
+    print x[3];
 }
-
---main() {
---  v = new Int[10];
---  iterate (i : v){
---     print '*';
---     c = c + 1;
---  }
---  print '\n';
--- }

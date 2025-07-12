@@ -406,13 +406,11 @@ public class InterpretVisitor extends Visitor {
         Object array = null;
         e.getExp().accept(this); // encontra tamanho do array.
         int size =  (int) operands.pop();
-        System.out.println(type);
         if(type instanceof TypeInt){
             array = new int[size];
         }else if(type instanceof TypeFloat){
             array = new float[size];
         }
-        System.out.println(array);
         operands.push(array);
     }
 
@@ -676,7 +674,15 @@ public class InterpretVisitor extends Visitor {
             if (operands.isEmpty() || operands.peek() == null) {
                 throw new InterpretException("Pilha vazia ao tentar imprimir (linha " + e.getLine() + ", coluna " + e.getCol() + ")");
             }
-            System.out.println(operands.pop().toString());
+            Object v = operands.pop();
+            if (v instanceof AbstractMap.SimpleEntry) {
+                Integer index = (Integer) ((AbstractMap.SimpleEntry<?, ?>) v).getValue();
+                String var = (String)  ((AbstractMap.SimpleEntry<?, ?>) v).getKey();
+                System.out.println(((int[])env.peek().get(var))[index]);
+            }
+            else{
+                System.out.println(v.toString());
+            }
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
