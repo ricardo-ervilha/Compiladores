@@ -185,7 +185,9 @@ itcond
 
 exp
 	returns[Expr ast]:
-	  exp1=exp op = '*' exp2=exp { $ast = new Mul($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	not = '!' exp { $ast = new NotExpr($not.line, $not.pos, $exp.ast);}
+	| minus = '-' exp { $ast = new MinusExpr($minus.line, $minus.pos, $exp.ast);}
+	| exp1=exp op = '*' exp2=exp { $ast = new Mul($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '/' exp2=exp { $ast = new Div($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '%' exp2=exp { $ast = new Mod($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '+' exp2=exp { $ast = new Add($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
@@ -194,8 +196,6 @@ exp
 	| exp1=exp op = '==' exp2=exp { $ast = new Eq($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '!=' exp2=exp { $ast = new Diff($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '&&' exp2=exp { $ast = new And($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| not = '!' exp { $ast = new NotExpr($not.line, $not.pos, $exp.ast);}
-	| minus = '-' exp { $ast = new MinusExpr($minus.line, $minus.pos, $exp.ast);}
 	| lvalue { $ast = $lvalue.ast;
 		}
 	| '(' exp ')' { $ast = $exp.ast; }
