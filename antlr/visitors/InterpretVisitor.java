@@ -380,7 +380,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(ArrayLValue e) {
-
+        // Não está sendo usada.
     }
 
     @Override
@@ -390,15 +390,11 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(ArrayExpr e){
-        Object type = e.getType();
-        Object array = null;
-        e.getExp().accept(this); // encontra tamanho do array.
-        int size =  (int) operands.pop();
-        if(type instanceof TypeInt){
-            array = new int[size];
-        }else if(type instanceof TypeFloat){
-            array = new float[size];
-        }
+        System.out.println("Visit ArrayExpr");
+        /* INSTANCIAR */
+        e.getExp().accept(this); // descobre o tamanho 
+        int val = (int) operands.pop(); // NÃO USO POR ENQUANTO
+        HashMap<Integer, Object> array = new HashMap<>();
         operands.push(array);
     }
 
@@ -556,17 +552,55 @@ public class InterpretVisitor extends Visitor {
         
         switch (currentAccessMode) {
             case READ:
-                Object val = resolveLvalue(e);
-                operands.push(val);
-            case WRITE:
-                Object valueToWrite = operands.pop();
+                currentAccessMode = AccessMode.READ;
+                e.getLvalue().accept(this);
                 @SuppressWarnings("unchecked")
-                HashMap<String, Object> parentMap = (HashMap<String, Object>) resolveLvalue(e.getLvalue());
-                parentMap.put(e.getId(), valueToWrite);
-                operands.push(valueToWrite);
+                HashMap<String, Object> dict = (HashMap<String, Object>) operands.pop();
+                operands.push(dict.get(e.getId()));
+                break;
+            case WRITE:
+                currentAccessMode = AccessMode.READ;
+                Object val = operands.pop(); // tira da pilha o valor q vai ser inserido
+                e.getLvalue().accept(this);
+                @SuppressWarnings("unchecked")
+                HashMap<String, Object> dict2 = (HashMap<String, Object>) operands.pop();
+                dict2.put(e.getId(), val);
                 break;
         }
         
+    }
+
+    @Override
+    public void visit(LValueExp e) {
+        System.out.println("Visit LValueExp");
+
+        switch (currentAccessMode) {
+            case READ:
+                currentAccessMode = AccessMode.READ;
+                e.getLvalue().accept(this);
+                
+                @SuppressWarnings("unchecked")
+                HashMap<Integer, Object> dict = (HashMap<Integer, Object>) operands.pop();
+                e.getIndex().accept(this); // encontra o indice de acesso do vetor.
+                
+                Object index = operands.pop();
+                
+                operands.push(dict.get((Integer) index));
+                break;
+            case WRITE:
+                currentAccessMode = AccessMode.READ;
+                Object val = operands.pop(); // tira da pilha o valor q vai ser inserido
+                e.getLvalue().accept(this);
+
+                @SuppressWarnings("unchecked")
+                HashMap<Integer, Object> dict2 = (HashMap<Integer, Object>) operands.pop();
+                e.getIndex().accept(this); // encontra o indice de acesso do vetor.
+                
+                Object index2 = operands.pop();
+
+                dict2.put((Integer) index2, val);
+                break;
+        }
     }
     
     public void visit(TrueValue e) {
@@ -619,17 +653,6 @@ public class InterpretVisitor extends Visitor {
             operands.push(Float.valueOf(e.getValue()));
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
-        }
-    }
-    
-    @Override
-    public void visit(LValueExp e) {
-        // NOT check.
-        e.getIndex().accept(this);
-        if(e.getLvalue() instanceof ID){
-            String name =  ((ID) e.getLvalue()).getName();
-            AbstractMap.SimpleEntry<String, Integer> tup = new AbstractMap.SimpleEntry<>(name, (Integer) operands.pop());
-            operands.push(tup);
         }
     }
 
