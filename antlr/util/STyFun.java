@@ -13,19 +13,21 @@
 package util;
 
 public class STyFun extends SType {
-     
-     private SType ty[];
-     
-     public STyFun(SType t[]){
-         ty = t;
-     }
-       
-       
-     public SType[] getTypes(){ return ty; }
-     
+
+    private final SType[] paramTypes;
+    private final SType[] returnTypes;
+
+    public STyFun(SType[] paramTypes, SType[] returnTypes) {
+        this.paramTypes = paramTypes;
+        this.returnTypes = returnTypes;
+    }
+
+    public SType[] getParamTypes() { return paramTypes; }
+    public SType[] getReturnTypes() { return returnTypes; }
+
      public boolean match(SType v){
           boolean r = false; 
-          if(  v instanceof STyFun ){
+          if(v instanceof STyFun ){
               if(((STyFun)v).getTypes().length == ty.length ){
                    r = true;
                    for(int i = 0; i< ty.length; i++ ){
