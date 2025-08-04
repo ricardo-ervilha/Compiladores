@@ -82,7 +82,7 @@ public class Tester {
             Node ast = parser.prog().ast;
 
             // Interpretação (se desejar)
-            InterpretVisitor iv = new InterpretVisitor(null);
+            InterpretVisitor iv = new InterpretVisitor();
             ast.accept(iv);
 
             // Se chegou até aqui, não houve erro sintático

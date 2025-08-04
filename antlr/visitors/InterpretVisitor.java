@@ -16,9 +16,15 @@ import ast.*;
 import util.InterpretException;
 
 import java.util.*;
+import util.Debug;
 
 public class InterpretVisitor extends Visitor {
-    String[] args;
+
+    // para instanciar variaveis.
+    enum AccessMode {
+        READ, WRITE
+    }
+    AccessMode currentAccessMode = null;
 
     // Hashmap para gerenciar o escopo de funções.
     private Stack<HashMap<String, Object>> env;
@@ -41,14 +47,13 @@ public class InterpretVisitor extends Visitor {
 
     private boolean retMode, debug;
 
-    public InterpretVisitor(String[] args) {
+    public InterpretVisitor() {
         env = new Stack<HashMap<String, Object>>();
         env.push(new HashMap<String, Object>());
         funcs = new HashMap<String, Fun>();
         operands = new Stack<Object>();
         retMode = false;
         debug = false;
-        this.args = args; /* ARGUMENTOS DO TERMINAL QUE VÃO PARA A MAIN */
     }
 
     public InterpretVisitor(boolean debug) {
@@ -56,6 +61,8 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Program p) {
+        // CHECK
+        Debug.log("Visit Program");
         Node main = null;
         for(Def f : p.getDefinitions()){
             if(f instanceof Fun){
@@ -76,10 +83,13 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(DataDecl p) {
-        String name = p.getTypeId();// nome do tipo Registro
+        Debug.log("Visit DataDecl");
+
+        String name = p.getTypeId();// nome do tipo Registro para ser superchave
 
         dataTypesEnv.put(name, new HashMap<>());
         namesStack.push(name);// guardo o nome na pilha para saber depois de qual Registro são essas declarações
+        
         for(Node d: p.getDeclarations()){
             Decl x = (Decl) d;
             x.accept(this);
@@ -94,43 +104,51 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(Decl p) {
+        Debug.log("Visit Decl");
         String nameData = namesStack.peek();
         String nameVar = p.getId();// nome do atributo do Registro/Tipo Abstrato
-        dataTypesEnv.get(nameData).put(nameVar, null);//coloco null pq ainda não sei o tipo
+        dataTypesEnv.get(nameData).put(nameVar, null);//coloco null pq ainda não sei o valor...
         namesStack.push(nameVar);// guardo no namesStack pois ao visitar os Type vou precisar saber o nome do atributo
         p.getType().accept(this);
     }
 
     @Override
     public void visit(TypeInt e) {
+        // check
+        Debug.log("Visit TypeInt");
         String nameVar = namesStack.pop();
         String nameData = namesStack.peek();
         dataTypesEnv.get(nameData).put(nameVar, e);// guardando o Tipo do atributo
     }
 
     @Override
+    public void visit(TypeFloat e) {
+        // check
+        Debug.log("Visit TypeFloat");
+       String nameVar = namesStack.pop();
+       String nameData = namesStack.peek();
+       dataTypesEnv.get(nameData).put(nameVar, e);// guardando o Tipo do atributo
+    }
+
+    @Override
     public void visit(TYID e) {
-//        String nameVar = namesStack.pop();
-//        String nameData = namesStack.peek();
-//        dataTypesEnv.get(nameData).put(nameVar, e);
+        Debug.log("Visit TYID");
+        String nameVar = namesStack.pop();
+        String nameData = namesStack.peek();
+        dataTypesEnv.get(nameData).put(nameVar, e);
     }
 
     @Override
     public void visit(TypeBool e) {
-//        String nameVar = namesStack.pop();
-//        String nameData = namesStack.peek();
-//        dataTypesEnv.get(nameData).put(nameVar, e);
+        Debug.log("Visit TypeBool");
+    // check
+       String nameVar = namesStack.pop();
+       String nameData = namesStack.peek();
+       dataTypesEnv.get(nameData).put(nameVar, e);
     }
 
     @Override
     public void visit(TypeChar e) {
-//        String nameVar = namesStack.pop();
-//        String nameData = namesStack.peek();
-//        dataTypesEnv.get(nameData).put(nameVar, e);
-    }
-
-    @Override
-    public void visit(TypeFloat e) {
 //        String nameVar = namesStack.pop();
 //        String nameData = namesStack.peek();
 //        dataTypesEnv.get(nameData).put(nameVar, e);
@@ -155,54 +173,29 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(CmdAssign p) {
-        if(p.getLvalue() instanceof ID){
-            String nameVar = ((ID)p.getLvalue()).getName();
-            p.getExpression().accept(this);
-            env.peek().put(nameVar, operands.pop());
-
-        }else if(p.getLvalue() instanceof IdLValue){// Se for acesso a um atributo de um registro
-            IdLValue lvalue = ((IdLValue) p.getLvalue());
-            String namevar = ((ID) lvalue.getLvalue()).getName();
-            String nameAtributo = lvalue.getId();
-
-            p.getExpression().accept(this); // chamando o accept pro lado direito, ou seja, a expressão
-
-            Object dataHashMap = this.getVarFromEnv(namevar, lvalue.getLine(), lvalue.getCol());
-            this.putAttributeOnDataHashMap(dataHashMap, nameAtributo, operands.pop(), lvalue.getLine(), lvalue.getCol());
-        } else if(p.getLvalue() instanceof LValueExp){
-            p.getLvalue().accept(this);
-            AbstractMap.SimpleEntry<String, Integer> tup = (AbstractMap.SimpleEntry<String, Integer>) operands.pop();
-            p.getExpression().accept(this);
-
-            String nameVar = tup.getKey();
-            Object value = env.peek().get(nameVar);
-            if (value instanceof int[]) {
-                int[] array = (int[]) value;
-                int index = tup.getValue();
-                int operand = (int) operands.pop();
-                array[index] = operand;
-            }
-        }
+        Debug.log("Visit CmdAssign");
+        currentAccessMode = AccessMode.READ;
+        p.getExpression().accept(this);
+        currentAccessMode = AccessMode.WRITE; // quando estou em um assign, significa que tenho intenção de escrever valor na variável.
+        p.getLvalue().accept(this);
     }
 
     public void visit(Add e) {
+        //check
+        Debug.log("Visit Add");
         try {
             // Visita os operandos da esquerda e da direita
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
 
             // Pega os valores avaliados da pilha
             Object dir = operands.pop();
             Object esq = operands.pop();
 
-            // Verifica se ambos são instâncias de Number
-            if (!(esq instanceof Number) || !(dir instanceof Number)) {
-                throw new InterpretException("Operandos não numéricos");
-            }
-
             Number esqNum = (Number) esq;
             Number dirNum = (Number) dir;
-
             // Se algum for Float ou Double, faz soma em ponto flutuante
             if (esqNum instanceof Float || dirNum instanceof Float ||
                     esqNum instanceof Double || dirNum instanceof Double) {
@@ -220,8 +213,11 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Sub e) {
+        Debug.log("Visit Sub");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
                 // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
@@ -242,19 +238,17 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Mul e) {
+        Debug.log("Visit Mul");
         try {
             // Visita os operandos da esquerda e da direita
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
 
             // Pega os valores avaliados da pilha
             Object dir = operands.pop();
             Object esq = operands.pop();
-
-            // Verifica se ambos são instâncias de Number
-            if (!(esq instanceof Number) || !(dir instanceof Number)) {
-                throw new InterpretException("Operandos não numéricos");
-            }
 
             Number esqNum = (Number) esq;
             Number dirNum = (Number) dir;
@@ -276,19 +270,17 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Div e) {
+        Debug.log("Visit Div");
         try {
             // Visita os operandos da esquerda e da direita
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
 
             // Pega os valores avaliados da pilha
             Object dir = operands.pop();
             Object esq = operands.pop();
-
-            // Verifica se ambos são instâncias de Number
-            if (!(esq instanceof Number) || !(dir instanceof Number)) {
-                throw new InterpretException("Operandos não numéricos");
-            }
 
             Number esqNum = (Number) esq;
             Number dirNum = (Number) dir;
@@ -310,8 +302,11 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Mod e) {
+        Debug.log("Visit Mod");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             Number esq, dir;
             dir = (Number) operands.pop();
@@ -323,8 +318,11 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(And e) {
+        Debug.log("Visit And");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             Object esq, dir;
             dir = operands.pop();
@@ -336,8 +334,11 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Lt e) {
+        Debug.log("Visit Less Than");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             Number esq, dir;
             dir = (Number) operands.pop();
@@ -350,10 +351,15 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Eq e) {
+        Debug.log("Visit Equals");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
-            operands.push(operands.pop().equals(operands.pop()));
+            Object val1 = operands.pop();
+            Object val2 = operands.pop();
+            operands.push(val1.equals(val2));
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -361,8 +367,11 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(Diff e) {
+        Debug.log("Visit Different");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             operands.push(!operands.pop().equals(operands.pop()));
         } catch (Exception x) {
@@ -370,14 +379,15 @@ public class InterpretVisitor extends Visitor {
         }
     }
 
-
     @Override
     public void visit(MinusExpr e) {
-
+        // NOT check | Falta completar o código desse.
     }
 
     public void visit(NotExpr e) {
+        Debug.log("Visit Not");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getExpression().accept(this);
             operands.push(!(Boolean) (operands.pop()));
         } catch (Exception x) {
@@ -392,7 +402,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(ArrayLValue e) {
-
+        // Não está sendo usada.
     }
 
     @Override
@@ -402,15 +412,11 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(ArrayExpr e){
-        Object type = e.getType();
-        Object array = null;
-        e.getExp().accept(this); // encontra tamanho do array.
-        int size =  (int) operands.pop();
-        if(type instanceof TypeInt){
-            array = new int[size];
-        }else if(type instanceof TypeFloat){
-            array = new float[size];
-        }
+        Debug.log("Visit ArrayExpr");
+        /* INSTANCIAR */
+        e.getExp().accept(this); // descobre o tamanho 
+        int val = (int) operands.pop(); // NÃO USO POR ENQUANTO
+        HashMap<Integer, Object> array = new HashMap<>();
         operands.push(array);
     }
 
@@ -445,51 +451,90 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(VarExpr e) {
+        Debug.log("Visit VarExpr");
+        
         Object type = e.getType();
 
         if(type instanceof TypeInt || type instanceof TypeFloat || type instanceof TypeBool || type instanceof TypeChar){
+            // para tipos simples, basta adicionar nulo.
             operands.push(null);
-        }else if(type instanceof TYID){
-            // alocar a memória do novo tipo.
+        }
+        else if(type instanceof TYID){
+            // alocar a memória do tipo que foi criado.
             /*
-                data Racional{
-                    numerador::Int;
-                    denominador::Int;
+                data Ponto {
+                    x1 :: Float;
+                    x2 :: Float;
+                }
+
+                data Reta {
+                    p1 :: Ponto;
+                    p2 :: Ponto;
                 }
                 ------------------------
-                'numerador': null,
-                'denominador': null
              */
-                // gerar uma copia do hasmap
+
+            // gerar uma copia do hasmap
             String nomeTipo = ((TYID) type).getName();
-            HashMap<String, Object> original = dataTypesEnv.get(nomeTipo);
-            HashMap<String, Object> copia = new HashMap<>();
-            for(Map.Entry<String, Object> entry: original.entrySet()){
-                String chave = entry.getKey();
-                copia.put(chave, null);
-            }
-            operands.push(copia);
+            HashMap<String, Object> internalTyid = dataTypesEnv.get(nomeTipo);
+            HashMap<String, Object> memoriaTipo = recursiveAssembly(nomeTipo, internalTyid);
+            operands.push(memoriaTipo); // quando chama pra fazer o new ele joga no operands como se fosse expressão...
         }
     }
 
-    @Override
-    public void visit(ID e) {
-        Object val = env.peek().get(e.getName());
-        operands.push(val);
+    /* FUNÇÃO AUXILIAR PARA REALIZAR RECURSÃO DURANTE A MONTAGEM DO DATA. */
+    public HashMap<String, Object> recursiveAssembly(String nomeTipo, HashMap<String,Object> variables){
+
+        HashMap<String, Object> assembled = new HashMap<>();
+        
+        for (Map.Entry<String, Object> entry : variables.entrySet()) {
+            String key = entry.getKey();
+            Object value = entry.getValue();
+           
+            if (value instanceof TypeInt || value instanceof TypeFloat ||
+                value instanceof TypeBool || value instanceof TypeChar) {
+                assembled.put(key, null); // CASO BASE
+            }else if(value instanceof TYID){
+                HashMap<String, Object> nested = dataTypesEnv.get(((TYID)value).getName());
+                assembled.put(key, recursiveAssembly(key, nested)); // chamada recursiva
+            }
+        }
+
+        return assembled;
     }
 
+    
     @Override
     public void visit(CharValue e) {
+        // !! NOT check | Verificar as coisas do char.
+        Debug.log("Visit CharValue");
+        String value = e.getValue().replaceAll("'", "");
+        Object charRet = null;
+        if(value.equals("\\n")){
+            charRet = value.replace("\\n", "\n").charAt(0);
+        }else if(value.equals("\\t")){
+            charRet = value.replace("\\t", "\t").charAt(0);
+        } else if(value.equals("\\b")){
+            charRet = value.replace("\\b", "\b").charAt(0);
+        }  else if(value.equals("\\r")){
+            charRet = value.replace("\\r", "\r").charAt(0);
+        }else if (value.matches("\\\\[0-7]{3}")) {
+            int asciiCode = Integer.parseInt(value.substring(1), 10); 
+            charRet = (char) asciiCode;
+        } 
+        else{
+            charRet = value.charAt(0);
+        }
         try {
-            operands.push(e.getValue());
+            operands.push(charRet);
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
-
+    
     /*
-        cmd --> ID '(' exps? ')' ('<' lvalue (',' lvalue)* '>')? ';'
-     */
+    cmd --> ID '(' exps? ')' ('<' lvalue (',' lvalue)* '>')? ';'
+    */
     public void visit(CmdFuncCall e) {
         try {
             Fun f = funcs.get(e.getId());
@@ -498,18 +543,108 @@ public class InterpretVisitor extends Visitor {
                     exp.accept(this);
                 }
                 f.accept(this);
-
+                
             } else {
                 throw new InterpretException(
-                        " (" + e.getLine() + ", " + e.getCol() + ") Função não definida " + e.getId());
+                    " (" + e.getLine() + ", " + e.getCol() + ") Função não definida " + e.getId());
+                }
+                
+            } catch (Exception x) {
+                throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
             }
-
-        } catch (Exception x) {
-            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+    }
+        
+    @Override
+    public void visit(ID e) {
+        /* ATRIBUIÇÃO SIMPLES */
+        Debug.log("Visit ID");
+        String varName = e.getName();
+        switch (currentAccessMode) {
+            case READ:
+                Object val = env.peek().get(varName);
+                operands.push(val);
+                break;
+        
+            case WRITE:
+                env.peek().put(varName, operands.pop());
+                break;
         }
     }
 
+    /* Resolve toda a cascata de valores que pode ter dentro do LvalueID parcialmente */
+    public Object resolveLvalue(LValue n){
+        System.out.println("Recursão LValue");
+        if(n instanceof IdLValue){
+            @SuppressWarnings("unchecked")
+            HashMap<String, Object> result = (HashMap<String, Object>) resolveLvalue(((IdLValue) n).getLvalue()); // quem chamou ganha o dicionario
+            return result.get(((IdLValue) n).getId()); // acesso nessa chamada mais um nivel do dicionario e retorno pra quem chamou
+        }else if(n instanceof ID){
+            currentAccessMode = AccessMode.READ;
+            ((ID) n).accept(this); // coloca o dicionario da variavel no operand
+            return operands.pop(); // retorno ele pra quem chamou ("CASO BASE")
+        }
+        throw new RuntimeException("Tipo de Lvalue desconhecido: " + n.getClass().getName());
+    }
+    
+    @Override
+    public void visit(IdLValue e) {
+        Debug.log("Visit IDLvalue");
+        
+        switch (currentAccessMode) {
+            case READ:
+                currentAccessMode = AccessMode.READ;
+                e.getLvalue().accept(this);
+                @SuppressWarnings("unchecked")
+                HashMap<String, Object> dict = (HashMap<String, Object>) operands.pop();
+                operands.push(dict.get(e.getId()));
+                break;
+            case WRITE:
+                currentAccessMode = AccessMode.READ;
+                Object val = operands.pop(); // tira da pilha o valor q vai ser inserido
+                e.getLvalue().accept(this);
+                @SuppressWarnings("unchecked")
+                HashMap<String, Object> dict2 = (HashMap<String, Object>) operands.pop();
+                dict2.put(e.getId(), val);
+                break;
+        }
+        
+    }
+
+    @Override
+    public void visit(LValueExp e) {
+        Debug.log("Visit LValueExp");
+
+        switch (currentAccessMode) {
+            case READ:
+                currentAccessMode = AccessMode.READ;
+                e.getLvalue().accept(this);
+                
+                @SuppressWarnings("unchecked")
+                HashMap<Integer, Object> dict = (HashMap<Integer, Object>) operands.pop();
+                e.getIndex().accept(this); // encontra o indice de acesso do vetor.
+                
+                Object index = operands.pop();
+                
+                operands.push(dict.get((Integer) index));
+                break;
+            case WRITE:
+                currentAccessMode = AccessMode.READ;
+                Object val = operands.pop(); // tira da pilha o valor q vai ser inserido
+                e.getLvalue().accept(this);
+
+                @SuppressWarnings("unchecked")
+                HashMap<Integer, Object> dict2 = (HashMap<Integer, Object>) operands.pop();
+                e.getIndex().accept(this); // encontra o indice de acesso do vetor.
+                
+                Object index2 = operands.pop();
+
+                dict2.put((Integer) index2, val);
+                break;
+        }
+    }
+    
     public void visit(TrueValue e) {
+        Debug.log("Visit TrueValue");
         try {
             operands.push(true);
         } catch (Exception x) {
@@ -518,18 +653,8 @@ public class InterpretVisitor extends Visitor {
     }
 
     @Override
-    public void visit(IdLValue e) {
-        String namevar = ((ID) e.getLvalue()).getName(); // primeiro faço o cast do Lvalue para o tipo concreto ID e pego o nome do registro = nameVar
-        String nameAtributo = e.getId(); // pego o nome do atributo que esta dentro = nameAtributo
-
-        Object value = getVarFromEnv(namevar, e.getLine(), e.getCol()); // pego o hashmap que  está na pilha
-
-        operands.push(this.getAttributeFromDataHashMap(value, nameAtributo, e.getLine(), e.getCol()));
-
-    }
-
-    @Override
     public void visit(NullValue e) {
+        Debug.log("Visit NullValue");
         try {
             operands.push(null);
         } catch (Exception x) {
@@ -538,6 +663,7 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(FalseValue e) {
+        Debug.log("Visit FalseValue");
         try {
             operands.push(false);
         } catch (Exception x) {
@@ -547,10 +673,12 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(FieldLValue e) {
-
+        // Not Check | Falta implementar
     }
 
     public void visit(IntValue e) {
+        // check
+        Debug.log("Visit IntValue");
         try {
             operands.push(Integer.valueOf(e.getValue()));
         } catch (Exception x) {
@@ -558,17 +686,9 @@ public class InterpretVisitor extends Visitor {
         }
     }
 
-    @Override
-    public void visit(LValueExp e) {
-        e.getIndex().accept(this); // resolve a expressão. TEM QUE DEVOLVER INTEIRO...
-        if(e.getLvalue() instanceof ID){
-            String name =  ((ID) e.getLvalue()).getName();
-            AbstractMap.SimpleEntry<String, Integer> tup = new AbstractMap.SimpleEntry<>(name, (Integer) operands.pop());
-            operands.push(tup);
-        }
-    }
-
     public void visit(FloatValue e) {
+        // check
+        Debug.log("Visit FloatValue");
         try {
             operands.push(Float.valueOf(e.getValue()));
         } catch (Exception x) {
@@ -576,50 +696,9 @@ public class InterpretVisitor extends Visitor {
         }
     }
 
-//    public void visit(Var e) {
-//        try {
-//            Object r = env.peek().get(e.getName());
-//            if (r != null) {
-//                if (e.getIdx() != null) {
-//                    for (Expr exp : e.getIdx()) {
-//                        exp.accept(this);
-//                        r = ((ArrayList) r).get((Integer) operands.pop());
-//                    }
-//                }
-//                operands.push(r);
-//            } else {
-//                throw new InterpretException(
-//                        " (" + e.getLine() + ", " + e.getCol() + ") variável não declarada " + e.getName());
-//            }
-//        } catch (Exception x) {
-//            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
-//        }
-//    }
-
-//    public void visit(Attr e) {
-//        try {
-//            Var v = e.getID();
-//            e.getExp().accept(this);
-//            Object val = operands.pop();
-//
-//            if (v.getIdx() != null && v.getIdx().length > 0) {
-//                ArrayList arr = (ArrayList) env.peek().get(v.getName());
-//                for (int k = 0; k < v.getIdx().length - 1; k++) {
-//                    v.getIdx()[k].accept(this);
-//                    arr = (ArrayList) arr.get((Integer) operands.pop());
-//                }
-//                v.getIdx()[v.getIdx().length - 1].accept(this);
-//                arr.set((Integer) operands.pop(), val);
-//            } else {
-//                env.peek().put(e.getID().getName(), val);
-//            }
-//
-//        } catch (Exception x) {
-//            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
-//        }
-//    }
-
     public void visit(CmdIf e) {
+        // check
+        Debug.log("Visit CmdIF");
         try {
             e.getCondition().accept(this);
             if ((Boolean) operands.pop()) {
@@ -633,23 +712,52 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(CmdIterate e) {
+        Debug.log("Visit CmdIterate");
         try {
-            e.getCondition().accept(this);
             if(e.getCondition() instanceof ExpItCond){
+
+                currentAccessMode = AccessMode.READ;
+                ((ExpItCond) e.getCondition()).getExpression().accept(this);
+                
                 int i = (Integer) operands.pop();
                 while (i > 0) {
                     e.getBody().accept(this);
                     i--;
                 }
             }else{
-                IdItCond cond = (IdItCond) e.getCondition();
-                String nameVar = cond.getId();
-                int counter = (Integer) env.peek().get(nameVar);
-                while(counter > 0){
-                    e.getBody().accept(this);
-                    counter--;
-                    env.peek().put(nameVar, counter); // atualiza na memória o valor.
+                currentAccessMode = AccessMode.READ; 
+                ((IdItCond) e.getCondition()).getExpression().accept(this);
+                String nameVar = ((IdItCond) e.getCondition()).getId();
+                                
+                Object var = operands.pop();
+                
+                if(var instanceof Integer){
+                    int counter = (int) var;
+                    Object oldValue = env.peek().get(nameVar);
+                    env.peek().put(nameVar, var);
+                    while(counter > 0){
+                        e.getBody().accept(this);
+                        counter--;
+                        env.peek().put(nameVar, counter); // atualiza na memória o valor.
+                    }
+                    if(oldValue == null)
+                        env.peek().remove(nameVar);
+                    else
+                        env.peek().put(nameVar, oldValue);
                 }
+                else if(var instanceof HashMap){
+                    Object oldValue = env.peek().get(nameVar);
+                    HashMap<Integer, Object> aux = (HashMap<Integer,Object>) var;  
+                    for (Map.Entry<Integer, Object> entry : aux.entrySet()) {
+                        env.peek().put(nameVar, entry.getValue());
+                        e.getBody().accept(this);
+                    }
+                    if(oldValue == null)
+                        env.peek().remove(nameVar);
+                    else
+                        env.peek().put(nameVar, oldValue);
+                }
+                
             }
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
@@ -658,105 +766,89 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(IdItCond e) {
-        String name = e.getId();
-        e.getExpression().accept(this);
-        env.peek().put(name, operands.pop());
+        // String name = e.getId();
+        // e.getExpression().accept(this);
+        // env.peek().put(name, operands.pop());
     }
 
     @Override
     public void visit(ExpItCond e) {
-        e.getExpression().accept(this);
+        // e.getExpression().accept(this);
     }
 
     public void visit(CmdPrint e) {
+        // NOT check completed
+        Debug.log("Visit CmdPrint");
         try {
-            e.getExpression().accept(this);//vai para um dos visit de Expressão, por exemplo,IdLValue, Add, ID, etc
-            if (operands.isEmpty() || operands.peek() == null) {
-                throw new InterpretException("Pilha vazia ao tentar imprimir (linha " + e.getLine() + ", coluna " + e.getCol() + ")");
-            }
-            Object v = operands.pop();
+            // Quando visita um print, a inteção é ler o valor se houver uma variavel como expressão.
+            currentAccessMode = AccessMode.READ;
+            e.getExpression().accept(this);
+            Object v = operands.pop(); // pega o resultado da expressão.
+
             if (v instanceof AbstractMap.SimpleEntry) {
                 Integer index = (Integer) ((AbstractMap.SimpleEntry<?, ?>) v).getValue();
                 String var = (String)  ((AbstractMap.SimpleEntry<?, ?>) v).getKey();
-                System.out.println(((int[])env.peek().get(var))[index]);
+                System.out.print(((int[])env.peek().get(var))[index]);
             }
             else{
-                System.out.println(v.toString());
+                System.out.print(v.toString());
             }
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
-    @Override
-    public void visit(CmdRead p) {
-        Scanner scanner = new Scanner(System.in);
-        String valorLido = scanner.nextLine();
+    /*Função auxiliar pro Read */
+    public static Object detectType(String input) {
+        // Tenta int
+        try {
+            return Integer.parseInt(input);
+        } catch (NumberFormatException ignored) {}
 
+        // Tenta float
+        try {
+            return Float.parseFloat(input);
+        } catch (NumberFormatException ignored) {}
 
-        if (p.getLvalue() instanceof ID){
-            String nameVar =  ((ID) p.getLvalue()).getName();
-
-            this.env.peek().put(nameVar, valorLido);
-
-            // precisa chamar o accept aqui, considerando que o visit do ID vai jogar o valor que está no env pro operands?
-            // p.getLvalue().accept(this);
-
-        } else if(p.getLvalue() instanceof IdLValue){
-            // nameVar.nameAtributo
-            IdLValue lvalue = ((IdLValue) p.getLvalue()); //pego a implementação concreta de IdLValue
-
-            String namevar = ((ID) lvalue.getLvalue()).getName(); // pego o nome do registro = nameVar
-            String nameAtributo = lvalue.getId(); // pego o nome do atributo que esta dentro = nameAtributo
-
-            Object dataHashMap = this.getVarFromEnv(namevar, lvalue.getLine(), lvalue.getCol());
-            this.putAttributeOnDataHashMap(dataHashMap, nameAtributo, operands.pop(), lvalue.getLine(), lvalue.getCol());
+        // Tenta char
+        if (input.length() == 1) {
+            return input.charAt(0);
         }
 
+        // Default: retorna como String
+        return input;
     }
 
-//    public void visit(StmtList e) {
-//        if (retMode) {
-//            return;
-//        }
-//        try {
-//            e.getCmd1().accept(this);
-//            if (retMode) {
-//                return;
-//            }
-//            e.getCmd2().accept(this);
-//        } catch (Exception x) {
-//            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
-//        }
-//    }
+    @Override
+    public void visit(CmdRead p) {
+        @SuppressWarnings("resource")
+        Scanner scanner = new Scanner(System.in);
+        String valorLido = scanner.nextLine();
+        Object val = detectType(valorLido);
+        operands.push(val);
+        currentAccessMode = AccessMode.WRITE;
+        p.getLvalue().accept(this);
+    }
 
     public void visit(Fun f) {
+        Debug.log("Visit Fun");
+        // check
 
+        // cria um HashMap para conter o escopo local da função.
         HashMap<String, Object> localEnv = new HashMap<String, Object>();
-        if(f.getID().equals("main")){
-            /*SE FOR A MAIN, OS PARÂMETROS TEM QUE VIR DO ARGS.*/
-            if(f.getParams() != null) {
-                for (int i = f.getParams().getParamList().size() - 1; i >= 0; i--) {
-                    Param p = f.getParams().getParamList().get(i);
-                    Object value = null;
-                    if(p.getType() instanceof TypeInt)
-                        value = Integer.valueOf( this.args[i+1] );
-                    else if(p.getType() instanceof TypeFloat)
-                        value = Float.valueOf( this.args[i+1] );
-                    localEnv.put(p.getId(), value); // PEGA i+1 POR CAUSA DO PRIMEIRO PARÂMETRO Ser o caminho até o exemplo de teste.
-                }
-            }
-        }else{
-            if(f.getParams() != null) {
-                for (int i = f.getParams().getParamList().size() - 1; i >= 0; i--) {
-                    localEnv.put(f.getParams().getParamList().get(i).getId(), operands.pop());
-                }
+        
+        // se possui parâmetros, adiciono-os com chave e valor no escopo local.
+        if(f.getParams() != null) {
+            for (int i = f.getParams().getParamList().size() - 1; i >= 0; i--) {
+                localEnv.put(f.getParams().getParamList().get(i).getId(), operands.pop());
             }
         }
+        
+        env.push(localEnv); // adiciono o localEnv no env.
+        f.getCmd().accept(this); // chama para aceitar o bloco dentro da função.
 
-        env.push(localEnv);
-        f.getCmd().accept(this);
         /*Aqui q printa a memória*/
+        System.out.println("\n----------------------------------------------------------------------------");
         Object[] keys = env.peek().keySet().toArray();
         for (Object keyObj : keys) {
             String key = (String) keyObj;
@@ -789,35 +881,6 @@ public class InterpretVisitor extends Visitor {
         retMode = false;
     }
 
-//    public void visit(Inst e) {
-//        try {
-//            Var v = e.getID();
-//            e.getSize().accept(this);
-//            Integer size = (Integer) operands.pop();
-//            ArrayList val = new ArrayList(size);
-//
-//            for (int i = 0; i < size; i++) {
-//                val.add(null);
-//            }
-//
-//            if (env.peek().get(v.getName()) == null) {
-//                env.peek().put(v.getName(), val);
-//            } else if (v.getIdx() != null && v.getIdx().length > 0) {
-//                ArrayList arr = (ArrayList) env.peek().get(v.getName());
-//                for (int k = 0; k < v.getIdx().length - 1; k++) {
-//                    v.getIdx()[k].accept(this);
-//                    arr = (ArrayList) arr.get((Integer) operands.pop());
-//                }
-//                v.getIdx()[v.getIdx().length - 1].accept(this);
-//                arr.set((Integer) operands.pop(), val);
-//            } else {
-//                env.peek().put(e.getID().getName(), val);
-//            }
-//
-//        } catch (Exception x) {
-//            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
-//        }
-//    }
 
     public void visit(CmdReturn e) {
         List<Object> retornos = new ArrayList<>();

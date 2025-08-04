@@ -156,10 +156,8 @@ cmd
   	}:
 	block { $ast = $block.ast;}
 	| ifCond = 'if' '(' exp ')' cmd { $ast = new CmdIf($ifCond.line, $ifCond.pos, $exp.ast, $cmd.ast);}
-	| ifCond = 'if' '(' exp ')' cmd1 = cmd 'else' cmd2 = cmd { $ast = new CmdIf($ifCond.line, $ifCond.pos, $exp.ast, $cmd1.ast, $cmd2.ast );
-		}
-	| it = 'iterate' '(' itcond ')' cmd { $ast = new CmdIterate($it.line, $it.pos, $itcond.ast, $cmd.ast );
-		}
+	| ifCond = 'if' '(' exp ')' cmd1 = cmd 'else' cmd2 = cmd { $ast = new CmdIf($ifCond.line, $ifCond.pos, $exp.ast, $cmd1.ast, $cmd2.ast );}
+	| it = 'iterate' '(' itcond ')' cmd { $ast = new CmdIterate($it.line, $it.pos, $itcond.ast, $cmd.ast );}
 	| rd = 'read' lvalue ';' { $ast = new CmdRead($rd.line, $rd.pos, $lvalue.ast); }
 	| prt = 'print' exp ';' { $ast = new CmdPrint($prt.line, $prt.pos, $exp.ast); }
 	| rt = 'return' exp { membersReturn.add($exp.ast) ;} (
@@ -185,7 +183,9 @@ itcond
 
 exp
 	returns[Expr ast]:
-	  exp1=exp op = '*' exp2=exp { $ast = new Mul($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
+	not = '!' exp { $ast = new NotExpr($not.line, $not.pos, $exp.ast);}
+	| minus = '-' exp { $ast = new MinusExpr($minus.line, $minus.pos, $exp.ast);}
+	| exp1=exp op = '*' exp2=exp { $ast = new Mul($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '/' exp2=exp { $ast = new Div($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '%' exp2=exp { $ast = new Mod($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '+' exp2=exp { $ast = new Add($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
@@ -194,8 +194,6 @@ exp
 	| exp1=exp op = '==' exp2=exp { $ast = new Eq($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '!=' exp2=exp { $ast = new Diff($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
 	| exp1=exp op = '&&' exp2=exp { $ast = new And($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| not = '!' exp { $ast = new NotExpr($not.line, $not.pos, $exp.ast);}
-	| minus = '-' exp { $ast = new MinusExpr($minus.line, $minus.pos, $exp.ast);}
 	| lvalue { $ast = $lvalue.ast;
 		}
 	| '(' exp ')' { $ast = $exp.ast; }
@@ -228,8 +226,8 @@ exps returns[Exps ast]
 	;
 
 //REGRAS LÉXICAS LITERAIS
-INT: [0-9]+;
-FLOAT: [0-9]* '.' [0-9]+;
+INT   : [+-]? [0-9]+ ;
+FLOAT : [+-]? [0-9]* '.' [0-9]+ ;
 CHAR:
 	'\'' (
 		~['\\] // qualquer caractere, exceto aspas simples e barra invertida
