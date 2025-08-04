@@ -22,7 +22,7 @@ public class STyFloat extends SType {
      public static STyFloat newSTyFloat(){ return st; }
      
      public boolean match(SType v){
-          return (v instanceof STyErr) || (v instanceof STyInt);
+          return (v instanceof STyErr) || (v instanceof STyFloat);
      }
      
      public String toString(){

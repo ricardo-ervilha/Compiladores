@@ -18,6 +18,9 @@ run_main_syn: compile
 run_main_interp: compile
 	java -cp .:antlr-4.8-complete.jar src/Main -i examples/$(file)
 
+run_main_type: clean compile
+	java -cp .:antlr-4.8-complete.jar src/Main -t examples/$(file)
+
 junit: compile
 	java -cp src:.:antlr-4.8-complete.jar:$(JUNIT_CP) \
       org.junit.runner.JUnitCore src.Tester
