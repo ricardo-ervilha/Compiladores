@@ -536,14 +536,31 @@ public class InterpretVisitor extends Visitor {
     cmd --> ID '(' exps? ')' ('<' lvalue (',' lvalue)* '>')? ';'
     */
     public void visit(CmdFuncCall e) {
+        Debug.log("Visit CmdFuncCall");
         try {
             Fun f = funcs.get(e.getId());
             if (f != null) {
                 for (Expr exp : e.getExps().getExpressions()) {
+                    currentAccessMode = AccessMode.READ;
                     exp.accept(this);
                 }
                 f.accept(this);
                 
+                if(retMode){
+                    List<LValue> lvalues = e.getLvalues();
+
+                    @SuppressWarnings("unchecked")
+                    List<Object> retObjs = (List<Object> )operands.pop();
+
+                    for (int i = 0; i < retObjs.size(); i++) {
+                        currentAccessMode = AccessMode.WRITE; // escreverá valor na variavel
+                        operands.push(retObjs.get(i));
+                        lvalues.get(i).accept(this);
+                    }
+                }
+
+                retMode = false;
+
             } else {
                 throw new InterpretException(
                     " (" + e.getLine() + ", " + e.getCol() + ") Função não definida " + e.getId());
@@ -559,6 +576,7 @@ public class InterpretVisitor extends Visitor {
         /* ATRIBUIÇÃO SIMPLES */
         Debug.log("Visit ID");
         String varName = e.getName();
+
         switch (currentAccessMode) {
             case READ:
                 Object val = env.peek().get(varName);
@@ -848,7 +866,7 @@ public class InterpretVisitor extends Visitor {
         f.getCmd().accept(this); // chama para aceitar o bloco dentro da função.
 
         /*Aqui q printa a memória*/
-        System.out.println("\n----------------------------------------------------------------------------");
+        System.out.println("\n---------------------------CONTEXTO-------------------------------------");
         Object[] keys = env.peek().keySet().toArray();
         for (Object keyObj : keys) {
             String key = (String) keyObj;
@@ -877,14 +895,18 @@ public class InterpretVisitor extends Visitor {
 
             System.out.println(key + " : " + valueStr);
         }
+        System.out.println("---------------------------CONTEXTO-------------------------------------");
+
         env.pop();
         retMode = false;
     }
 
 
     public void visit(CmdReturn e) {
+        Debug.log("Visit CmdReturn");
         List<Object> retornos = new ArrayList<>();
         for(Expr r: e.getExpressions()){
+            currentAccessMode = AccessMode.READ;
             r.accept(this);//aqui eu adiciono no operands
             retornos.add(operands.pop()); //aqui eu removo e adiciono na lista
         }
