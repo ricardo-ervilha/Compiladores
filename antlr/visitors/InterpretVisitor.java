@@ -16,6 +16,7 @@ import ast.*;
 import util.InterpretException;
 
 import java.util.*;
+import util.Debug;
 
 public class InterpretVisitor extends Visitor {
 
@@ -61,7 +62,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(Program p) {
         // CHECK
-        System.out.println("Visit Program");
+        Debug.log("Visit Program");
         Node main = null;
         for(Def f : p.getDefinitions()){
             if(f instanceof Fun){
@@ -82,7 +83,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(DataDecl p) {
-        System.out.println("Visit DataDecl");
+        Debug.log("Visit DataDecl");
 
         String name = p.getTypeId();// nome do tipo Registro para ser superchave
 
@@ -103,7 +104,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(Decl p) {
-        System.out.println("Visit Decl");
+        Debug.log("Visit Decl");
         String nameData = namesStack.peek();
         String nameVar = p.getId();// nome do atributo do Registro/Tipo Abstrato
         dataTypesEnv.get(nameData).put(nameVar, null);//coloco null pq ainda não sei o valor...
@@ -114,7 +115,7 @@ public class InterpretVisitor extends Visitor {
     @Override
     public void visit(TypeInt e) {
         // check
-        System.out.println("Visit TypeInt");
+        Debug.log("Visit TypeInt");
         String nameVar = namesStack.pop();
         String nameData = namesStack.peek();
         dataTypesEnv.get(nameData).put(nameVar, e);// guardando o Tipo do atributo
@@ -123,7 +124,7 @@ public class InterpretVisitor extends Visitor {
     @Override
     public void visit(TypeFloat e) {
         // check
-        System.out.println("Visit TypeFloat");
+        Debug.log("Visit TypeFloat");
        String nameVar = namesStack.pop();
        String nameData = namesStack.peek();
        dataTypesEnv.get(nameData).put(nameVar, e);// guardando o Tipo do atributo
@@ -131,7 +132,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(TYID e) {
-        System.out.println("Visit TYID");
+        Debug.log("Visit TYID");
         String nameVar = namesStack.pop();
         String nameData = namesStack.peek();
         dataTypesEnv.get(nameData).put(nameVar, e);
@@ -139,7 +140,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(TypeBool e) {
-        System.out.println("Visit TypeBool");
+        Debug.log("Visit TypeBool");
     // check
        String nameVar = namesStack.pop();
        String nameData = namesStack.peek();
@@ -172,7 +173,8 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(CmdAssign p) {
-        System.out.println("Visit CmdAssign");
+        Debug.log("Visit CmdAssign");
+        currentAccessMode = AccessMode.READ;
         p.getExpression().accept(this);
         currentAccessMode = AccessMode.WRITE; // quando estou em um assign, significa que tenho intenção de escrever valor na variável.
         p.getLvalue().accept(this);
@@ -180,10 +182,12 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(Add e) {
         //check
-        System.out.println("Visit Add");
+        Debug.log("Visit Add");
         try {
             // Visita os operandos da esquerda e da direita
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
 
             // Pega os valores avaliados da pilha
@@ -192,7 +196,6 @@ public class InterpretVisitor extends Visitor {
 
             Number esqNum = (Number) esq;
             Number dirNum = (Number) dir;
-
             // Se algum for Float ou Double, faz soma em ponto flutuante
             if (esqNum instanceof Float || dirNum instanceof Float ||
                     esqNum instanceof Double || dirNum instanceof Double) {
@@ -210,9 +213,11 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Sub e) {
-        System.out.println("Visit Sub");
+        Debug.log("Visit Sub");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
                 // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
@@ -233,10 +238,12 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Mul e) {
-        System.out.println("Visit Mul");
+        Debug.log("Visit Mul");
         try {
             // Visita os operandos da esquerda e da direita
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
 
             // Pega os valores avaliados da pilha
@@ -263,10 +270,12 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Div e) {
-        System.out.println("Visit Div");
+        Debug.log("Visit Div");
         try {
             // Visita os operandos da esquerda e da direita
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
 
             // Pega os valores avaliados da pilha
@@ -293,9 +302,11 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Mod e) {
-        System.out.println("Visit Mod");
+        Debug.log("Visit Mod");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             Number esq, dir;
             dir = (Number) operands.pop();
@@ -307,9 +318,11 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(And e) {
-        System.out.println("Visit And");
+        Debug.log("Visit And");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             Object esq, dir;
             dir = operands.pop();
@@ -321,9 +334,11 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Lt e) {
-        System.out.println("Visit Less Than");
+        Debug.log("Visit Less Than");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             Number esq, dir;
             dir = (Number) operands.pop();
@@ -336,11 +351,15 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(Eq e) {
-        System.out.println("Visit Equals");
+        Debug.log("Visit Equals");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
-            operands.push(operands.pop().equals(operands.pop()));
+            Object val1 = operands.pop();
+            Object val2 = operands.pop();
+            operands.push(val1.equals(val2));
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -348,9 +367,11 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(Diff e) {
-        System.out.println("Visit Different");
+        Debug.log("Visit Different");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getLeft().accept(this);
+            currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
             operands.push(!operands.pop().equals(operands.pop()));
         } catch (Exception x) {
@@ -364,8 +385,9 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(NotExpr e) {
-        System.out.println("Visit Not");
+        Debug.log("Visit Not");
         try {
+            currentAccessMode = AccessMode.READ;
             e.getExpression().accept(this);
             operands.push(!(Boolean) (operands.pop()));
         } catch (Exception x) {
@@ -390,7 +412,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(ArrayExpr e){
-        System.out.println("Visit ArrayExpr");
+        Debug.log("Visit ArrayExpr");
         /* INSTANCIAR */
         e.getExp().accept(this); // descobre o tamanho 
         int val = (int) operands.pop(); // NÃO USO POR ENQUANTO
@@ -429,7 +451,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(VarExpr e) {
-        System.out.println("Visit VarExpr");
+        Debug.log("Visit VarExpr");
         
         Object type = e.getType();
 
@@ -485,8 +507,26 @@ public class InterpretVisitor extends Visitor {
     @Override
     public void visit(CharValue e) {
         // !! NOT check | Verificar as coisas do char.
+        Debug.log("Visit CharValue");
+        String value = e.getValue().replaceAll("'", "");
+        Object charRet = null;
+        if(value.equals("\\n")){
+            charRet = value.replace("\\n", "\n").charAt(0);
+        }else if(value.equals("\\t")){
+            charRet = value.replace("\\t", "\t").charAt(0);
+        } else if(value.equals("\\b")){
+            charRet = value.replace("\\b", "\b").charAt(0);
+        }  else if(value.equals("\\r")){
+            charRet = value.replace("\\r", "\r").charAt(0);
+        }else if (value.matches("\\\\[0-7]{3}")) {
+            int asciiCode = Integer.parseInt(value.substring(1), 10); 
+            charRet = (char) asciiCode;
+        } 
+        else{
+            charRet = value.charAt(0);
+        }
         try {
-            operands.push(e.getValue());
+            operands.push(charRet);
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -517,7 +557,7 @@ public class InterpretVisitor extends Visitor {
     @Override
     public void visit(ID e) {
         /* ATRIBUIÇÃO SIMPLES */
-        System.out.println("Visit ID");
+        Debug.log("Visit ID");
         String varName = e.getName();
         switch (currentAccessMode) {
             case READ:
@@ -548,7 +588,7 @@ public class InterpretVisitor extends Visitor {
     
     @Override
     public void visit(IdLValue e) {
-        System.out.println("Visit IDLvalue");
+        Debug.log("Visit IDLvalue");
         
         switch (currentAccessMode) {
             case READ:
@@ -572,7 +612,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(LValueExp e) {
-        System.out.println("Visit LValueExp");
+        Debug.log("Visit LValueExp");
 
         switch (currentAccessMode) {
             case READ:
@@ -604,7 +644,7 @@ public class InterpretVisitor extends Visitor {
     }
     
     public void visit(TrueValue e) {
-        System.out.println("Visit TrueValue");
+        Debug.log("Visit TrueValue");
         try {
             operands.push(true);
         } catch (Exception x) {
@@ -614,7 +654,7 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(NullValue e) {
-        System.out.println("Visit NullValue");
+        Debug.log("Visit NullValue");
         try {
             operands.push(null);
         } catch (Exception x) {
@@ -623,7 +663,7 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(FalseValue e) {
-        System.out.println("Visit FalseValue");
+        Debug.log("Visit FalseValue");
         try {
             operands.push(false);
         } catch (Exception x) {
@@ -638,7 +678,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(IntValue e) {
         // check
-        System.out.println("Visit IntValue");
+        Debug.log("Visit IntValue");
         try {
             operands.push(Integer.valueOf(e.getValue()));
         } catch (Exception x) {
@@ -648,7 +688,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(FloatValue e) {
         // check
-        System.out.println("Visit FloatValue");
+        Debug.log("Visit FloatValue");
         try {
             operands.push(Float.valueOf(e.getValue()));
         } catch (Exception x) {
@@ -658,7 +698,7 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(CmdIf e) {
         // check
-        System.out.println("Visit CmdIF");
+        Debug.log("Visit CmdIF");
         try {
             e.getCondition().accept(this);
             if ((Boolean) operands.pop()) {
@@ -672,23 +712,52 @@ public class InterpretVisitor extends Visitor {
     }
 
     public void visit(CmdIterate e) {
+        Debug.log("Visit CmdIterate");
         try {
-            e.getCondition().accept(this);
             if(e.getCondition() instanceof ExpItCond){
+
+                currentAccessMode = AccessMode.READ;
+                ((ExpItCond) e.getCondition()).getExpression().accept(this);
+                
                 int i = (Integer) operands.pop();
                 while (i > 0) {
                     e.getBody().accept(this);
                     i--;
                 }
             }else{
-                IdItCond cond = (IdItCond) e.getCondition();
-                String nameVar = cond.getId();
-                int counter = (Integer) env.peek().get(nameVar);
-                while(counter > 0){
-                    e.getBody().accept(this);
-                    counter--;
-                    env.peek().put(nameVar, counter); // atualiza na memória o valor.
+                currentAccessMode = AccessMode.READ; 
+                ((IdItCond) e.getCondition()).getExpression().accept(this);
+                String nameVar = ((IdItCond) e.getCondition()).getId();
+                                
+                Object var = operands.pop();
+                
+                if(var instanceof Integer){
+                    int counter = (int) var;
+                    Object oldValue = env.peek().get(nameVar);
+                    env.peek().put(nameVar, var);
+                    while(counter > 0){
+                        e.getBody().accept(this);
+                        counter--;
+                        env.peek().put(nameVar, counter); // atualiza na memória o valor.
+                    }
+                    if(oldValue == null)
+                        env.peek().remove(nameVar);
+                    else
+                        env.peek().put(nameVar, oldValue);
                 }
+                else if(var instanceof HashMap){
+                    Object oldValue = env.peek().get(nameVar);
+                    HashMap<Integer, Object> aux = (HashMap<Integer,Object>) var;  
+                    for (Map.Entry<Integer, Object> entry : aux.entrySet()) {
+                        env.peek().put(nameVar, entry.getValue());
+                        e.getBody().accept(this);
+                    }
+                    if(oldValue == null)
+                        env.peek().remove(nameVar);
+                    else
+                        env.peek().put(nameVar, oldValue);
+                }
+                
             }
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
@@ -697,19 +766,19 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(IdItCond e) {
-        String name = e.getId();
-        e.getExpression().accept(this);
-        env.peek().put(name, operands.pop());
+        // String name = e.getId();
+        // e.getExpression().accept(this);
+        // env.peek().put(name, operands.pop());
     }
 
     @Override
     public void visit(ExpItCond e) {
-        e.getExpression().accept(this);
+        // e.getExpression().accept(this);
     }
 
     public void visit(CmdPrint e) {
         // NOT check completed
-        System.out.println("Visit CmdPrint");
+        Debug.log("Visit CmdPrint");
         try {
             // Quando visita um print, a inteção é ler o valor se houver uma variavel como expressão.
             currentAccessMode = AccessMode.READ;
@@ -719,45 +788,50 @@ public class InterpretVisitor extends Visitor {
             if (v instanceof AbstractMap.SimpleEntry) {
                 Integer index = (Integer) ((AbstractMap.SimpleEntry<?, ?>) v).getValue();
                 String var = (String)  ((AbstractMap.SimpleEntry<?, ?>) v).getKey();
-                System.out.println(((int[])env.peek().get(var))[index]);
+                System.out.print(((int[])env.peek().get(var))[index]);
             }
             else{
-                System.out.println(v.toString());
+                System.out.print(v.toString());
             }
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
 
-    @Override
-    public void visit(CmdRead p) {
-        Scanner scanner = new Scanner(System.in);
-        String valorLido = scanner.nextLine();
+    /*Função auxiliar pro Read */
+    public static Object detectType(String input) {
+        // Tenta int
+        try {
+            return Integer.parseInt(input);
+        } catch (NumberFormatException ignored) {}
 
+        // Tenta float
+        try {
+            return Float.parseFloat(input);
+        } catch (NumberFormatException ignored) {}
 
-        if (p.getLvalue() instanceof ID){
-            String nameVar =  ((ID) p.getLvalue()).getName();
-
-            this.env.peek().put(nameVar, valorLido);
-
-            // precisa chamar o accept aqui, considerando que o visit do ID vai jogar o valor que está no env pro operands?
-            // p.getLvalue().accept(this);
-
-        } else if(p.getLvalue() instanceof IdLValue){
-            // nameVar.nameAtributo
-            IdLValue lvalue = ((IdLValue) p.getLvalue()); //pego a implementação concreta de IdLValue
-
-            String namevar = ((ID) lvalue.getLvalue()).getName(); // pego o nome do registro = nameVar
-            String nameAtributo = lvalue.getId(); // pego o nome do atributo que esta dentro = nameAtributo
-
-            Object dataHashMap = this.getVarFromEnv(namevar, lvalue.getLine(), lvalue.getCol());
-            this.putAttributeOnDataHashMap(dataHashMap, nameAtributo, operands.pop(), lvalue.getLine(), lvalue.getCol());
+        // Tenta char
+        if (input.length() == 1) {
+            return input.charAt(0);
         }
 
+        // Default: retorna como String
+        return input;
+    }
+
+    @Override
+    public void visit(CmdRead p) {
+        @SuppressWarnings("resource")
+        Scanner scanner = new Scanner(System.in);
+        String valorLido = scanner.nextLine();
+        Object val = detectType(valorLido);
+        operands.push(val);
+        currentAccessMode = AccessMode.WRITE;
+        p.getLvalue().accept(this);
     }
 
     public void visit(Fun f) {
-        System.out.println("Visit Fun");
+        Debug.log("Visit Fun");
         // check
 
         // cria um HashMap para conter o escopo local da função.
@@ -774,6 +848,7 @@ public class InterpretVisitor extends Visitor {
         f.getCmd().accept(this); // chama para aceitar o bloco dentro da função.
 
         /*Aqui q printa a memória*/
+        System.out.println("\n----------------------------------------------------------------------------");
         Object[] keys = env.peek().keySet().toArray();
         for (Object keyObj : keys) {
             String key = (String) keyObj;

@@ -156,10 +156,8 @@ cmd
   	}:
 	block { $ast = $block.ast;}
 	| ifCond = 'if' '(' exp ')' cmd { $ast = new CmdIf($ifCond.line, $ifCond.pos, $exp.ast, $cmd.ast);}
-	| ifCond = 'if' '(' exp ')' cmd1 = cmd 'else' cmd2 = cmd { $ast = new CmdIf($ifCond.line, $ifCond.pos, $exp.ast, $cmd1.ast, $cmd2.ast );
-		}
-	| it = 'iterate' '(' itcond ')' cmd { $ast = new CmdIterate($it.line, $it.pos, $itcond.ast, $cmd.ast );
-		}
+	| ifCond = 'if' '(' exp ')' cmd1 = cmd 'else' cmd2 = cmd { $ast = new CmdIf($ifCond.line, $ifCond.pos, $exp.ast, $cmd1.ast, $cmd2.ast );}
+	| it = 'iterate' '(' itcond ')' cmd { $ast = new CmdIterate($it.line, $it.pos, $itcond.ast, $cmd.ast );}
 	| rd = 'read' lvalue ';' { $ast = new CmdRead($rd.line, $rd.pos, $lvalue.ast); }
 	| prt = 'print' exp ';' { $ast = new CmdPrint($prt.line, $prt.pos, $exp.ast); }
 	| rt = 'return' exp { membersReturn.add($exp.ast) ;} (

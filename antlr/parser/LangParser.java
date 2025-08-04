@@ -1000,7 +1000,6 @@ public class LangParser extends Parser {
 				setState(202);
 				((CmdContext)_localctx).cmd2 = cmd();
 				 ((CmdContext)_localctx).ast =  new CmdIf((((CmdContext)_localctx).ifCond!=null?((CmdContext)_localctx).ifCond.getLine():0), (((CmdContext)_localctx).ifCond!=null?((CmdContext)_localctx).ifCond.getCharPositionInLine():0), ((CmdContext)_localctx).exp.ast, ((CmdContext)_localctx).cmd1.ast, ((CmdContext)_localctx).cmd2.ast );
-						
 				}
 				break;
 			case 4:
@@ -1017,7 +1016,6 @@ public class LangParser extends Parser {
 				setState(209);
 				((CmdContext)_localctx).cmd = cmd();
 				 ((CmdContext)_localctx).ast =  new CmdIterate((((CmdContext)_localctx).it!=null?((CmdContext)_localctx).it.getLine():0), (((CmdContext)_localctx).it!=null?((CmdContext)_localctx).it.getCharPositionInLine():0), ((CmdContext)_localctx).itcond.ast, ((CmdContext)_localctx).cmd.ast );
-						
 				}
 				break;
 			case 5:
