@@ -19,6 +19,7 @@ import parser.*;
 import util.InterpretException;
 import util.SyntaxErrorListener;
 import visitors.InterpretVisitor;
+import visitors.TypeCheckVisitor;
 
 public class Main {
 
@@ -76,7 +77,15 @@ public class Main {
                     break;
 
                 case "-t":
-                    System.out.println("Executa a verificação de tipos do programa.");
+                    System.out.println("\n--------------------Executando a verificação de tipos do programa.--------------------\n");
+                    Node ast2 = parser.prog().ast;
+                    TypeCheckVisitor tcv = new TypeCheckVisitor();
+                    ast2.accept(tcv);
+                    if(tcv.getNumErrors() > 0){
+                        tcv.printErrors();
+                    }else{
+                        System.out.println("typing  ... [ ok ]");
+                    }
                     break;
 
                 case "-src":
@@ -97,6 +106,7 @@ public class Main {
             System.err.println(interpretException.getMessage());
             System.exit(1);
         } catch (Exception e) {
+            e.printStackTrace();
             System.err.println(e.getMessage());
             System.out.println("reject");
             System.exit(1);
