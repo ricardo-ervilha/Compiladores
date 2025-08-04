@@ -1,38 +1,52 @@
-printBoard(board :: Char[][], nl :: Int, nc :: Int){
+readArr( v :: Int[], sz :: Int){
     i = 0;
-    iterate(nl){
-        j = 0;
-        iterate(nc){
-            print board[i][j];
-            j = j + 1;
-        }
-        print '\n';
+    iterate(sz){
+        read x;
+        v[i] = x;
         i = i + 1;
     }
 }
 
-startBoard(c :: Char, nl :: Int, nc :: Int): Char[][]{
-    board = new Char[][nl];
-    i = 0;
-    iterate(nl){
-        j = 0;
-        board[i] = new Char[nc];
-        iterate(nc){
-            board[i][j] = c;
-            j = j + 1;
+printArr(v :: Int [],  sz :: Int){
+    print '{';
+    if(0 < sz){
+        print v[0];
+        i = 1;
+        iterate(sz - 1){
+            print ',';
+            print v[i];
+            i = i + 1;
         }
-        i = i + 1;
     }
-    return board;
-}
-
-set(board :: Char[][], x :: Int, y :: Int) {
-     board[x][y] = 'A';
+    print '}';
+    print '\n';
 }
 
 main() {
-    board = startBoard('*',3,4)[0];
-    printBoard(board,3,4);
-    set(board,1,2);
-    printBoard(board,3,4);
+    x = 0;
+    v = new Int[5];
+    readArr(v,5);
+    printArr(v,5);
+    sort(v,5);
+    printArr(v,5);
+}
+
+sort(v :: Int[], sz :: Int){
+     i = 0;
+     j = 0;
+     k = 0;
+     aux = 0;
+     iterate(sz){
+        j = i + 1;
+        k = i;
+        iterate(sz - j){
+            if(v[j] < v[k])
+               k = j;
+            j = j + 1;
+        }
+        aux = v[i];
+        v[i] = v[k];
+        v[k] = aux;
+        i = i + 1;
+     }
 }
