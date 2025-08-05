@@ -1,81 +1,30 @@
-data Node{
-     val :: Int;
-     next :: Node;
-}
+abstract data Racional {
+    numerador :: Float ;
+    denominador :: Float ;
 
-data LList{
-    head :: Node;
-    size :: Int;
-}
-
-createList() : LList{
-   n = new LList;
-   n.head = null;
-   n.size = 0;
-   return n;
-}
-
-lastNode(h :: Node) : Node{
-   if(h.next == null){return h;}
-   return lastNode(h.next)[0];
-}
-
-addNode(l :: LList, x :: Int) {
-   no = new Node;
-   no.val = x;
-   no.next = null;
-   if(l.head == null){
-       l.head = no;
-   }else{
-       last = lastNode(l.head)[0];
-       last.next = no;
-   }
-   l.size = l.size + 1;
-}
-
-removeHead(l :: LList) : Node {
-   if(l.head != null){
-       node = l.head;
-       l.head = l.head.next;
-       l.size = l.size - 1;
-       return node;
-   }
-   return null;
-}
-
-
-printList(h :: Node) {
-    if(h != null){
-           print h.val;
-           print '-';
-           print '>';
-           printList(h.next);
+    set(r :: Racional, num :: Float, den :: Float){
+        r.numerador = num;
+        r.denominador = den;
     }
-    if(h == null){
-       print 'N';
-       print 'U';
-       print 'L';
-       print 'L';
-       print '\n';
+
+    add ( r1 :: Racional , r2 :: Racional ) : Racional {
+        r = new Racional ;
+        r.denominador = r1.denominador * r2.denominador ;
+        r.numerador = r1.numerador * r2.denominador + r2.numerador * r1.denominador ;
+        return r ;
     }
 }
 
-printLList(l :: LList) {
-    print(l.size);
-    print ':';
-    printList(l.head);
-}
+main(){
+    r1 = new Racional;
+    r2 = new Racional;
 
+    set(r1, 1,10);
+    set(r2, 1,5);
 
-main() {
-    k = 65;
-    l = createList()[0];
-    addNode(l,k);
-    iterate(5){
-       k = k + 1;
-       addNode(l,k);
-    }
-    printLList(l);
-    head = removeHead(l)[0];
-    printLList(l);
+    r3 = add(r1, r2)[0];
+
+    print r3.numerador;
+    print '/';
+    print r3.denominador;
 }

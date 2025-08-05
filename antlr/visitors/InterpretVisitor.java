@@ -33,6 +33,7 @@ public class InterpretVisitor extends Visitor {
     */
     // Hashmap para guardar a associação entre nome de funções e o objeto. (Guarda as chaves do env).
     private HashMap<String, Fun> funcs;
+    private HashMap<String, FunAbstractData> abstractFuncs;
     /*
     *  Com base no exemplo acima, seria: {'f1': ObjectF1, 'f2': ObjectF2}.
     * */
@@ -51,6 +52,7 @@ public class InterpretVisitor extends Visitor {
         env = new Stack<HashMap<String, Object>>();
         env.push(new HashMap<String, Object>());
         funcs = new HashMap<String, Fun>();
+        abstractFuncs = new HashMap<String, FunAbstractData>();
         operands = new Stack<Object>();
         retMode = false;
         debug = false;
@@ -99,7 +101,28 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(AbstractDataDecl p) {
-        //
+        Debug.log("Visit AbstractDataDecl");
+        
+        // Pego o nome do tipo abstrato, e adiciono um dicionário correspondendo a um template de definição do que é esse tipo para futuras instanciações.
+        String name = p.getTypeId(); 
+        dataTypesEnv.put(name, new HashMap<>()); // adiciono um hashmap vazio para ser preenchido nas próximas linhas.
+
+        // namesStack é uma pilha para resolver nomes de tipos criados.
+        namesStack.push(name);// guardo o nome na pilha para saber depois encontrar corretamente as informações do Registro.
+        
+        List<Node> bodyComponents = p.getDeclFuns();
+        for(Node n : bodyComponents){
+            if(n instanceof Decl){
+                // é uma declaração de Tipo
+                Decl x = (Decl) n;
+                x.accept(this);
+            }else if(n instanceof FunAbstractData){
+                FunAbstractData x = (FunAbstractData) n;
+                abstractFuncs.put(x.getID(), x); // guardo para acesso futuro.
+            }
+        }
+
+        namesStack.pop();
     }
 
     @Override
@@ -152,11 +175,6 @@ public class InterpretVisitor extends Visitor {
 //        String nameVar = namesStack.pop();
 //        String nameData = namesStack.peek();
 //        dataTypesEnv.get(nameData).put(nameVar, e);
-    }
-
-    @Override
-    public void visit(FunAbstractData p) {
-        //
     }
 
     @Override
@@ -430,38 +448,7 @@ public class InterpretVisitor extends Visitor {
         operands.push(array);
     }
 
-    // ID '(' (exps)? ')' '[' exp ']' - ch
-    public void visit(CallFunctionAccess e) {
-        Debug.log("Visit CallFunctionAccess");
-        try {
-            // pegar a função pelo name no hashmap de funções
-            Fun f = funcs.get(e.getFunctionName());
-            if (f != null) {
-                if(e.getExps() != null){ // parametros vazios.
-                    for (Expr exp : e.getExps().getExpressions()) {
-                        exp.accept(this); // empilho cada valor avaliado pela expressão na pilha de operandos
-                    }
-                }
-                f.accept(this);// visito o Fun
-
-                ArrayList retornos = (ArrayList) operands.pop();
-
-                e.getExp().accept(this);// avaliar a expressão que pega o indice
-                int idx = (int) operands.pop(); // pegar o indice do topo da pilha
-
-                operands.push(retornos.get(idx));// pegar o elemento pelo indice avaliado
-
-            } else {
-                throw new InterpretException(
-                        " (" + e.getLine() + ", " + e.getCol() + ") Função não definida " + e.getFunctionName());
-            }
-
-        } catch (Exception x) {
-            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
-        }
-
-    }
-
+    
     @Override
     public void visit(VarExpr e) {
         Debug.log("Visit VarExpr");
@@ -547,15 +534,57 @@ public class InterpretVisitor extends Visitor {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
     }
+
+    public void visit(CallFunctionAccess e) {
+        Debug.log("Visit CallFunctionAccess");
+        try {
+            // pegar a função pelo name no hashmap de funções
+            Def f;
+            if(funcs.containsKey(e.getFunctionName()))
+                f = funcs.get(e.getFunctionName());
+            else if(abstractFuncs.containsKey(e.getFunctionName()))
+                f = abstractFuncs.get(e.getFunctionName());
+            else
+                throw new InterpretException("Não existe essa função!");
+
+            if (f != null) {
+                if(e.getExps() != null){ // parametros vazios.
+                    for (Expr exp : e.getExps().getExpressions()) {
+                        exp.accept(this); // empilho cada valor avaliado pela expressão na pilha de operandos
+                    }
+                }
+                f.accept(this);// visito o Fun
+
+                ArrayList retornos = (ArrayList) operands.pop();
+
+                e.getExp().accept(this);// avaliar a expressão que pega o indice
+                int idx = (int) operands.pop(); // pegar o indice do topo da pilha
+
+                operands.push(retornos.get(idx));// pegar o elemento pelo indice avaliado
+
+            } else {
+                throw new InterpretException(
+                        " (" + e.getLine() + ", " + e.getCol() + ") Função não definida " + e.getFunctionName());
+            }
+
+        } catch (Exception x) {
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+        }
+
+    }
     
-    /*
-    cmd --> ID '(' exps? ')' ('<' lvalue (',' lvalue)* '>')? ';'
-    */
     public void visit(CmdFuncCall e) {
         Debug.log("Visit CmdFuncCall");
         
         try {
-            Fun f = funcs.get(e.getId());
+             Def f;
+            if(funcs.containsKey(e.getId()))
+                f = funcs.get(e.getId());
+            else if(abstractFuncs.containsKey(e.getId()))
+                f = abstractFuncs.get(e.getId());
+            else
+                throw new InterpretException("Não existe essa função!");
+
             if (f != null) {
                 for (Expr exp : e.getExps().getExpressions()) {
                     currentAccessMode = AccessMode.READ;
@@ -625,7 +654,6 @@ public class InterpretVisitor extends Visitor {
                 dict2.put(e.getId(), val);
                 break;
         }
-        
     }
 
     @Override
@@ -806,13 +834,15 @@ public class InterpretVisitor extends Visitor {
                 currentAccessMode = AccessMode.READ;
                 e.getExpression().accept(this);
                 Object v = operands.pop(); // pega o resultado da expressão.
-
                 if (v instanceof AbstractMap.SimpleEntry) {
                     Integer index = (Integer) ((AbstractMap.SimpleEntry<?, ?>) v).getValue();
                     String var = (String) ((AbstractMap.SimpleEntry<?, ?>) v).getKey();
                     System.out.print("\u001B[94m" + ((int[]) env.peek().get(var))[index] + "\u001B[0m");
                 } else {
-                    System.out.print("\u001B[94m" +  v.toString() + "\u001B[0m");
+                    if(v != null)
+                        System.out.print("\u001B[94m" +  v.toString() + "\u001B[0m");
+                    else
+                        System.out.println("\u001B[94m" + "NULL" +  "\u001B[0m");
                 }
             } catch (Exception x) {
                 throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
@@ -853,6 +883,61 @@ public class InterpretVisitor extends Visitor {
             currentAccessMode = AccessMode.WRITE;
             p.getLvalue().accept(this);
         }
+    }
+
+    @Override
+    public void visit(FunAbstractData p) {
+        Debug.log("Visit FunAbstractData");
+
+        // hashmap com escopo local da função.
+        HashMap<String, Object> localEnv = new HashMap<String, Object>();
+
+        // se possui parâmetros, adiciono-os com chave e valor no escopo local.
+        if(p.getParams() != null) {
+            for (int i = p.getParams().getParamList().size() - 1; i >= 0; i--) {
+                localEnv.put(p.getParams().getParamList().get(i).getId(), operands.pop());
+            }
+        }
+
+        env.push(localEnv); // adiciono o localEnv no env.
+        
+        p.getCmd().accept(this); // chama para aceitar o bloco dentro da função.
+        /*Aqui q printa a memória*/
+
+
+        System.out.println("\n-----------------------" + "CONTEXTO da " + p.getID() + "-----------------------");
+        Object[] keys = env.peek().keySet().toArray();
+        for (Object keyObj : keys) {
+            String key = (String) keyObj;
+            Object value = env.peek().get(key);
+
+            String valueStr;
+            if (value != null && value.getClass().isArray()) {
+                if (value instanceof int[]) {
+                    valueStr = Arrays.toString((int[]) value);
+                } else if (value instanceof float[]) {
+                    valueStr = Arrays.toString((float[]) value);
+                } else if (value instanceof double[]) {
+                    valueStr = Arrays.toString((double[]) value);
+                } else if (value instanceof char[]) {
+                    valueStr = Arrays.toString((char[]) value);
+                } else if (value instanceof boolean[]) {
+                    valueStr = Arrays.toString((boolean[]) value);
+                } else if (value instanceof Object[]) {
+                    valueStr = Arrays.deepToString((Object[]) value);
+                } else {
+                    valueStr = "Unsupported array type";
+                }
+            } else {
+                valueStr = String.valueOf(value);
+            }
+
+            System.out.println(key + " : " + valueStr);
+        }
+        System.out.println("---------------------------CONTEXTO-------------------------------------");
+
+        env.pop();
+        retMode = false;
     }
 
     public void visit(Fun f) {
