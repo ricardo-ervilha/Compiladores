@@ -20,12 +20,13 @@ import java.util.Stack;
 
 public class TypeCheckVisitor extends Visitor {
 
-    private STyInt tyint = STyInt.newSTyInt();
-    private STyFloat tyfloat = STyFloat.newSTyFloat();
-    private STyBool tybool = STyBool.newSTyBool();
-    SType tyvoid = STyVoid.newSTyVoid();
-    private STyErr tyerr = STyErr.newSTyErr();
-
+    private final STyInt tyint = STyInt.newSTyInt();
+    private final STyFloat tyfloat = STyFloat.newSTyFloat();
+    private final STyBool tybool = STyBool.newSTyBool();
+    private final SType tynull = STyNull.newSTyNull();
+    private final SType tychar = STyChar.newSTyChar();
+    private final SType tyvoid = STyVoid.newSTyVoid();
+    private final STyErr tyerr = STyErr.newSTyErr();
 
     private ArrayList<String> logError;
 
@@ -54,6 +55,7 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
+    @Override
     public void visit(Program p) {
         for (Def def : p.getDefinitions()) {
             if (def instanceof Fun f) {
@@ -256,52 +258,97 @@ public class TypeCheckVisitor extends Visitor {
     private void typeArithmeticBinOp(Node n, String opName) {
         SType tyr = stk.pop();
         SType tyl = stk.pop();
-        if ((tyr.match(tyint))) {
-            if (tyl.match(tyint) || tyl.match(tyfloat)) {
-                stk.push(tyl);
-            } else {
-                logError.add(n.getLine() + ", " + n.getCol() + ": Operador" + opName + "não se aplica aos tipos " + tyl.toString() + " e " + tyr.toString());
-                stk.push(tyerr);
-            }
-
-        } else if (tyr.match(tyfloat)) {
-            if (tyl.match(tyint) || tyl.match(tyfloat)) {
-                stk.push(tyl);
-            } else {
-                logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName + " não se aplica aos tipos " + tyl.toString() + " e " + tyr.toString());
-                stk.push(tyerr);
-            }
+        if ((tyr.match(tyint) && tyl.match(tyint)) || (tyr.match(tyfloat) && tyl.match(tyfloat))) {
+            stk.push(tyl);
         } else {
-            logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName + " não se aplica aos tipos " + tyl.toString() + " e " + tyr.toString());
+            logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName + " não se aplica aos tipos " + tyl + " e " + tyr);
             stk.push(tyerr);
         }
     }
 
+    @Override
     public void visit(Add e) {
         e.getLeft().accept(this);
         e.getRight().accept(this);
         typeArithmeticBinOp(e, "+");
-
     }
 
+    @Override
     public void visit(Sub e) {
         e.getLeft().accept(this);
         e.getRight().accept(this);
         typeArithmeticBinOp(e, "-");
     }
 
+    @Override
     public void visit(Mul e) {
         e.getLeft().accept(this);
         e.getRight().accept(this);
         typeArithmeticBinOp(e, "*");
     }
 
+    @Override
     public void visit(Div e) {
         e.getLeft().accept(this);
         e.getRight().accept(this);
         typeArithmeticBinOp(e, "/");
     }
 
+    /**
+     * [Bool,Bool] → Bool
+     * @param n
+     * @param opName
+     */
+    private void typeRelationalBinOp(Node n, String opName) {
+        SType tyr = stk.pop();
+        SType tyl = stk.pop();
+
+        if (tyl.match(tyr) && (tyl.match(tyint) || tyl.match(tyfloat) || tyl.match(tychar))) {
+            stk.push(tybool);
+        } else {
+            logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName +
+                    " não se aplica aos tipos " + tyl + " e " + tyr);
+            stk.push(tyerr);
+        }
+    }
+
+    /**
+     * [a, a] → Bool, em que a ∈ {Int, Float, Char}
+     * Os dois operandos devem ter o mesmo tipo
+     * @param e
+     */
+    @Override
+    public void visit(Eq e) {
+        e.getLeft().accept(this);
+        e.getRight().accept(this);
+        typeRelationalBinOp(e, "==");
+    }
+
+    /**
+     * [a, a] → Bool, em que a ∈ {Int, Float, Char}
+     * Os dois operandos devem ter o mesmo tipo
+     * @param e
+     */
+    @Override
+    public void visit(Diff e) {
+        e.getLeft().accept(this);
+        e.getRight().accept(this);
+        typeRelationalBinOp(e, "!=");
+    }
+
+    /**
+     * [a, a] → Bool, em que a ∈ {Int, Float, Char}
+     * Os dois operandos devem ter o mesmo tipo
+     * @param e
+     */
+    @Override
+    public void visit(Lt e) {
+        e.getLeft().accept(this);
+        e.getRight().accept(this);
+        typeRelationalBinOp(e, "<");
+    }
+
+    @Override
     public void visit(Mod e) {
         e.getLeft().accept(this);
         e.getRight().accept(this);
@@ -315,6 +362,11 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
+    /**
+     * [Bool, Bool] → Bool
+     * @param e
+     */
+    @Override
     public void visit(And e) {
         e.getLeft().accept(this);
         e.getRight().accept(this);
@@ -328,32 +380,10 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
-    public void visit(Lt e) {
-        e.getLeft().accept(this);
-        e.getRight().accept(this);
-        SType tyr = stk.pop();
-        SType tyl = stk.pop();
-        if ((tyr.match(tyint) || tyr.match(tyfloat)) && (tyl.match(tyint) || tyr.match(tyfloat))) {
-            stk.push(tybool);
-        } else {
-            logError.add(e.getLine() + ", " + e.getCol() + ": Operador < não se aplica aos tipos " + tyl.toString() + " e " + tyr.toString());
-            stk.push(tyerr);
-        }
-    }
-
-    public void visit(Eq e) {
-        e.getLeft().accept(this);
-        e.getRight().accept(this);
-        SType tyr = stk.pop();
-        SType tyl = stk.pop();
-        if ((tyr.match(tyint) || tyr.match(tyfloat)) && (tyl.match(tyint) || tyr.match(tyfloat))) {
-            stk.push(tybool);
-        } else {
-            logError.add(e.getLine() + ", " + e.getCol() + ": Operador = não se aplica aos tipos " + tyl.toString() + " e " + tyr.toString());
-            stk.push(tyerr);
-        }
-    }
-
+    /**
+     * Bool → Bool
+     * @param e
+     */
     @Override
     public void visit(NotExpr e) {
         e.getExpression().accept(this);
@@ -366,16 +396,20 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
-    public void visit(TrueValue e) {
-        stk.push(tybool);
-    }
-
-    public void visit(FalseValue e) {
-        stk.push(tybool);
-    }
-
-    public void visit(IntValue e) {
-        stk.push(tyint);
+    /**
+     * a → a, em que a ∈ {Int, Float}
+     * @param e
+     */
+    @Override
+    public void visit(MinusExpr e) {
+        e.getExpr().accept(this);
+        SType tyr = stk.pop();
+        if (tyr.match(tybool)) {
+            stk.push(tybool);
+        } else {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Operador ! não se aplica ao tipo " + tyr.toString());
+            stk.push(tyerr);
+        }
     }
 
     @Override
@@ -383,10 +417,7 @@ public class TypeCheckVisitor extends Visitor {
 
     }
 
-    public void visit(FloatValue e) {
-        stk.push(tyfloat);
-    }
-
+    @Override
     public void visit(VarExpr e) {
 //        SType t = temp.get(e.getName());
 //        if (t != null) {
@@ -447,6 +478,7 @@ public class TypeCheckVisitor extends Visitor {
         lvalue --> ID | lvalue ‘[’ exp ‘]’ | lvalue ‘.’ ID
         ou seja, posso fazer atribuição em variavel, vetor ou atributo de um registro
     */
+    @Override
     public void visit(CmdAssign p) {
         if (p.getLvalue() instanceof ID) {
             String nameVar = ((ID) p.getLvalue()).getName();
@@ -470,6 +502,7 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
+    @Override
     public void visit(CmdIf e) {
         boolean rt, re;
         re = true;
@@ -492,6 +525,7 @@ public class TypeCheckVisitor extends Visitor {
     /*
         cmd --> iterate ‘(’ itcond ‘)’ cmd
      */
+    @Override
     public void visit(CmdIterate e) {
 
         if (e.getCondition() instanceof ExpItCond expItCond) { // exp
@@ -526,11 +560,16 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
+    @Override
     public void visit(CmdPrint e) {
-        // a expressão deveria jogar alguma coisa na pilha stk
-        // vejo no env local se tem o a definido la  pego o tipo dele?
-        e.getExpression().accept(this);// daqui vai para o visit do ID
-        stk.pop();
+        e.getExpression().accept(this);
+        SType t = stk.pop();
+
+        if (!(t.match(tyint) || t.match(tyfloat) || t.match(tybool) || t.match(tychar))) {
+            logError.add(e.getLine() + ", " + e.getCol() +
+                    ": Tipo " + t + " não pode ser impresso com 'print'.");
+            stk.push(tyerr);
+        }
     }
 
     @Override
@@ -538,18 +577,17 @@ public class TypeCheckVisitor extends Visitor {
 
     }
 
-
-    public void visit(Param e) {
-    }
-
+    @Override
     public void visit(TypeInt t) {
         stk.push(tyint);
     }
 
+    @Override
     public void visit(TypeFloat t) {
         stk.push(tyfloat);
     }
 
+    @Override
     public void visit(TypeBool t) {
         stk.push(tybool);
     }
@@ -559,14 +597,10 @@ public class TypeCheckVisitor extends Visitor {
 
     }
 
+    @Override
     public void visit(ArrayType t) {
 //        t.getTyArg().accept(this);
 //        stk.push(new STyArr(stk.pop()));
-    }
-
-    @Override
-    public void visit(Diff e) {
-
     }
 
     /*
@@ -574,11 +608,6 @@ public class TypeCheckVisitor extends Visitor {
     */
     @Override
     public void visit(ExpItCond e) {
-
-    }
-
-    @Override
-    public void visit(MinusExpr e) {
 
     }
 
@@ -591,7 +620,6 @@ public class TypeCheckVisitor extends Visitor {
     public void visit(ArrayLValue e) {
 
     }
-
 
     @Override
     public void visit(ID e) {
@@ -606,12 +634,6 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(TYID e) {
-
-    }
-
-
-    @Override
-    public void visit(CharValue e) {
 
     }
 
@@ -632,7 +654,32 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     @Override
-    public void visit(NullValue e) {
+    public void visit(TrueValue e) {
+        stk.push(tybool);
+    }
 
+    @Override
+    public void visit(FalseValue e) {
+        stk.push(tybool);
+    }
+
+    @Override
+    public void visit(IntValue e) {
+        stk.push(tyint);
+    }
+
+    @Override
+    public void visit(CharValue e) {
+        stk.push(tychar);
+    }
+
+    @Override
+    public void visit(NullValue e) {
+        stk.push(tynull);
+    }
+
+    @Override
+    public void visit(FloatValue e) {
+        stk.push(tyfloat);
     }
 }
