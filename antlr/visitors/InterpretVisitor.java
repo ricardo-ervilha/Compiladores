@@ -360,7 +360,8 @@ public class InterpretVisitor extends Visitor {
             e.getRight().accept(this);
             Object val1 = operands.pop();
             Object val2 = operands.pop();
-            operands.push(val1.equals(val2));
+
+            operands.push(Objects.equals(val1, val2));
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -374,7 +375,9 @@ public class InterpretVisitor extends Visitor {
             e.getLeft().accept(this);
             currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
-            operands.push(!operands.pop().equals(operands.pop()));
+            Object val1 = operands.pop();
+            Object val2 = operands.pop();
+            operands.push(!Objects.equals(val1, val2));
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
@@ -487,31 +490,34 @@ public class InterpretVisitor extends Visitor {
             // gerar uma copia do hasmap
             String nomeTipo = ((TYID) type).getName();
             HashMap<String, Object> internalTyid = dataTypesEnv.get(nomeTipo);
-            HashMap<String, Object> memoriaTipo = recursiveAssembly(nomeTipo, internalTyid);
-            operands.push(memoriaTipo); // quando chama pra fazer o new ele joga no operands como se fosse expressão...
+            HashMap<String, Object> assembled = new HashMap<>();
+            for (Map.Entry<String, Object> entry : internalTyid.entrySet()) {
+                assembled.put(entry.getKey(), null);
+            }
+            // HashMap<String, Object> memoriaTipo = recursiveAssembly(nomeTipo, internalTyid);
+            operands.push(assembled); // quando chama pra fazer o new ele joga no operands como se fosse expressão...
         }
     }
 
     /* FUNÇÃO AUXILIAR PARA REALIZAR RECURSÃO DURANTE A MONTAGEM DO DATA. */
-    public HashMap<String, Object> recursiveAssembly(String nomeTipo, HashMap<String,Object> variables){
-
-        HashMap<String, Object> assembled = new HashMap<>();
+    // public HashMap<String, Object> recursiveAssembly(String nomeTipo, HashMap<String,Object> variables){
+    //     HashMap<String, Object> assembled = new HashMap<>();
         
-        for (Map.Entry<String, Object> entry : variables.entrySet()) {
-            String key = entry.getKey();
-            Object value = entry.getValue();
+    //     for (Map.Entry<String, Object> entry : variables.entrySet()) {
+    //         String key = entry.getKey();
+    //         Object value = entry.getValue();
            
-            if (value instanceof TypeInt || value instanceof TypeFloat ||
-                value instanceof TypeBool || value instanceof TypeChar) {
-                assembled.put(key, null); // CASO BASE
-            }else if(value instanceof TYID){
-                HashMap<String, Object> nested = dataTypesEnv.get(((TYID)value).getName());
-                assembled.put(key, recursiveAssembly(key, nested)); // chamada recursiva
-            }
-        }
+    //         if (value instanceof TypeInt || value instanceof TypeFloat ||
+    //             value instanceof TypeBool || value instanceof TypeChar) {
+    //             assembled.put(key, null); // CASO BASE
+    //         }else if(value instanceof TYID){
+    //             HashMap<String, Object> nested = dataTypesEnv.get(((TYID)value).getName());
+    //             assembled.put(key, recursiveAssembly(key, nested)); // chamada recursiva
+    //         }
+    //     }
 
-        return assembled;
-    }
+    //     return assembled;
+    // }
 
     
     @Override
