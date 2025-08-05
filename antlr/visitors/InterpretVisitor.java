@@ -91,7 +91,6 @@ public class InterpretVisitor extends Visitor {
 
         dataTypesEnv.put(name, new HashMap<>());
         namesStack.push(name);// guardo o nome na pilha para saber depois de qual Registro são essas declarações
-        
         for(Node d: p.getDeclarations()){
             Decl x = (Decl) d;
             x.accept(this);
@@ -164,17 +163,26 @@ public class InterpretVisitor extends Visitor {
     @Override
     public void visit(TypeBool e) {
         Debug.log("Visit TypeBool");
-    // check
-       String nameVar = namesStack.pop();
-       String nameData = namesStack.peek();
-       dataTypesEnv.get(nameData).put(nameVar, e);
+        String nameVar = namesStack.pop();
+        String nameData = namesStack.peek();
+        dataTypesEnv.get(nameData).put(nameVar, e);
     }
 
     @Override
     public void visit(TypeChar e) {
-//        String nameVar = namesStack.pop();
-//        String nameData = namesStack.peek();
-//        dataTypesEnv.get(nameData).put(nameVar, e);
+        Debug.log("Visit TypeChar");
+        String nameVar = namesStack.pop();
+        String nameData = namesStack.peek();
+        dataTypesEnv.get(nameData).put(nameVar, e);
+    }
+
+    
+    @Override
+    public void visit(ArrayType e) {
+        Debug.log("Visit ArrayType");
+        String nameVar = namesStack.pop();
+        String nameData = namesStack.peek();
+        dataTypesEnv.get(nameData).put(nameVar, e);
     }
 
     @Override
@@ -429,16 +437,6 @@ public class InterpretVisitor extends Visitor {
     }
 
     @Override
-    public void visit(ArrayLValue e) {
-        // Não está sendo usada.
-    }
-
-    @Override
-    public void visit(ArrayType e) {
-
-    }
-
-    @Override
     public void visit(ArrayExpr e){
         Debug.log("Visit ArrayExpr");
         /* INSTANCIAR */
@@ -550,6 +548,7 @@ public class InterpretVisitor extends Visitor {
             if (f != null) {
                 if(e.getExps() != null){ // parametros vazios.
                     for (Expr exp : e.getExps().getExpressions()) {
+                        currentAccessMode = AccessMode.READ;
                         exp.accept(this); // empilho cada valor avaliado pela expressão na pilha de operandos
                     }
                 }
@@ -577,18 +576,19 @@ public class InterpretVisitor extends Visitor {
         Debug.log("Visit CmdFuncCall");
         
         try {
-             Def f;
+            Def f;
             if(funcs.containsKey(e.getId()))
                 f = funcs.get(e.getId());
             else if(abstractFuncs.containsKey(e.getId()))
                 f = abstractFuncs.get(e.getId());
             else
                 throw new InterpretException("Não existe essa função!");
-
             if (f != null) {
-                for (Expr exp : e.getExps().getExpressions()) {
-                    currentAccessMode = AccessMode.READ;
-                    exp.accept(this);
+                if(e.getExps() != null){ // parametros vazios.
+                    for (Expr exp : e.getExps().getExpressions()) {
+                        currentAccessMode = AccessMode.READ;
+                        exp.accept(this); // empilho cada valor avaliado pela expressão na pilha de operandos
+                    }
                 }
                 f.accept(this);
                 
@@ -717,10 +717,6 @@ public class InterpretVisitor extends Visitor {
         }
     }
 
-    @Override
-    public void visit(FieldLValue e) {
-        // Not Check | Falta implementar
-    }
 
     public void visit(IntValue e) {
         // check
@@ -905,36 +901,36 @@ public class InterpretVisitor extends Visitor {
         /*Aqui q printa a memória*/
 
 
-        System.out.println("\n-----------------------" + "CONTEXTO da " + p.getID() + "-----------------------");
-        Object[] keys = env.peek().keySet().toArray();
-        for (Object keyObj : keys) {
-            String key = (String) keyObj;
-            Object value = env.peek().get(key);
+        // System.out.println("\n-----------------------" + "CONTEXTO da " + p.getID() + "-----------------------");
+        // Object[] keys = env.peek().keySet().toArray();
+        // for (Object keyObj : keys) {
+        //     String key = (String) keyObj;
+        //     Object value = env.peek().get(key);
 
-            String valueStr;
-            if (value != null && value.getClass().isArray()) {
-                if (value instanceof int[]) {
-                    valueStr = Arrays.toString((int[]) value);
-                } else if (value instanceof float[]) {
-                    valueStr = Arrays.toString((float[]) value);
-                } else if (value instanceof double[]) {
-                    valueStr = Arrays.toString((double[]) value);
-                } else if (value instanceof char[]) {
-                    valueStr = Arrays.toString((char[]) value);
-                } else if (value instanceof boolean[]) {
-                    valueStr = Arrays.toString((boolean[]) value);
-                } else if (value instanceof Object[]) {
-                    valueStr = Arrays.deepToString((Object[]) value);
-                } else {
-                    valueStr = "Unsupported array type";
-                }
-            } else {
-                valueStr = String.valueOf(value);
-            }
+        //     String valueStr;
+        //     if (value != null && value.getClass().isArray()) {
+        //         if (value instanceof int[]) {
+        //             valueStr = Arrays.toString((int[]) value);
+        //         } else if (value instanceof float[]) {
+        //             valueStr = Arrays.toString((float[]) value);
+        //         } else if (value instanceof double[]) {
+        //             valueStr = Arrays.toString((double[]) value);
+        //         } else if (value instanceof char[]) {
+        //             valueStr = Arrays.toString((char[]) value);
+        //         } else if (value instanceof boolean[]) {
+        //             valueStr = Arrays.toString((boolean[]) value);
+        //         } else if (value instanceof Object[]) {
+        //             valueStr = Arrays.deepToString((Object[]) value);
+        //         } else {
+        //             valueStr = "Unsupported array type";
+        //         }
+        //     } else {
+        //         valueStr = String.valueOf(value);
+        //     }
 
-            System.out.println(key + " : " + valueStr);
-        }
-        System.out.println("---------------------------CONTEXTO-------------------------------------");
+        //     System.out.println(key + " : " + valueStr);
+        // }
+        // System.out.println("---------------------------CONTEXTO-------------------------------------");
 
         env.pop();
         retMode = false;
@@ -942,7 +938,6 @@ public class InterpretVisitor extends Visitor {
 
     public void visit(Fun f) {
         Debug.log("Visit Fun");
-        // check
 
         // cria um HashMap para conter o escopo local da função.
         HashMap<String, Object> localEnv = new HashMap<String, Object>();
@@ -958,36 +953,36 @@ public class InterpretVisitor extends Visitor {
         f.getCmd().accept(this); // chama para aceitar o bloco dentro da função.
 
         /*Aqui q printa a memória*/
-        System.out.println("\n-----------------------" + "CONTEXTO da " + f.getID() + "-----------------------");
-        Object[] keys = env.peek().keySet().toArray();
-        for (Object keyObj : keys) {
-            String key = (String) keyObj;
-            Object value = env.peek().get(key);
+        // System.out.println("\n-----------------------" + "CONTEXTO da " + f.getID() + "-----------------------");
+        // Object[] keys = env.peek().keySet().toArray();
+        // for (Object keyObj : keys) {
+        //     String key = (String) keyObj;
+        //     Object value = env.peek().get(key);
 
-            String valueStr;
-            if (value != null && value.getClass().isArray()) {
-                if (value instanceof int[]) {
-                    valueStr = Arrays.toString((int[]) value);
-                } else if (value instanceof float[]) {
-                    valueStr = Arrays.toString((float[]) value);
-                } else if (value instanceof double[]) {
-                    valueStr = Arrays.toString((double[]) value);
-                } else if (value instanceof char[]) {
-                    valueStr = Arrays.toString((char[]) value);
-                } else if (value instanceof boolean[]) {
-                    valueStr = Arrays.toString((boolean[]) value);
-                } else if (value instanceof Object[]) {
-                    valueStr = Arrays.deepToString((Object[]) value);
-                } else {
-                    valueStr = "Unsupported array type";
-                }
-            } else {
-                valueStr = String.valueOf(value);
-            }
+        //     String valueStr;
+        //     if (value != null && value.getClass().isArray()) {
+        //         if (value instanceof int[]) {
+        //             valueStr = Arrays.toString((int[]) value);
+        //         } else if (value instanceof float[]) {
+        //             valueStr = Arrays.toString((float[]) value);
+        //         } else if (value instanceof double[]) {
+        //             valueStr = Arrays.toString((double[]) value);
+        //         } else if (value instanceof char[]) {
+        //             valueStr = Arrays.toString((char[]) value);
+        //         } else if (value instanceof boolean[]) {
+        //             valueStr = Arrays.toString((boolean[]) value);
+        //         } else if (value instanceof Object[]) {
+        //             valueStr = Arrays.deepToString((Object[]) value);
+        //         } else {
+        //             valueStr = "Unsupported array type";
+        //         }
+        //     } else {
+        //         valueStr = String.valueOf(value);
+        //     }
 
-            System.out.println(key + " : " + valueStr);
-        }
-        System.out.println("---------------------------CONTEXTO-------------------------------------");
+        //     System.out.println(key + " : " + valueStr);
+        // }
+        // System.out.println("---------------------------CONTEXTO-------------------------------------");
 
         env.pop();
         retMode = false;

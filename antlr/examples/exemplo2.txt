@@ -1,10 +1,66 @@
-data Racional{
-    num :: Int;
-    den :: Int;
+data PersonStruct{
+    nome :: Char[];
+    age :: Int;
+}
+
+abstract data PersonClass{
+    dados :: PersonStruct;
+
+    setAge(p :: PersonClass, age :: Int){
+        p.age = age;
+    }
+
+    setNome(p :: PersonClass, nome :: Char[]){
+        p.nome = nome;
+    }
+
+    getAge(p :: PersonClass){
+        return p.age;
+    }
+
+    getNome(p :: PersonClass){
+        return p.nome;
+    }
 }
 
 main(){
-    x = new Racional;
-    x.num = 1;
-    x.den = 2;
+    person = new PersonClass;
+
+    read tamName;
+    print 'N';
+    print 'o';
+    print 'm';
+    print 'e';
+    print ':';
+    print '\n';
+    name = new Char[tamName];
+    i = 0;
+    iterate(tamName){
+        read name[i];
+        i = i + 1;
+    }
+
+    print 'I';
+    print 'd';
+    print 'a';
+    print 'd';
+    print 'e';
+    print ':';
+    print '\n';
+
+    read idade;
+
+    setNome(person, name);
+    setAge(person, idade);
+    
+    print getAge(person)[0];
+
+    i = 0;
+    nameOfPerson = getNome(person)[0];
+    print '\n';
+    iterate(tamName){
+        print nameOfPerson[i];
+        i = i + 1;
+    }
+    print '\n';
 }
