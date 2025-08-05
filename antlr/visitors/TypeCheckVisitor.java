@@ -23,6 +23,7 @@ public class TypeCheckVisitor extends Visitor {
     private STyInt tyint = STyInt.newSTyInt();
     private STyFloat tyfloat = STyFloat.newSTyFloat();
     private STyBool tybool = STyBool.newSTyBool();
+    SType tyvoid = STyVoid.newSTyVoid();
     private STyErr tyerr = STyErr.newSTyErr();
 
 
@@ -78,7 +79,7 @@ public class TypeCheckVisitor extends Visitor {
 
                 paramRetFunc = new STyFun(paramTypes, returnTypes);
                 env.set(f.getID(), new LocalEnv<SType>(f.getID(), paramRetFunc));
-            }else{
+            } else {
                 def.accept(this);//TODO: criar espaço de tipos para tipos criados pelo usuario
             }
         }
@@ -117,46 +118,53 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     /*
-    cmd --> ID ‘(’ [exps] ‘)’ [‘<’ lvalue {‘,’ lvalue} ‘>’ ] ‘;’
-*/
+        cmd --> ID ‘(’ [exps] ‘)’ [‘<’ lvalue {‘,’ lvalue} ‘>’ ] ‘;’
+    */
     @Override
     public void visit(CmdFuncCall e) {
-        System.out.println("Chamada de função...");
-        LocalEnv<SType> le = env.get(e.getId());
-        if (le != null) {
-            STyFun tf = (STyFun) le.getFuncType();
+        LocalEnv<SType> sTypeLocalEnv = env.get(e.getId());
 
-            // verificar se tem a mesma quantidade de parametros da função ao chamar
-            // observe que pego apenas os parametros
-            if (e.getExps().getExpressions().size() == tf.getParamTypes().length) {
-                int k = 0;
-                boolean r = true;
+        if (sTypeLocalEnv == null) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Chamada à função não declarada: " + e.getId());
+            stk.push(tyerr);
+            return;
+        }
 
-                // verificar se o tipo de cada argumento ao chamar uma função casa com o tipo do parametro da função
-                for (Expr x : e.getExps().getExpressions()) {
-                    x.accept(this);
-                    if (!tf.getParamTypes()[k].match(stk.pop())) {
-                        logError.add(x.getLine() + ", " + x.getCol() + ": " + (k + 1) +
-                                "º argumento incompatível com o respectivo parâmetro de " + e.getId());
-                    }
-                    k++;
-                }
+        STyFun tf = (STyFun) sTypeLocalEnv.getFuncType();
+        SType[] paramTypes = tf.getParamTypes();
+        SType[] returnTypes = tf.getReturnTypes();
 
-                // TODO: tipar o acesso ao vetor --> fn()[2]
+        List<Expr> args = (e.getExps() != null) ? e.getExps().getExpressions() : new ArrayList<>();
 
-                // se a chamada de função da certo, o tipo resultante é tipo que ela declara que ela retorna
-                // por isso jogo esse tipo para o topo da pilha
-                // stk.push(tf.getTypes()[tf.getTypes().length - 1]);//pq?
+        if (args.size() != paramTypes.length) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Chamada à função " + e.getId() +
+                    " incompatível com número de argumentos.");
+            stk.push(tyerr);
+            return;
+        }
 
-                stk.push(tf.getReturnTypes()[0]);//pq?
+        boolean allArgsOk = true;// para verificar todos os argumentos e não parar no primeiro
+        for (int i = 0; i < args.size(); i++) {
+            Expr arg = args.get(i);
+            arg.accept(this);
+            SType argType = stk.pop();
+
+            if (!paramTypes[i].match(argType)) {
+                logError.add(arg.getLine() + ", " + arg.getCol() + ": " + (i + 1) +
+                        "º argumento incompatível com o parâmetro correspondente da função " + e.getId() +
+                        " (esperado: " + paramTypes[i] + ", encontrado: " + argType + ")");
+                allArgsOk = false;
+            }
+        }
+
+        if (allArgsOk) {
+            // Se todos os argumentos estiverem corretos, empilha o tipo de retorno
+            if (returnTypes.length > 0) {
+                stk.push(returnTypes[0]); // TODO: empilhar múltiplos retornos se suportado
             } else {
-                logError.add(e.getLine() + ", " + e.getCol() +
-                        ": Chamada de função a função " + e.getId() + " incompatível com argumentos. " +
-                        "  Função espera "+tf.getParamTypes().length + " argumentos mas foi chamada com "+e.getExps().getExpressions().size());
-                stk.push(tyerr);
+                stk.push(tyvoid); // ou tyunit, dependendo da linguagem
             }
         } else {
-            logError.add(e.getLine() + ", " + e.getCol() + ": Chamada a função não declarada: " + e.getId());
             stk.push(tyerr);
         }
     }
@@ -166,13 +174,14 @@ public class TypeCheckVisitor extends Visitor {
     */
     @Override
     public void visit(CallFunctionAccess e) {
-        LocalEnv<SType> le = env.get(e.getFunctionName());
-        if (le != null) {
-            STyFun tf = (STyFun) le.getFuncType();
+        LocalEnv<SType> sTypeLocalEnv = env.get(e.getFunctionName());//pega o ambiente local da função
+        if (sTypeLocalEnv != null) {
+            STyFun tf = (STyFun) sTypeLocalEnv.getFuncType();
 
             // verificar se tem a mesma quantidade de parametros da função ao chamar
             // observe que pego apenas os parametros
-            if (e.getExps().getExpressions().size() == tf.getParamTypes().length) {
+
+            if (e.getExps() != null && e.getExps().getExpressions().size() == tf.getParamTypes().length) {
                 int k = 0;
                 boolean r = true;
 
@@ -192,16 +201,19 @@ public class TypeCheckVisitor extends Visitor {
                 // por isso jogo esse tipo para o topo da pilha
                 // stk.push(tf.getTypes()[tf.getTypes().length - 1]);//pq?
 
-                stk.push(tf.getReturnTypes()[0]);//pq?
+                if (tf.getReturnTypes().length > 0) {
+                    stk.push(tf.getReturnTypes()[0]);//TODO: tratar retorno de varios valores
+                }
+
             } else {
-                logError.add(e.getLine() + ", " + e.getCol() + ": Chamada de função a função " + e.getFunctionName() + " incompatível com argumentos. ");
+                logError.add(e.getLine() + ", " + e.getCol() +
+                        ": Chamada a função " + e.getFunctionName() + " incompatível com argumentos. ");
                 stk.push(tyerr);
             }
         } else {
             logError.add(e.getLine() + ", " + e.getCol() + ": Chamada a função não declarada: " + e.getFunctionName());
             stk.push(tyerr);
         }
-
     }
 
     @Override
@@ -452,7 +464,7 @@ public class TypeCheckVisitor extends Visitor {
                 if (!tyLvalue.match(tyExpression)) {
                     logError.add(p.getLine() + ", " + p.getCol() +
                             ": Atribuição ilegal para a variável " + nameVar +
-                            ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString()+".");
+                            ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
                 }
             }
         }
@@ -482,16 +494,16 @@ public class TypeCheckVisitor extends Visitor {
      */
     public void visit(CmdIterate e) {
 
-        if(e.getCondition() instanceof ExpItCond expItCond){ // exp
+        if (e.getCondition() instanceof ExpItCond expItCond) { // exp
             expItCond.getExpression().accept(this);
             SType tyExpression = stk.pop();
-            if(tyExpression.match(tyint)){//TODO: pode ser int ou tipo arranjo (vetor)
+            if (tyExpression.match(tyint)) {//TODO: pode ser int ou tipo arranjo (vetor)
                 e.getBody().accept(this);
-            }else{
+            } else {
                 logError.add(e.getLine() + ", " + e.getCol() + ": Expressão de teste do Iterate deve ter tipo Int");
             }
 
-        }else if(e.getCondition() instanceof IdItCond idItCond){// ID ‘:’ exp iterate(v:e){
+        } else if (e.getCondition() instanceof IdItCond idItCond) {// ID ‘:’ exp iterate(v:e){
             /*
                 Na segunda forma, quando e tem tipo Int, verificamos que v não está no contexto ou está com tipo Int.
                 Caso e seja um vetor, a regra é similar, porém v deve ter o mesmo tipo dos elementos do vetor.
@@ -499,13 +511,13 @@ public class TypeCheckVisitor extends Visitor {
 
             idItCond.getExpression().accept(this);
             SType tyExpression = stk.pop();// é o exp do iterate
-            if(tyExpression.match(tyint)){
+            if (tyExpression.match(tyint)) {
                 String v = idItCond.getId();
                 SType typeV = temp.get(v);
                 if (typeV == null) {// ou seja, o v ainda não esta no contexto
                     temp.set(v, tyint);// seto o v com o tipo int
-                }else if (!typeV.match(tyint)){
-                    logError.add(e.getLine() + ", " + e.getCol() + ": O tipo de "+v+" deveria ser Int mas foi encontrado "+typeV);
+                } else if (!typeV.match(tyint)) {
+                    logError.add(e.getLine() + ", " + e.getCol() + ": O tipo de " + v + " deveria ser Int mas foi encontrado " + typeV);
                 }
                 e.getBody().accept(this);
             }
