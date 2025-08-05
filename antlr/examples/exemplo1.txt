@@ -1,52 +1,29 @@
-readArr( v :: Int[], sz :: Int){
-    i = 0;
-    iterate(sz){
-        read x;
-        v[i] = x;
-        i = i + 1;
-    }
-}
-
-printArr(v :: Int [],  sz :: Int){
-    print '{';
-    if(0 < sz){
-        print v[0];
-        i = 1;
-        iterate(sz - 1){
-            print ',';
-            print v[i];
-            i = i + 1;
+main(){
+    x = new Int[][][5];
+    iterate(i : 5){
+        x[i] = new Int[][5];
+        iterate(j : 5){
+            x[i][j] = new Int[5];
         }
     }
-    print '}';
-    print '\n';
-}
 
-main() {
-    x = 0;
-    v = new Int[5];
-    readArr(v,5);
-    printArr(v,5);
-    sort(v,5);
-    printArr(v,5);
-}
-
-sort(v :: Int[], sz :: Int){
-     i = 0;
-     j = 0;
-     k = 0;
-     aux = 0;
-     iterate(sz){
-        j = i + 1;
-        k = i;
-        iterate(sz - j){
-            if(v[j] < v[k])
-               k = j;
-            j = j + 1;
+    iterate(l : 5){
+        iterate(m : 5){
+            iterate(n : 5){
+                x[l][m][n] = l + m + n;
+            }
         }
-        aux = v[i];
-        v[i] = v[k];
-        v[k] = aux;
-        i = i + 1;
-     }
+    }
+
+    iterate(l : 5){
+        iterate(m : 5){
+            iterate(n : 5){
+                print x[l][m][n];
+                print ' ';
+            }
+            print '\n';
+        }
+        print '\n';
+        print '\n';
+    }
 }
