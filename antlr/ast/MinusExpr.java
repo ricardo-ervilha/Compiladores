@@ -21,6 +21,10 @@ public class MinusExpr extends Expr{
         super(line,col);
         this.exp = exp;
     }
+
+    public Expr getExpr(){
+        return this.exp;
+    }
     
     public void accept(Visitor v){ v.visit(this);}
 }

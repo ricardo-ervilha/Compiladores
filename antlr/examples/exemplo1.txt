@@ -1,29 +1,26 @@
+guessRoot(x :: Float, a :: Float): Float{
+    if(x < a*a){
+       return guessRoot(x,a/2)[0];
+    }
+    return a;
+}
+
+sqrt(x :: Float) : Float {
+    g = guessRoot(x, x/2.0)[0];
+    return sqrtrec(x,g)[0];
+}
+
+sqrtrec(x :: Float, x0 :: Float) : Float {
+    x1 = (x0 + x/x0)/2;
+    diff = x1*x1 - x;
+    if(diff < 0.0){diff = (0.0-1.01) * diff;}
+    if(diff < 0.000001){
+        return x1;
+    }
+    return sqrtrec(x, x1)[0];
+}
+
 main(){
-    x = new Int[][][5];
-    iterate(i : 5){
-        x[i] = new Int[][5];
-        iterate(j : 5){
-            x[i][j] = new Int[5];
-        }
-    }
-
-    iterate(l : 5){
-        iterate(m : 5){
-            iterate(n : 5){
-                x[l][m][n] = l + m + n;
-            }
-        }
-    }
-
-    iterate(l : 5){
-        iterate(m : 5){
-            iterate(n : 5){
-                print x[l][m][n];
-                print ' ';
-            }
-            print '\n';
-        }
-        print '\n';
-        print '\n';
-    }
+    print sqrt(3.0)[0];
+    print '\n';
 }

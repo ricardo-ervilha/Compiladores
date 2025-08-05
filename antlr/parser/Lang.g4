@@ -226,8 +226,8 @@ exps returns[Exps ast]
 	;
 
 //REGRAS LÉXICAS LITERAIS
-INT   : [+-]? [0-9]+ ;
-FLOAT : [+-]? [0-9]* '.' [0-9]+ ;
+INT   : [0-9]+ ;
+FLOAT : [0-9]* '.' [0-9]+ ;
 CHAR:
 	'\'' (
 		~['\\] // qualquer caractere, exceto aspas simples e barra invertida

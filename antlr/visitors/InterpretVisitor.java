@@ -221,18 +221,17 @@ public class InterpretVisitor extends Visitor {
             e.getLeft().accept(this);
             currentAccessMode = AccessMode.READ;
             e.getRight().accept(this);
-            if(e.getLeft() instanceof FloatValue || e.getRight() instanceof FloatValue){
-                // Caso em que ao menos um dos dois é Float => Retorno da operação é Float.
-                Number esq, dir;
-                dir = (Number) operands.pop();
-                esq = (Number) operands.pop();
-                operands.push(esq.floatValue() - dir.floatValue());
+
+            Object dir = operands.pop();
+            Object esq = operands.pop();
+
+            Number esqNum = (Number) esq;
+            Number dirNum = (Number) dir;
+            
+            if(esq instanceof Float || dir instanceof Float){
+                operands.push(esqNum.floatValue() - dirNum.floatValue());
             }else{
-                // Caso em que são os dois Integer.
-                Number esq, dir;
-                dir = (Number) operands.pop();
-                esq = (Number) operands.pop();
-                operands.push(esq.intValue() - dir.intValue());
+                operands.push(esqNum.intValue() - dirNum.intValue());
             }
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
@@ -383,7 +382,13 @@ public class InterpretVisitor extends Visitor {
 
     @Override
     public void visit(MinusExpr e) {
-        // NOT check | Falta completar o código desse.
+        e.getExpr().accept(this);
+        int val = (int) operands.pop();
+        try {
+            operands.push(-val);
+        } catch (Exception x) {
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+        }
     }
 
     public void visit(NotExpr e) {
@@ -862,7 +867,7 @@ public class InterpretVisitor extends Visitor {
         f.getCmd().accept(this); // chama para aceitar o bloco dentro da função.
 
         /*Aqui q printa a memória*/
-        System.out.println("\n---------------------------CONTEXTO-------------------------------------");
+        System.out.println("\n-----------------------" + "CONTEXTO da " + f.getID() + "-----------------------");
         Object[] keys = env.peek().keySet().toArray();
         for (Object keyObj : keys) {
             String key = (String) keyObj;
