@@ -54,7 +54,6 @@ public abstract class Visitor {
 
     // --- Expression helpers ---
     public abstract void visit(Exps e);
-    public abstract void visit(ArrayLValue e);
     public abstract void visit(ArrayType e);
     public abstract void visit(CallFunctionAccess e);
     public abstract void visit(VarExpr e);
@@ -69,7 +68,6 @@ public abstract class Visitor {
 
     public abstract void visit(CharValue e);
     public abstract void visit(FalseValue e);
-    public abstract void visit(FieldLValue e);
     public abstract void visit(FloatValue e);
     public abstract void visit(IntValue e);
     public abstract void visit(LValueExp e);
