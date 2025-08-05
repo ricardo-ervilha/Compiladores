@@ -437,11 +437,6 @@ public class InterpretVisitor extends Visitor {
     }
 
     @Override
-    public void visit(ArrayLValue e) {
-        // Não está sendo usada.
-    }
-
-    @Override
     public void visit(ArrayExpr e){
         Debug.log("Visit ArrayExpr");
         /* INSTANCIAR */
@@ -722,10 +717,6 @@ public class InterpretVisitor extends Visitor {
         }
     }
 
-    @Override
-    public void visit(FieldLValue e) {
-        // Not Check | Falta implementar
-    }
 
     public void visit(IntValue e) {
         // check
