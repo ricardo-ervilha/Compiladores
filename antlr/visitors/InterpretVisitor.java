@@ -551,13 +551,12 @@ public class InterpretVisitor extends Visitor {
                     exp.accept(this);
                 }
                 f.accept(this);
-
+                
                 List<LValue> lvalues = e.getLvalues();
-                if (lvalues != null) {
-
+                if (!lvalues.isEmpty()) {
                     @SuppressWarnings("unchecked")
                     List<Object> retObjs = (List<Object>) operands.pop();
-
+                    
                     for (int i = 0; i < retObjs.size(); i++) {
                         currentAccessMode = AccessMode.WRITE; // escreverá valor na variavel
                         operands.push(retObjs.get(i));
@@ -575,7 +574,6 @@ public class InterpretVisitor extends Visitor {
         } catch (Exception x) {
             throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
         }
-        
     }
         
     @Override
@@ -583,7 +581,6 @@ public class InterpretVisitor extends Visitor {
         /* ATRIBUIÇÃO SIMPLES */
         Debug.log("Visit ID");
         String varName = e.getName();
-
         switch (currentAccessMode) {
             case READ:
                 Object val = env.peek().get(varName);
@@ -594,21 +591,6 @@ public class InterpretVisitor extends Visitor {
                 env.peek().put(varName, operands.pop());
                 break;
         }
-    }
-
-    /* Resolve toda a cascata de valores que pode ter dentro do LvalueID parcialmente */
-    public Object resolveLvalue(LValue n){
-        System.out.println("Recursão LValue");
-        if(n instanceof IdLValue){
-            @SuppressWarnings("unchecked")
-            HashMap<String, Object> result = (HashMap<String, Object>) resolveLvalue(((IdLValue) n).getLvalue()); // quem chamou ganha o dicionario
-            return result.get(((IdLValue) n).getId()); // acesso nessa chamada mais um nivel do dicionario e retorno pra quem chamou
-        }else if(n instanceof ID){
-            currentAccessMode = AccessMode.READ;
-            ((ID) n).accept(this); // coloca o dicionario da variavel no operand
-            return operands.pop(); // retorno ele pra quem chamou ("CASO BASE")
-        }
-        throw new RuntimeException("Tipo de Lvalue desconhecido: " + n.getClass().getName());
     }
     
     @Override
