@@ -434,6 +434,10 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
+    /**
+     *  lvalue --> lvalue ‘[’ exp ‘]’
+     * @param e
+     */
     @Override
     public void visit(LValueExp e) {
 
@@ -525,6 +529,16 @@ public class TypeCheckVisitor extends Visitor {
             }
         } else if (p.getLvalue() instanceof IdLValue) {
             p.getLvalue().accept(this);
+            p.getExpression().accept(this);
+
+            SType tyExpression = stk.pop();
+            SType tyLvalue = stk.pop();
+
+            if (!tyLvalue.match(tyExpression)) {
+                logError.add(p.getLine() + ", " + p.getCol() +
+                        ": Atribuição ilegal para o atributo " + ((IdLValue) p.getLvalue()).getId() +
+                        ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
+            }
         }
     }
 
@@ -593,7 +607,7 @@ public class TypeCheckVisitor extends Visitor {
 
         if (!(t.match(tyint) || t.match(tyfloat) || t.match(tybool) || t.match(tychar))) {
             logError.add(e.getLine() + ", " + e.getCol() +
-                    ": Tipo " + t + " não pode ser impresso com 'print'.");
+                    ": Tipo " + t + " não pode ser impresso com 'print'. Comando print aceita apenas: Int, Char, Bool, Float.");
             stk.push(tyerr);
         }
     }
