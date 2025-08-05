@@ -13,10 +13,7 @@ package visitors;
 import ast.*;
 import util.*;
 
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
-import java.util.Stack;
+import java.util.*;
 
 public class TypeCheckVisitor extends Visitor {
 
@@ -39,6 +36,13 @@ public class TypeCheckVisitor extends Visitor {
     private Stack<SType> stk;// usado para calcular os tipos de cada expressão
     private boolean retChk;// variavel para poder verificar se houve retorno de função
 
+
+    /**
+     *  Chave (String): nome do Registro --> <nome campo, tipo do campo>
+     *  Valor (SType): nome do campo --> tipo do campo
+     */
+    private HashMap<String, LinkedHashMap<String, SType>> typeStructs = new HashMap<>();
+
     public TypeCheckVisitor() {
         stk = new Stack<SType>();
         env = new TyEnv<LocalEnv<SType>>();
@@ -56,8 +60,8 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     @Override
-    public void visit(Program p) {
-        for (Def def : p.getDefinitions()) {
+    public void visit(Program program) {
+        for (Def def : program.getDefinitions()) {
             if (def instanceof Fun f) {
                 STyFun paramRetFunc;
 
@@ -87,7 +91,7 @@ public class TypeCheckVisitor extends Visitor {
         }
 
 
-        for (Def def : p.getDefinitions()) {
+        for (Def def : program.getDefinitions()) {
             if (def instanceof Fun f) {
                 f.accept(this);
             }
@@ -218,9 +222,27 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
+    /**
+     * data TYID ‘{’ {decl} ‘}’
+     * @param p
+     */
     @Override
     public void visit(DataDecl p) {
+        String typeName = p.getTypeId(); // nome do tipo, e.g "Racional"
+        LinkedHashMap<String, SType> fields = new LinkedHashMap<>();
 
+        for (Node d : p.getDeclarations()) {
+            Decl decl = (Decl) d;
+            decl.getType().accept(this); // empilha tipo
+            SType fieldType = stk.pop();
+            fields.put(decl.getId(), fieldType);
+        }
+
+        if (typeStructs.containsKey(typeName)) {
+            logError.add(p.getLine() + ", " + p.getCol() + ": Tipo " + typeName + " já foi declarado.");
+        } else {
+            typeStructs.put(typeName, fields);
+        }
     }
 
     @Override
@@ -417,25 +439,27 @@ public class TypeCheckVisitor extends Visitor {
 
     }
 
+    /**
+     *
+     *  Não entra array aqui, array entra no ArrayExpr
+     *  exp --> new type
+     *  type --> Int | Char | Bool | Float | TYID
+     * @param e
+     */
     @Override
     public void visit(VarExpr e) {
-//        SType t = temp.get(e.getName());
-//        if (t != null) {
-//            for (Expr x : e.getIdx()) {
-//                if (t instanceof STyArr) {
-//                    t = ((STyArr) t).getArg();
-//                } else {
-//                    t = tyerr;
-//                }
-//            }
-//            if (t == tyerr) {
-//                logError.add(e.getLine() + ", " + e.getCol() + ": Atribuição de tipos incompatíveis " + e.getName());
-//            }
-//            stk.push(t);
-//        } else {
-//            logError.add(e.getLine() + ", " + e.getCol() + ": Variável não declarada " + e.getName());
-//            stk.push(tyerr);
-//        }
+        e.getType().accept(this);
+
+        SType type = stk.pop();
+        if(type instanceof STyData){//Tratamento de tipos criados pelo usuario
+            TYID tyid = (TYID) e.getType();
+            if (!typeStructs.containsKey(tyid.getName())) {
+                logError.add(e.getLine() + ", " + e.getCol() + ": Tipo " + tyid.getName() + " não declarado.");
+                stk.push(tyerr);
+            } else {
+                stk.push(new STyData(tyid.getName()));
+            }
+        }
     }
 
     @Override
@@ -475,8 +499,8 @@ public class TypeCheckVisitor extends Visitor {
 
     /*
         cmd --> lvalue ‘=’ exp ‘;’
-        lvalue --> ID | lvalue ‘[’ exp ‘]’ | lvalue ‘.’ ID
-        ou seja, posso fazer atribuição em variavel, vetor ou atributo de um registro
+        lvalue --> ID  | lvalue ‘.’ ID
+        ou seja, posso fazer atribuição em variavel ou atributo de um registro
     */
     @Override
     public void visit(CmdAssign p) {
@@ -499,6 +523,8 @@ public class TypeCheckVisitor extends Visitor {
                             ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
                 }
             }
+        } else if (p.getLvalue() instanceof IdLValue) {
+            p.getLvalue().accept(this);
         }
     }
 
@@ -597,6 +623,16 @@ public class TypeCheckVisitor extends Visitor {
 
     }
 
+    /**
+     * Nome do tipo definido pelo usuario
+     * btype →  TYID
+     * @param e
+     */
+    @Override
+    public void visit(TYID e) {
+        stk.push(new STyData(e.getName()));
+    }
+
     @Override
     public void visit(ArrayType t) {
 //        t.getTyArg().accept(this);
@@ -633,11 +669,6 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     @Override
-    public void visit(TYID e) {
-
-    }
-
-    @Override
     public void visit(FieldLValue e) {
 
     }
@@ -647,10 +678,44 @@ public class TypeCheckVisitor extends Visitor {
 
     }
 
+    /**
+     *  lvalue --> lvalue ‘.’ ID
+     *  @param e
+     */
     @Override
-    public void visit(IdLValue e) {
-        System.out.println("chegou no IdLValue");
+    public void visit(IdLValue e){
+        e.getLvalue().accept(this);
+        SType baseType = stk.pop();
 
+        // Primeiro certifico que é um tipo Data
+        if (!(baseType instanceof STyData userType)) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Tentativa de acesso a campo em tipo que não é Data: ");
+            stk.push(tyerr);
+            return;
+        }
+
+        String atributo = e.getId();
+        String dataName = userType.getName();
+
+        // Verifico que o ambiente de tipos Data contem o Data com o nome dataName
+        if (!typeStructs.containsKey(dataName)) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Tipo de registro não definido: " + dataName);
+            stk.push(tyerr);
+            return;
+        }
+
+        // Se tem o dataName, pego o mapeamento de nomes e tipos
+        Map<String, SType> atributos = typeStructs.get(dataName);
+
+        // E verifico se tem o atributo que estou acessando
+        if (!atributos.containsKey(atributo)) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Campo " + atributo + " não existe no tipo " + dataName);
+            stk.push(tyerr);
+            return;
+        }
+
+        // Coloco na pilha o tipo do campo acessado
+        stk.push(atributos.get(atributo));
     }
 
     @Override

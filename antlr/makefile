@@ -30,4 +30,5 @@ clean:
 	find . -type f -name "*.class" -delete
 	find . -type f -name "*~" -delete
 	rm -f parser/*Listener.java parser/LangLexer* parser/LangParser.java parser/Lang.interp parser/Lang.tokens
+	rm -rf out
 

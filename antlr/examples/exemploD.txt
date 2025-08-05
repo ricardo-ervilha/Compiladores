@@ -1,7 +1,11 @@
+data Racional{
+    num :: Int;
+    den :: Int;
+}
+
 main(){
-    if (2==2){
-    print '2';
-    }else{
-        print '3';
-    }
+    x = new Racional;
+    x.num = 1;
+    x.den = 2;
+    x.a = 1000;
 }
