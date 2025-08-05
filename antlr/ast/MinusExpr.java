@@ -15,12 +15,16 @@ package ast;
 import visitors.Visitor;
 
 public class MinusExpr extends Expr{
-    private Expr exp;
+    private Expr expr;
     
-    public MinusExpr(int line, int col, Expr exp){
+    public MinusExpr(int line, int col, Expr expr){
         super(line,col);
-        this.exp = exp;
+        this.expr = expr;
     }
     
     public void accept(Visitor v){ v.visit(this);}
+
+    public Expr getExpr() {
+        return expr;
+    }
 }
