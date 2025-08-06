@@ -6,11 +6,14 @@ genparser: parser/Lang.g4
 	java -jar antlr-4.8-complete.jar ./parser/Lang.g4 -no-listener
 
 compile: genparser src/Teste.java src/Main.java util/Debug.java
-	javac -cp .:antlr-4.8-complete.jar:$(JUNIT_CP) \
-      src/Teste.java src/Main.java util/Debug.java
+	javac -cp .:antlr-4.8-complete.jar:$(JUNIT_CP)::ST-4.3.1.jat \
+      src/Teste.java src/Main.java util/Debug.java src/MainCPP.java
 
 run: compile
 	java -cp .:antlr-4.8-complete.jar src/Teste examples/$(file) $(args)
+
+run_s2s: compile
+	java -cp .:antlr-4.8-complete.jar:ST-4.3.1.jar src/MainCPP examples/$(file) $(args)
 
 run_main_syn: compile
 	java -cp .:antlr-4.8-complete.jar src/Main -syn examples/$(file)
