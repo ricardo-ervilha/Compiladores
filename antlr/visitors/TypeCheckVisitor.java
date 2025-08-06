@@ -101,12 +101,12 @@ public class TypeCheckVisitor extends Visitor {
                 LinkedHashMap<String, SType> atributosAbs = new LinkedHashMap<>();// atributos do tipo Abstrato
                 LinkedHashMap<String, STyFun> funcsAbs = new LinkedHashMap<>(); // Funções do tipo abstrato, juntamente com argumentos/retorno
 
-                for (Node declFun: abstractDataDecl.getDeclFuns()){// pega declarações ( idade::Int ) e funções
-                    if (declFun instanceof Decl decl){
+                for (Node declFun : abstractDataDecl.getDeclFuns()) {// pega declarações ( idade::Int ) e funções
+                    if (declFun instanceof Decl decl) {
                         decl.getType().accept(this);
                         atributosAbs.put(decl.getId(), stk.pop());
 
-                    }else if(declFun instanceof FunAbstractData funAbstractData){
+                    } else if (declFun instanceof FunAbstractData funAbstractData) {
                         // pego os parametros da função
                         List<Param> params = (funAbstractData.getParams() != null)
                                 ? funAbstractData.getParams().getParamList()
@@ -143,7 +143,7 @@ public class TypeCheckVisitor extends Visitor {
 
                     abstractTypes.add(typeNameAbs); // salvo para saber os tipos que são ABS
                 }
-            } else if (def instanceof DataDecl dataDecl){
+            } else if (def instanceof DataDecl dataDecl) {
                 dataDecl.accept(this);
             }
         }
@@ -326,9 +326,46 @@ public class TypeCheckVisitor extends Visitor {
 
     }
 
+    /**
+     * exp --> 'new' type ('[' e = exp ']')
+     * type --> type '[' ']' | btype
+     * btype --> Int | Char | Bool | Float | TYID
+     * TODO: não esta chegando aqui com os array vazio, ja chega com o 3
+     *
+     * @param e
+     */
     @Override
     public void visit(ArrayExpr e) {
+        // Verifica se o tamanho e do tipo Int
+        e.getExp().accept(this);
+        SType sizeType = stk.pop();
 
+        if (!sizeType.match(tyint)) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Tamanho do array deve ser do tipo Int.");
+            stk.push(tyerr);
+            return;
+        }
+
+        // chama os visit nos array interno de forma recursiva
+        e.getType().accept(this);
+        SType typeDeclared = stk.pop();
+
+        // pega o tipo base
+        SType base = typeDeclared;
+        while (base instanceof STyArr arr) {
+            base = arr.getElemType();
+        }
+
+        // valida se o tipo base é Int
+        if (!base.match(tyint)) {
+            logError.add(e.getLine() + ", " + e.getCol() +
+                    ": Só é permitido criar arrays de Int mas foi encontrado: " + base.toString());
+            stk.push(tyerr);
+            return;
+        }
+
+        // empilha o novo tipo array
+        stk.push(new STyArr(typeDeclared));
     }
 
     @Override
@@ -503,6 +540,7 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     /**
+     * Acesso a Arrays
      * lvalue --> lvalue ‘[’ exp ‘]’
      *
      * @param e
@@ -574,7 +612,7 @@ public class TypeCheckVisitor extends Visitor {
 
     /*
         cmd --> lvalue ‘=’ exp ‘;’
-        lvalue --> ID  | lvalue ‘.’ ID
+        lvalue --> ID | lvalue '[' exp ']' | lvalue '.' ID | TYID ID;
         ou seja, posso fazer atribuição em variavel ou atributo de um registro
     */
     @Override
@@ -705,7 +743,14 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(TypeChar e) {
+//        stk.push(tychar);TODO: descomentar e testar
+    }
 
+    @Override
+    public void visit(ArrayType t) {
+        t.getType().accept(this); // empilha o tipo interno, vai percorrendo recursivamente ate chegar no tipo base
+        SType innerType = stk.pop();
+        stk.push(new STyArr(innerType));
     }
 
     /**
@@ -717,12 +762,6 @@ public class TypeCheckVisitor extends Visitor {
     @Override
     public void visit(TYID e) {
         stk.push(new STyData(e.getName()));
-    }
-
-    @Override
-    public void visit(ArrayType t) {
-//        t.getTyArg().accept(this);
-//        stk.push(new STyArr(stk.pop()));
     }
 
     /*
@@ -788,7 +827,7 @@ public class TypeCheckVisitor extends Visitor {
             String nomeFuncAtual = temp.getFuncID();
             LinkedHashMap<String, STyFun> funcsData = typeStructs.get(typeName).getFuncsData();
             // verifico se estou na função que pode acessar o atributo do tipo abstrato
-            if(!funcsData.containsKey(nomeFuncAtual)){
+            if (!funcsData.containsKey(nomeFuncAtual)) {
                 logError.add(e.getLine() + ", " + e.getCol() +
                         ": Acesso ilegal ao campo " + atributo + " do tipo abstrato " + typeName +
                         " fora do escopo do tipo.");

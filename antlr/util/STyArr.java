@@ -13,22 +13,25 @@
 package util;
 
 public class STyArr extends SType {
-     
-     private SType a;
-     
-     public STyArr(SType t){
-         a = t;
-     }
-     
-     public SType getArg(){return a;}
-          
-     public boolean match(SType v){
-          return (v instanceof STyErr) || (v instanceof STyArr) && (a.match( ((STyArr)v).getArg() ) );
-     }
-     
-     public String toString(){
-         return a.toString() + "[]";
-     }
-     
 
+     private final SType elemType;
+
+     public STyArr(SType elemType) {
+          this.elemType = elemType;
+     }
+
+     public SType getElemType() {
+          return elemType;
+     }
+
+     @Override
+     public boolean match(SType v) {
+          return v instanceof STyErr ||
+                  (v instanceof STyArr arr && elemType.match(arr.getElemType()));
+     }
+
+     @Override
+     public String toString() {
+          return elemType.toString() + "[]";
+     }
 }
