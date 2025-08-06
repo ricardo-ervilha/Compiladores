@@ -1,8 +1,8 @@
 group java;
 
 program(funcs) ::= <<
-#include <iostream>
-#include <tuple>
+#include \<iostream>
+#include \<tuple>
 
 using namespace std;
 
@@ -14,7 +14,7 @@ int main(int argc, char* argv[]) {
 >>
 
 func(types, name, params, decl, stmt) ::= <<
-<type; separator", "> <name>(<params; separator=", ">) {
+<type; separator=", "> <name>(<params; separator=", ">) {
     <if(decl)><decl; separator=";\n">;<endif>
     <stmt>
 }
@@ -25,7 +25,8 @@ param(type, name) ::= "<type> <name>"
 array_type(type) ::= "<type>[]"
 int_type() ::= "int"
 float_type() ::= "float"
-boolean_type() ::= "boolean"
+bool_type() ::= "bool"
+char_type() ::= "char"
 
 print(expr) ::= "System.out.println(<expr>);"
 return(expr) ::= "return <expr>;"

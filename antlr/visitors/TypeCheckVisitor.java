@@ -45,6 +45,10 @@ public class TypeCheckVisitor extends Visitor {
         logError = new ArrayList<String>();
     }
 
+    public TyEnv<LocalEnv<SType>> getEnv(){
+        return this.env;
+    }
+
     public int getNumErrors() {
         return logError.size();
     }
@@ -617,11 +621,6 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     @Override
-    public void visit(ArrayLValue e) {
-
-    }
-
-    @Override
     public void visit(ID e) {
         SType t = temp.get(e.getName());
         if (t != null) {
@@ -634,11 +633,6 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(TYID e) {
-
-    }
-
-    @Override
-    public void visit(FieldLValue e) {
 
     }
 

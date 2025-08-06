@@ -1,3 +1,7 @@
+fun(a :: Int, b :: Float){
+    
+}
+
 main(){
     a = 1;
     print a;
