@@ -39,14 +39,12 @@ public class TypeCheckVisitor extends Visitor {
 
 
     /**
-     * TODO: mudar aqui para fazer um mapeamento nome do Registro --> StyData
-     *  StyData vai ter os campos com os tipos e as funções, também com os argumentos --> tipo e retorno --> tipo
-     * Chave (String): nome do Registro --> <nome campo, tipo do campo>
-     * Valor (SType): nome do campo --> tipo do campo
+     * Chave (String): nome do Registro --> <STyData>
+     * Valor (STyData): tem nome do tipo, atributos e funcoes do tipo abstrato
      */
     private HashMap<String, STyData> typeStructs = new HashMap<>();
 
-    private Set<String> abstractTypes = new HashSet<>();
+    private Set<String> abstractTypes = new HashSet<>();//útil para fazer verificação de acesso apenas se for em um tipo ABS
 
     public TypeCheckVisitor() {
         stk = new Stack<SType>();
@@ -132,7 +130,6 @@ public class TypeCheckVisitor extends Visitor {
 
                         STyFun paramRetFunc = new STyFun(paramTypes, returnTypes);
                         // salvo no env, o nome da função e os tipos dos parametros/retornos
-                        //TODO: acho que seria indicado salvar as funções relacionados a um tipo em alguma estrutura
                         env.set(funAbstractData.getID(), new LocalEnv<SType>(funAbstractData.getID(), paramRetFunc));
                         funcsAbs.put(funAbstractData.getID(), paramRetFunc);
                     }
@@ -533,7 +530,9 @@ public class TypeCheckVisitor extends Visitor {
                 logError.add(e.getLine() + ", " + e.getCol() + ": Tipo " + tyid.getName() + " não declarado.");
                 stk.push(tyerr);
             } else {
+                //TODO: talvez possa trocar para typeStructs.get(e.getName()), já que os tipos já estao na tabela typeStructs
                 stk.push(new STyData(tyid.getName())); //vai ser usado no CmdAssign
+//                stk.push(typeStructs.get(tyid.getName())); //vai ser usado no CmdAssign
             }
         }
     }
