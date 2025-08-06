@@ -120,7 +120,8 @@ params
 // type: type '['']' | btype; type: btype typeLinha;
 type
 	returns[Type ast]:
-	t1=type '[' ']' {$ast = new ArrayType($t1.ast.getLine(), $t1.ast.getCol());}
+//	t1=type '[' ']' {$ast = new ArrayType($t1.ast.getLine(), $t1.ast.getCol());}
+    t1=type '[' ']' {$ast = new ArrayType($t1.ast.getLine(), $t1.ast.getCol(), $t1.ast);}
 	| b=btype {$ast = $b.ast;}
 	;
 

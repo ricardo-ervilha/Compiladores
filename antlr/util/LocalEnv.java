@@ -15,19 +15,19 @@ package util;
 
 public class LocalEnv<A> extends TyEnv<A> {
     private String id; 
-    private SType t;
+    private SType type;//tipo da função
     
-    public LocalEnv(String id, SType t){
-       this.t = t;
+    public LocalEnv(String id, SType type){
+       this.type = type;
        this.id = id;
     }
     
     public String getFuncID(){ return id;}
     
-    public SType getFuncType(){ return t;}
+    public SType getFuncType(){ return type;}
 
      public String toString(){
-         String s = "--------------- (" + id + "," + t.toString() + ") ---------------\n";
+         String s = "--------------- (" + id + "," + type.toString() + ") ---------------\n";
          s += super.toString();
          return s;
      }

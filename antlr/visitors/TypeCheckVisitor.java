@@ -34,7 +34,7 @@ public class TypeCheckVisitor extends Visitor {
 
     private LocalEnv<SType> temp;// usado para construir o ambiente local de cada função
 
-    private Stack<SType> stk;// usado para calcular os tipos de cada expressão
+    private Stack<SType> stk;// pilha de tipos, usado para calcular os tipos de cada expressão
     private boolean retChk;// variavel para poder verificar se houve retorno de função
 
 
@@ -164,7 +164,7 @@ public class TypeCheckVisitor extends Visitor {
     @Override
     public void visit(Fun f) {
         retChk = false;//
-        temp = env.get(f.getID());// a função já foi criada na minha tabela env
+        temp = env.get(f.getID());// a função já foi criada na minha tabela env previamente
 
         // add na tabela temp cada um dos parametros da função, com o nome e o tipo do parametro
         List<Param> params = (f.getParams() != null) ? f.getParams().getParamList() : Collections.emptyList();
@@ -176,8 +176,8 @@ public class TypeCheckVisitor extends Visitor {
         }
 
         f.getCmd().accept(this);
-        //se após tipar o corpo da função a flag continua falsa, tem algum erro, deveria ter um retorno
 
+        //se após tipar o corpo da função a flag continua falsa, tem algum erro, deveria ter um retorno
         if (f.getID() != "main" && !f.getReturnTypes().isEmpty() && !retChk) {
             logError.add(f.getLine() + ", " + f.getCol() + ": Função " + f.getID() + " deve retornar algum valor.");
         }
@@ -185,6 +185,8 @@ public class TypeCheckVisitor extends Visitor {
 
     /*
         cmd --> ID ‘(’ [exps] ‘)’ [‘<’ lvalue {‘,’ lvalue} ‘>’ ] ‘;’
+        se uma chamada de funçã da certo, o tipo resultando é o tipo que a função declara que ela retorna, ou seja, que esta no local env
+        TODO: corrigir a tipagem do retorno e argumentos, não ta pegando todos
     */
     @Override
     public void visit(CmdFuncCall e) {
@@ -547,7 +549,28 @@ public class TypeCheckVisitor extends Visitor {
      */
     @Override
     public void visit(LValueExp e) {
+        e.getLvalue().accept(this); // avalia a expressão à esquerda (espera-se um STyArr)
+        SType arrType = stk.pop();
 
+        e.getIndex().accept(this); // avalia índice
+        SType idxType = stk.pop();
+
+        if (!(arrType instanceof STyArr)) {
+            logError.add(e.getLine() + ", " + e.getCol() +
+                    ": Acesso com índice em tipo que não é array.");
+            stk.push(tyerr);
+            return;
+        }
+
+        if (!idxType.match(tyint)) {
+            logError.add(e.getLine() + ", " + e.getCol() +
+                    ": Index de acesso ao array deve ser Int.");
+            stk.push(tyerr);
+            return;
+        }
+
+        // O tipo do acesso a arr[i] é o tipo do elemento do array
+        stk.push(((STyArr) arrType).getElemType());
     }
 
     /**
@@ -617,7 +640,7 @@ public class TypeCheckVisitor extends Visitor {
     */
     @Override
     public void visit(CmdAssign p) {
-        if (p.getLvalue() instanceof ID) {
+        if (p.getLvalue() instanceof ID) {//variavel simples
             String nameVar = ((ID) p.getLvalue()).getName();
             //variavel ainda não foi declarada
             if (temp.get(nameVar) == null) {
@@ -636,7 +659,7 @@ public class TypeCheckVisitor extends Visitor {
                             ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
                 }
             }
-        } else if (p.getLvalue() instanceof IdLValue) {
+        } else if (p.getLvalue() instanceof IdLValue) {//acesso a atributo de registro
             p.getLvalue().accept(this);
             p.getExpression().accept(this);
 
@@ -647,6 +670,37 @@ public class TypeCheckVisitor extends Visitor {
                 logError.add(p.getLine() + ", " + p.getCol() +
                         ": Atribuição ilegal para o atributo " + ((IdLValue) p.getLvalue()).getId() +
                         ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
+            }
+        } else if (p.getLvalue() instanceof LValueExp lValueExp) {//LValueExp é acesso a array
+            lValueExp.getLvalue().accept(this); // empilha o tipo do arranjo
+            lValueExp.getIndex().accept(this);  // empilha o tipo do índice
+
+            SType tyIndex = stk.pop();
+            SType tyArray = stk.pop();
+
+            // Verifica se está acessando um array
+            if (!(tyArray instanceof STyArr arr)) {
+                logError.add(p.getLine() + ", " + p.getCol() +
+                        ": Tentando acessar como array algor que não é array.");
+                return;
+            }
+
+            // Verifica se o índice é inteiro
+            if (!tyIndex.match(tyint)) {
+                logError.add(p.getLine() + ", " + p.getCol() +
+                        ": Índice de acesso ao array deve ser do tipo Int.");
+                return;
+            }
+
+            // Agora verifica o tipo da expressão que será atribuída
+            p.getExpression().accept(this);
+            SType tyExpression = stk.pop();
+            SType tyElem = arr.getElemType();
+
+            if (!tyElem.match(tyExpression)) {
+                logError.add(p.getLine() + ", " + p.getCol() +
+                        ": Não é possivel fazer esse acesso ao array. Esperava " +
+                        tyElem.toString() + " mas encontrou " + tyExpression.toString() + ".");
             }
         }
     }
@@ -743,7 +797,7 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(TypeChar e) {
-//        stk.push(tychar);TODO: descomentar e testar
+        stk.push(tychar);//TODO: descomentar e testar
     }
 
     @Override
