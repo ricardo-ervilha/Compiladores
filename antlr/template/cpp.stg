@@ -13,10 +13,15 @@ int main(int argc, char* argv[]) {
 }
 >>
 
-func(types, name, params, decl, stmt) ::= <<
-<type; separator=", "> <name>(<params; separator=", ">) {
-    <if(decl)><decl; separator=";\n">;<endif>
-    <stmt>
+func(types, name, params, cmds) ::= <<
+<if(types)>
+tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
+<else>
+void <name>(<params; separator=", ">) {
+<endif>
+    <if(cmds)>
+    <cmds>
+    <endif>
 }
 >>
 
@@ -51,7 +56,8 @@ stmt_list(stmt1, stmt2) ::= <<
 <stmt2>
 >>
 
-attr(var, expr) ::= "<var> = <expr>;"
+attr(var, expr) ::= "<var> = <expr>"
+id(name) ::= "<name>"
 lvalue(name, array) ::= "<name><array>"
 array_access(expr) ::= "[<expr>]"
 

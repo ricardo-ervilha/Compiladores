@@ -248,6 +248,11 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     @Override
+    public void visit(Param p){
+
+    }
+
+    @Override
     public void visit(ArrayExpr e) {
 
     }

@@ -191,6 +191,11 @@ public class InterpretVisitor extends Visitor {
     }
 
     @Override
+    public void visit(Param p){
+
+    }
+
+    @Override
     public void visit(Block b) {
         for(Cmd c: b.getCommands()) {
             c.accept(this);

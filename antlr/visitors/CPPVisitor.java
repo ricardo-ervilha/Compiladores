@@ -15,11 +15,13 @@ import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
 
+import util.Debug;
+
 public class CPPVisitor extends Visitor{
     
     private STGroup groupTemplate;
-	private ST type, stmt, expr;
-	private List<ST> funcs, params;
+	private ST type, cmd, expr, stmt;
+	private List<ST> funcs, params, types, cmds;
 
     TyEnv<LocalEnv<SType>> env;
 
@@ -30,6 +32,7 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public void visit(Program p){
+        Debug.log("VISIT PROGRAM");
         ST template = groupTemplate.getInstanceOf("program");
         funcs = new ArrayList<ST>();
 
@@ -69,6 +72,7 @@ public class CPPVisitor extends Visitor{
     
     @Override
     public  void visit(Fun p){
+        Debug.log("VISIT FUN");
         ST fun = groupTemplate.getInstanceOf("func");
         if(p.getID().equals("main"))
             fun.add("name", "main_aux");
@@ -79,10 +83,12 @@ public class CPPVisitor extends Visitor{
 		Set<String> keys = local.getKeys();
 
         List<Type> returns = p.getReturnTypes();
+        types = new ArrayList<ST>();
         for(Type t : returns){
             t.accept(this);
-            fun.add("type", type);
+            types.add(type);
         }
+        fun.add("types", types);
 
         params = new ArrayList<ST>();
         if(p.getParams() != null){
@@ -91,8 +97,12 @@ public class CPPVisitor extends Visitor{
                 parametro.accept(this);
             }
         }
-        System.out.println(params);
         fun.add("params", params);
+        
+        p.getCmd().accept(this);
+        fun.add("cmds", cmds);
+        
+        funcs.add(fun);
     }
 
     @Override 
@@ -102,6 +112,7 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public  void visit(Param e){
+        Debug.log("VISIT PARAM");
         ST param = groupTemplate.getInstanceOf("param");
 		e.getType().accept(this);
 		param.add("type", type);
@@ -117,12 +128,22 @@ public class CPPVisitor extends Visitor{
     // --- Commands (Statements) ---
     @Override
     public  void visit(Block b){
-        
+        Debug.log("VISIT BLOCK");
+        cmds = new ArrayList<ST>();
+        for(Cmd c: b.getCommands()) {
+            c.accept(this);
+            cmds.add(stmt);
+        }
     }
 
     @Override
-    public  void visit(CmdAssign p){
-        
+    public void visit(CmdAssign p){
+        Debug.log("VISIT CMDASSIGN");
+        stmt = groupTemplate.getInstanceOf("attr");
+        p.getLvalue().accept(this);
+        stmt.add("var", expr);
+        p.getExpression().accept(this);
+        stmt.add("expr", expr);
     }
     
     @Override
@@ -248,7 +269,10 @@ public class CPPVisitor extends Visitor{
     
     @Override
     public  void visit(ID e){
-        
+        Debug.log("VISIT ID");
+        ST id = groupTemplate.getInstanceOf("id");
+        id.add("name", e.getName());
+        expr = id;
     }
     
     @Override
@@ -258,21 +282,25 @@ public class CPPVisitor extends Visitor{
     
     @Override
     public  void visit(TypeBool e){
+        Debug.log("VISIT TYPEBOOL");
         type = groupTemplate.getInstanceOf("bool_type");
     }
     
     @Override
     public  void visit(TypeChar e){
+        Debug.log("VISIT TYPECHAR");
         type = groupTemplate.getInstanceOf("char_type");
     }
     
     @Override
     public  void visit(TypeFloat e){
+        Debug.log("VISIT TYPEFLOAT");
         type = groupTemplate.getInstanceOf("float_type");
     }
     
     @Override
     public  void visit(TypeInt e){
+        Debug.log("VISIT TYPEINT");
         type = groupTemplate.getInstanceOf("int_type");
     }
     
@@ -294,7 +322,9 @@ public class CPPVisitor extends Visitor{
     
     @Override
     public  void visit(IntValue e){
-        
+        Debug.log("VISIT INTVALUE");
+        expr = groupTemplate.getInstanceOf("int_expr");
+        expr.add("value", e.getValue());
     }
 
     @Override
