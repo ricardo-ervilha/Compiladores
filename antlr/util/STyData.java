@@ -12,18 +12,44 @@
 
 package util;
 
+import java.util.LinkedHashMap;
+
 public class STyData extends SType {
 
-     private final String name;
+     private String typeName;
+     private LinkedHashMap<String, SType> attrsData = new LinkedHashMap<>();
+     private LinkedHashMap<String, STyFun> funcsData = new LinkedHashMap<>();
 
-     public STyData(String name) {
-          this.name = name;
+
+     // Se for um Absctract Data
+     public STyData(String typeName) {
+          this.typeName = typeName;
      }
 
-     public String getName() {
-          return this.name;
+     // Se for um Absctract Data
+     public STyData(String typeName, LinkedHashMap<String, SType> atributosData, LinkedHashMap<String, STyFun> funcoesData) {
+          this.typeName = typeName;
+          this.attrsData = atributosData;
+          this.funcsData = funcoesData;
      }
 
+     // Se for um Data
+     public STyData(String typeName, LinkedHashMap<String, SType> atributosData) {
+          this.typeName = typeName;
+          this.attrsData = atributosData;
+     }
+
+     public String getTypeName() {
+          return this.typeName;
+     }
+
+     public LinkedHashMap<String, STyFun> getFuncsData() {
+          return funcsData;
+     }
+
+     public LinkedHashMap<String, SType> getAttrsData() {
+          return attrsData;
+     }
 
      @Override
      public boolean match(SType v) {
@@ -32,7 +58,7 @@ public class STyData extends SType {
 
      @Override
      public String toString() {
-          return name;
+          return typeName;
      }
 }
 

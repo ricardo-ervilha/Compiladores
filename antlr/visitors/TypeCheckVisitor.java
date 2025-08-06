@@ -40,11 +40,11 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * TODO: mudar aqui para fazer um mapeamento nome do Registro --> StyData
-     *  StyData vai ter os campos com os tipos e as funções também com os argumentos --> tipo e retorno --> tipo
+     *  StyData vai ter os campos com os tipos e as funções, também com os argumentos --> tipo e retorno --> tipo
      * Chave (String): nome do Registro --> <nome campo, tipo do campo>
      * Valor (SType): nome do campo --> tipo do campo
      */
-    private HashMap<String, HashMap<String, SType>> typeStructs = new HashMap<>();
+    private HashMap<String, STyData> typeStructs = new HashMap<>();
 
     private Set<String> abstractTypes = new HashSet<>();
 
@@ -99,7 +99,10 @@ public class TypeCheckVisitor extends Visitor {
 //                abstractDataDecl.accept(this); caso for fazer isso no visit do ABS
 
                 String typeNameAbs = abstractDataDecl.getTypeId(); // nome do tipo, e.g "Racional"
-                LinkedHashMap<String, SType> atributosAbs = new LinkedHashMap<>();
+
+                LinkedHashMap<String, SType> atributosAbs = new LinkedHashMap<>();// atributos do tipo Abstrato
+                LinkedHashMap<String, STyFun> funcsAbs = new LinkedHashMap<>(); // Funções do tipo abstrato, juntamente com argumentos/retorno
+
                 for (Node declFun: abstractDataDecl.getDeclFuns()){// pega declarações ( idade::Int ) e funções
                     if (declFun instanceof Decl decl){
                         decl.getType().accept(this);
@@ -131,13 +134,16 @@ public class TypeCheckVisitor extends Visitor {
                         // salvo no env, o nome da função e os tipos dos parametros/retornos
                         //TODO: acho que seria indicado salvar as funções relacionados a um tipo em alguma estrutura
                         env.set(funAbstractData.getID(), new LocalEnv<SType>(funAbstractData.getID(), paramRetFunc));
+                        funcsAbs.put(funAbstractData.getID(), paramRetFunc);
                     }
                 }
 
                 if (typeStructs.containsKey(typeNameAbs)) {
                     logError.add(abstractDataDecl.getLine() + ", " + abstractDataDecl.getCol() + ": Tipo " + typeNameAbs + " já foi declarado.");
                 } else {
-                    typeStructs.put(typeNameAbs, atributosAbs);// coloco o nome do tipo e os campos dele na tabela de Registros
+                    STyData sTyData = new STyData(typeNameAbs, atributosAbs, funcsAbs);
+                    typeStructs.put(typeNameAbs, sTyData);// coloco o nome do tipo e os campos dele na tabela de Registros
+
                     abstractTypes.add(typeNameAbs); // salvo para saber os tipos que são ABS
                 }
             } else if (def instanceof DataDecl dataDecl){
@@ -298,7 +304,8 @@ public class TypeCheckVisitor extends Visitor {
         if (typeStructs.containsKey(typeName)) {
             logError.add(p.getLine() + ", " + p.getCol() + ": Tipo " + typeName + " já foi declarado.");
         } else {
-            typeStructs.put(typeName, fields);
+            STyData sTyData = new STyData(typeName, fields);
+            typeStructs.put(typeName, sTyData);
         }
     }
 
@@ -510,8 +517,8 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * Não entra array aqui, array entra no ArrayExpr
-     * exp --> new type
-     * type --> Int | Char | Bool | Float | TYID
+     * exp --> new btype
+     * btype --> Int | Char | Bool | Float | TYID
      *
      * @param e
      */
@@ -520,13 +527,13 @@ public class TypeCheckVisitor extends Visitor {
         e.getType().accept(this);
 
         SType type = stk.pop();
-        if (type instanceof STyData) {//Tratamento de tipos criados pelo usuario
+        if (type instanceof STyData) {// Tratamento de tipos criados pelo usuario
             TYID tyid = (TYID) e.getType();
             if (!typeStructs.containsKey(tyid.getName())) {
                 logError.add(e.getLine() + ", " + e.getCol() + ": Tipo " + tyid.getName() + " não declarado.");
                 stk.push(tyerr);
             } else {
-                stk.push(new STyData(tyid.getName()));
+                stk.push(new STyData(tyid.getName())); //vai ser usado no CmdAssign
             }
         }
     }
@@ -766,24 +773,25 @@ public class TypeCheckVisitor extends Visitor {
         }
 
         String atributo = e.getId();
-        String dataName = userType.getName();
+        String typeName = userType.getTypeName();
 
         // Verifico que o ambiente de tipos Data contem o Data com o nome dataName
-        if (!typeStructs.containsKey(dataName)) {
-            logError.add(e.getLine() + ", " + e.getCol() + ": Tipo de registro não definido: " + dataName);
+        if (!typeStructs.containsKey(typeName)) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Tipo de registro não definido: " + typeName);
             stk.push(tyerr);
             return;
         }
 
         // Verifico se é um tipo abstrato
-        if (abstractTypes.contains(dataName)) {
+        if (abstractTypes.contains(typeName)) {
             // Só permite acesso direto se a função atual for uma das definidas no mesmo tipo
-            // TODO: verificar se o Tipo tem a função atual, para isso no StyData poderio ter o nome
-            //  dos campos e as funções dele e com isso verifico se a função atual está nas funções do tipo
-            //
-            if (!dataName.equals(temp.getFuncID())) {
+
+            String nomeFuncAtual = temp.getFuncID();
+            LinkedHashMap<String, STyFun> funcsData = typeStructs.get(typeName).getFuncsData();
+            // verifico se estou na função que pode acessar o atributo do tipo abstrato
+            if(!funcsData.containsKey(nomeFuncAtual)){
                 logError.add(e.getLine() + ", " + e.getCol() +
-                        ": Acesso ilegal ao campo " + atributo + " do tipo abstrato " + dataName +
+                        ": Acesso ilegal ao campo " + atributo + " do tipo abstrato " + typeName +
                         " fora do escopo do tipo.");
                 stk.push(tyerr);
                 return;
@@ -791,11 +799,12 @@ public class TypeCheckVisitor extends Visitor {
         }
 
         // Se tem o dataName, pego o mapeamento de nomes e tipos
-        Map<String, SType> atributos = typeStructs.get(dataName);
+        STyData sTyData = typeStructs.get(typeName); // pego os atributos do tipo
+        Map<String, SType> atributos = sTyData.getAttrsData();
 
         // E verifico se tem o atributo que estou acessando
         if (!atributos.containsKey(atributo)) {
-            logError.add(e.getLine() + ", " + e.getCol() + ": Campo " + atributo + " não existe no tipo " + dataName);
+            logError.add(e.getLine() + ", " + e.getCol() + ": Campo " + atributo + " não existe no tipo " + typeName);
             stk.push(tyerr);
             return;
         }
