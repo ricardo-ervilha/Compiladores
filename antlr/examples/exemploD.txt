@@ -1,11 +1,19 @@
-data Racional{
-    num :: Int;
-    den :: Int;
+abstract data Person{
+
+    idade :: Int;
+
+    setAge(p :: Person, age :: Int){
+        p.idade = age;
+    }
+
+    getAge(p :: Person): Int{
+        return p.idade;
+    }
 }
 
 main(){
-    x = new Racional;
-    x.num = 1;
-    x.den = 2;
-    x.a = 1000;
+    p1 = new Person;
+    p1.idade = 333;
+    setAge(p1, 20);
+    print getAge(p1)[0];
 }

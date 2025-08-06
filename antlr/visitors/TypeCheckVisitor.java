@@ -29,6 +29,7 @@ public class TypeCheckVisitor extends Visitor {
 
     // tabela hash que mapeia nomes para environments local de tipos: nome de uma função e o tipo dela
     // e a definição de tipos local
+    // só é adicionado funçãoes dentro do visit do Program, depois só busca dentro do env
     private TyEnv<LocalEnv<SType>> env;
 
     private LocalEnv<SType> temp;// usado para construir o ambiente local de cada função
@@ -38,10 +39,14 @@ public class TypeCheckVisitor extends Visitor {
 
 
     /**
-     *  Chave (String): nome do Registro --> <nome campo, tipo do campo>
-     *  Valor (SType): nome do campo --> tipo do campo
+     * TODO: mudar aqui para fazer um mapeamento nome do Registro --> StyData
+     *  StyData vai ter os campos com os tipos e as funções também com os argumentos --> tipo e retorno --> tipo
+     * Chave (String): nome do Registro --> <nome campo, tipo do campo>
+     * Valor (SType): nome do campo --> tipo do campo
      */
-    private HashMap<String, LinkedHashMap<String, SType>> typeStructs = new HashMap<>();
+    private HashMap<String, HashMap<String, SType>> typeStructs = new HashMap<>();
+
+    private Set<String> abstractTypes = new HashSet<>();
 
     public TypeCheckVisitor() {
         stk = new Stack<SType>();
@@ -61,10 +66,14 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(Program program) {
+        /*
+            getDefinitions() pode ser Data, AbstractData ou Fun
+            Fun: adiciono no env com os tipos de retorno e argumentos
+            Data: visito o DataDecl, considerando que esse visitor só é chamado na declaração
+            AbstractData: adiciono no env as funções do tipo abstrato e os tipo do registro no typeStructs
+         */
         for (Def def : program.getDefinitions()) {
             if (def instanceof Fun f) {
-                STyFun paramRetFunc;
-
                 List<Param> params = (f.getParams() != null)
                         ? f.getParams().getParamList()
                         : Collections.emptyList();
@@ -83,12 +92,60 @@ public class TypeCheckVisitor extends Visitor {
                     returnTypes[i] = stk.pop();
                 }
 
-                paramRetFunc = new STyFun(paramTypes, returnTypes);
+                STyFun paramRetFunc = new STyFun(paramTypes, returnTypes);
+                //TODO: verificar se a função com o mesmo nome já não foi adicionada
                 env.set(f.getID(), new LocalEnv<SType>(f.getID(), paramRetFunc));
-            } else {
-                def.accept(this);//TODO: criar espaço de tipos para tipos criados pelo usuario
+            } else if (def instanceof AbstractDataDecl abstractDataDecl) {
+//                abstractDataDecl.accept(this); caso for fazer isso no visit do ABS
+
+                String typeNameAbs = abstractDataDecl.getTypeId(); // nome do tipo, e.g "Racional"
+                LinkedHashMap<String, SType> atributosAbs = new LinkedHashMap<>();
+                for (Node declFun: abstractDataDecl.getDeclFuns()){// pega declarações ( idade::Int ) e funções
+                    if (declFun instanceof Decl decl){
+                        decl.getType().accept(this);
+                        atributosAbs.put(decl.getId(), stk.pop());
+
+                    }else if(declFun instanceof FunAbstractData funAbstractData){
+                        // pego os parametros da função
+                        List<Param> params = (funAbstractData.getParams() != null)
+                                ? funAbstractData.getParams().getParamList()
+                                : Collections.emptyList();
+
+                        // crio uma lista do mesmo tamanho do numero de parametros
+                        SType[] paramTypes = new SType[params.size()];
+                        for (int i = 0; i < params.size(); i++) {
+                            params.get(i).getType().accept(this);
+                            paramTypes[i] = stk.pop();// vai colocando os parametros da função dentro desse vetor
+                        }
+
+                        List<Type> returns = (funAbstractData.getReturnTypes() != null)
+                                ? funAbstractData.getReturnTypes()
+                                : Collections.emptyList();
+                        SType[] returnTypes = new SType[returns.size()];
+                        for (int i = 0; i < funAbstractData.getReturnTypes().size(); i++) {
+                            returns.get(i).accept(this);
+                            returnTypes[i] = stk.pop();
+                        }
+
+                        STyFun paramRetFunc = new STyFun(paramTypes, returnTypes);
+                        // salvo no env, o nome da função e os tipos dos parametros/retornos
+                        //TODO: acho que seria indicado salvar as funções relacionados a um tipo em alguma estrutura
+                        env.set(funAbstractData.getID(), new LocalEnv<SType>(funAbstractData.getID(), paramRetFunc));
+                    }
+                }
+
+                if (typeStructs.containsKey(typeNameAbs)) {
+                    logError.add(abstractDataDecl.getLine() + ", " + abstractDataDecl.getCol() + ": Tipo " + typeNameAbs + " já foi declarado.");
+                } else {
+                    typeStructs.put(typeNameAbs, atributosAbs);// coloco o nome do tipo e os campos dele na tabela de Registros
+                    abstractTypes.add(typeNameAbs); // salvo para saber os tipos que são ABS
+                }
+            } else if (def instanceof DataDecl dataDecl){
+                dataDecl.accept(this);
             }
         }
+
+        // Nesse ponto tenho todas as funções e tipos do usuario do programa
 
 
         for (Def def : program.getDefinitions()) {
@@ -224,13 +281,13 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * data TYID ‘{’ {decl} ‘}’
+     *
      * @param p
      */
     @Override
     public void visit(DataDecl p) {
         String typeName = p.getTypeId(); // nome do tipo, e.g "Racional"
         LinkedHashMap<String, SType> fields = new LinkedHashMap<>();
-
         for (Node d : p.getDeclarations()) {
             Decl decl = (Decl) d;
             decl.getType().accept(this); // empilha tipo
@@ -247,16 +304,16 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(AbstractDataDecl p) {
-
-    }
-
-    @Override
-    public void visit(Decl p) {
-
+        System.out.println("(AbstractDataDecl) Não deveria entrar aqui...");
     }
 
     @Override
     public void visit(FunAbstractData p) {
+        System.out.println(" (FunAbstractData) Não deveria entrar aqui...");
+    }
+
+    @Override
+    public void visit(Decl p) {
 
     }
 
@@ -318,6 +375,7 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * [Bool,Bool] → Bool
+     *
      * @param n
      * @param opName
      */
@@ -337,6 +395,7 @@ public class TypeCheckVisitor extends Visitor {
     /**
      * [a, a] → Bool, em que a ∈ {Int, Float, Char}
      * Os dois operandos devem ter o mesmo tipo
+     *
      * @param e
      */
     @Override
@@ -349,6 +408,7 @@ public class TypeCheckVisitor extends Visitor {
     /**
      * [a, a] → Bool, em que a ∈ {Int, Float, Char}
      * Os dois operandos devem ter o mesmo tipo
+     *
      * @param e
      */
     @Override
@@ -361,6 +421,7 @@ public class TypeCheckVisitor extends Visitor {
     /**
      * [a, a] → Bool, em que a ∈ {Int, Float, Char}
      * Os dois operandos devem ter o mesmo tipo
+     *
      * @param e
      */
     @Override
@@ -386,6 +447,7 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * [Bool, Bool] → Bool
+     *
      * @param e
      */
     @Override
@@ -404,6 +466,7 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * Bool → Bool
+     *
      * @param e
      */
     @Override
@@ -420,6 +483,7 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * a → a, em que a ∈ {Int, Float}
+     *
      * @param e
      */
     @Override
@@ -435,7 +499,8 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     /**
-     *  lvalue --> lvalue ‘[’ exp ‘]’
+     * lvalue --> lvalue ‘[’ exp ‘]’
+     *
      * @param e
      */
     @Override
@@ -444,10 +509,10 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     /**
+     * Não entra array aqui, array entra no ArrayExpr
+     * exp --> new type
+     * type --> Int | Char | Bool | Float | TYID
      *
-     *  Não entra array aqui, array entra no ArrayExpr
-     *  exp --> new type
-     *  type --> Int | Char | Bool | Float | TYID
      * @param e
      */
     @Override
@@ -455,7 +520,7 @@ public class TypeCheckVisitor extends Visitor {
         e.getType().accept(this);
 
         SType type = stk.pop();
-        if(type instanceof STyData){//Tratamento de tipos criados pelo usuario
+        if (type instanceof STyData) {//Tratamento de tipos criados pelo usuario
             TYID tyid = (TYID) e.getType();
             if (!typeStructs.containsKey(tyid.getName())) {
                 logError.add(e.getLine() + ", " + e.getCol() + ": Tipo " + tyid.getName() + " não declarado.");
@@ -640,6 +705,7 @@ public class TypeCheckVisitor extends Visitor {
     /**
      * Nome do tipo definido pelo usuario
      * btype →  TYID
+     *
      * @param e
      */
     @Override
@@ -667,11 +733,6 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     @Override
-    public void visit(ArrayLValue e) {
-
-    }
-
-    @Override
     public void visit(ID e) {
         SType t = temp.get(e.getName());
         if (t != null) {
@@ -683,21 +744,17 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     @Override
-    public void visit(FieldLValue e) {
-
-    }
-
-    @Override
     public void visit(IdItCond e) {
 
     }
 
     /**
-     *  lvalue --> lvalue ‘.’ ID
-     *  @param e
+     * lvalue --> lvalue ‘.’ ID
+     *
+     * @param e
      */
     @Override
-    public void visit(IdLValue e){
+    public void visit(IdLValue e) {
         e.getLvalue().accept(this);
         SType baseType = stk.pop();
 
@@ -716,6 +773,21 @@ public class TypeCheckVisitor extends Visitor {
             logError.add(e.getLine() + ", " + e.getCol() + ": Tipo de registro não definido: " + dataName);
             stk.push(tyerr);
             return;
+        }
+
+        // Verifico se é um tipo abstrato
+        if (abstractTypes.contains(dataName)) {
+            // Só permite acesso direto se a função atual for uma das definidas no mesmo tipo
+            // TODO: verificar se o Tipo tem a função atual, para isso no StyData poderio ter o nome
+            //  dos campos e as funções dele e com isso verifico se a função atual está nas funções do tipo
+            //
+            if (!dataName.equals(temp.getFuncID())) {
+                logError.add(e.getLine() + ", " + e.getCol() +
+                        ": Acesso ilegal ao campo " + atributo + " do tipo abstrato " + dataName +
+                        " fora do escopo do tipo.");
+                stk.push(tyerr);
+                return;
+            }
         }
 
         // Se tem o dataName, pego o mapeamento de nomes e tipos

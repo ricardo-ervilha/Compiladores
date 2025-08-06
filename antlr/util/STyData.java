@@ -32,7 +32,7 @@ public class STyData extends SType {
 
      @Override
      public String toString() {
-          return "Data "+name;
+          return name;
      }
 }
 
