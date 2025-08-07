@@ -74,6 +74,7 @@ public class CPPVisitor extends Visitor{
     public  void visit(Fun p){
         Debug.log("VISIT FUN");
         ST fun = groupTemplate.getInstanceOf("func");
+        
         if(p.getID().equals("main"))
             fun.add("name", "main_aux");
         else
@@ -141,7 +142,9 @@ public class CPPVisitor extends Visitor{
         Debug.log("VISIT CMDASSIGN");
         stmt = groupTemplate.getInstanceOf("attr");
         p.getLvalue().accept(this);
+        
         stmt.add("var", expr);
+        
         p.getExpression().accept(this);
         stmt.add("expr", expr);
     }

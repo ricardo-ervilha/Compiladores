@@ -20,10 +20,15 @@ tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
 void <name>(<params; separator=", ">) {
 <endif>
     <if(cmds)>
-    <cmds>
+    <cmds; separator=";\n">;
     <endif>
 }
 >>
+
+attr(type, var, expr) ::= <<
+<if(type)><type><endif> <var> = <expr>
+>>
+
 
 param(type, name) ::= "<type> <name>"
 
@@ -56,7 +61,6 @@ stmt_list(stmt1, stmt2) ::= <<
 <stmt2>
 >>
 
-attr(var, expr) ::= "<var> = <expr>"
 id(name) ::= "<name>"
 lvalue(name, array) ::= "<name><array>"
 array_access(expr) ::= "[<expr>]"
