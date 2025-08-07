@@ -640,6 +640,12 @@ public class TypeCheckVisitor extends Visitor {
     */
     @Override
     public void visit(CmdAssign p) {
+          if(p.getExpression() instanceof VarExpr && !(((VarExpr) p.getExpression()).getType() instanceof TYID)){
+                logError.add(p.getLine() + ", " + p.getCol() + " Não é permitido instanciar tipos primitivos.");
+                stk.push(tyerr);
+                return;
+          }
+
         if (p.getLvalue() instanceof ID) {//variavel simples
             String nameVar = ((ID) p.getLvalue()).getName();
             //variavel ainda não foi declarada
