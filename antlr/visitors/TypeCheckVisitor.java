@@ -358,13 +358,13 @@ public class TypeCheckVisitor extends Visitor {
             base = arr.getElemType();
         }
 
-        // valida se o tipo base é Int
-        if (!base.match(tyint)) {
-            logError.add(e.getLine() + ", " + e.getCol() +
-                    ": Só é permitido criar arrays de Int mas foi encontrado: " + base.toString());
-            stk.push(tyerr);
-            return;
-        }
+//        // valida se o tipo base é Int
+//        if (!base.match(tyint)) {
+//            logError.add(e.getLine() + ", " + e.getCol() +
+//                    ": Só é permitido criar arrays de Int mas foi encontrado: " + base.toString());
+//            stk.push(tyerr);
+//            return;
+//        }
 
         // empilha o novo tipo array
         stk.push(new STyArr(typeDeclared));
@@ -783,7 +783,14 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(CmdRead p) {
+        p.getLvalue().accept(this);
+        SType t = stk.pop();
 
+        if (!(t.match(tyint) || t.match(tyfloat) || t.match(tybool) || t.match(tychar))) {
+            logError.add(p.getLine() + ", " + p.getCol() +
+                    ": Tipo " + t + " inválido para o comando read. Comando read aceita apenas: Int, Char, Bool, Float.");
+            stk.push(tyerr);
+        }
     }
 
     @Override

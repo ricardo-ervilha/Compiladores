@@ -16,6 +16,4 @@ main(){
    print v[0][0].den;
 
    print v[0][0].num / v[0][0].den;
-
-   read v[0][0].num;
 }
