@@ -1,7 +1,18 @@
-main(){
-    if (2==2){
-    print '2';
-    }else{
-        print '3';
+abstract data Person{
+
+    idade :: Int;
+
+    setAge(p :: Person, age :: Int){
+        p.idade = age;
     }
+
+    getAge(p :: Person): Int{
+        return p.idade;
+    }
+}
+
+main(){
+    p1 = new Person;
+    setAge(p1, 20);
+    print getAge(p1)[0];
 }

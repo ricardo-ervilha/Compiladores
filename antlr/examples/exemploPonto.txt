@@ -1,0 +1,47 @@
+data Ponto{
+    x :: Int;
+    y :: Int;
+}
+
+data Reta{
+    p1 :: Ponto;
+    p2 ::Ponto;
+}
+
+data Plano{
+    r1 ::Reta;
+    r2 :: Reta;
+}
+
+main(){
+    ponto1 = new Ponto;
+    ponto1.x = 1;
+    ponto1.y = 2;
+
+    ponto2 = new Ponto;
+    ponto2.x = 20;
+    ponto2.y = 30;
+
+    ponto3 = new Ponto;
+    ponto3.x = 400;
+    ponto3.y = 500;
+
+    ponto4 = new Ponto;
+    ponto4.x = 6400;
+    ponto4.y = 7096;
+
+    reta1 = new Reta;
+    reta1.p1 = ponto1;
+    reta1.p2 = ponto2;
+
+    reta2 = new Reta;
+    reta2.p1 = ponto3;
+    reta2.p2 = ponto4;
+
+    plano1 = new Plano;
+    plano1.r1 = reta1;
+    plano1.r2 = reta2;
+
+    print plano1.r1.p2.x;
+
+}

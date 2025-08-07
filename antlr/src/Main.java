@@ -79,6 +79,10 @@ public class Main {
                 case "-t":
                     System.out.println("\n--------------------Executando a verificação de tipos do programa.--------------------\n");
                     Node ast2 = parser.prog().ast;
+                    if (errorListener.hasErrors()) {
+                        System.out.println("reject");
+                        System.exit(1);
+                    }
                     TypeCheckVisitor tcv = new TypeCheckVisitor();
                     ast2.accept(tcv);
                     if(tcv.getNumErrors() > 0){
@@ -106,7 +110,7 @@ public class Main {
             System.err.println(interpretException.getMessage());
             System.exit(1);
         } catch (Exception e) {
-            e.printStackTrace();
+            e.printStackTrace(); // TODO: remover quando entregar o trabalho, isso imprime a stackTrace facilitando o debug
             System.err.println(e.getMessage());
             System.out.println("reject");
             System.exit(1);
