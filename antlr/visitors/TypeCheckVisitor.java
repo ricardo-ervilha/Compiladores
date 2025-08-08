@@ -96,8 +96,6 @@ public class TypeCheckVisitor extends Visitor {
                 }
 
                 STyFun paramRetFunc = new STyFun(paramTypes, returnTypes);
-                //TODO: verificar se a função com o mesmo nome já não foi adicionada
-
 
                 env.set(f.getID(), new LocalEnv<SType>(f.getID(), paramRetFunc));
 

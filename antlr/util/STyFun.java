@@ -48,19 +48,51 @@ public class STyFun extends SType {
         return r;
     }
 
-    public String toString() {
-        String s = "";
-        if (paramTypes != null && paramTypes.length > 0) {
-            s = paramTypes[0].toString();
-            for (int i = 1; i < paramTypes.length; i++) {
-                s += "->" + paramTypes[i].toString();
-            }
+//    public String toString() {
+//        String s = "";
+//        if (paramTypes != null && paramTypes.length > 0) {
+//            s += paramTypes[0].toString();
+//            for (int i = 1; i < paramTypes.length; i++) {
+//                s += "->" + paramTypes[i].toString();
+//            }
+//        }
+//
+//        if (returnTypes != null && returnTypes.length > 0) {
+//            s += "->"+returnTypes[0].toString();
+//            for (int i = 1; i < returnTypes.length; i++) {
+//                s += "->" + returnTypes[i].toString();
+//            }
+//        }
+//        return s;
+//    }
 
-            for (int i = 1; i < returnTypes.length; i++) {
-                s += "->" + returnTypes[i].toString();
+    @Override
+    public String toString() {
+        StringBuilder sb = new StringBuilder();
+
+        // Parâmetros
+        sb.append("(");
+        if (paramTypes != null && paramTypes.length > 0) {
+            sb.append(paramTypes[0]);
+            for (int i = 1; i < paramTypes.length; i++) {
+                sb.append(", ").append(paramTypes[i]);
             }
         }
-        return s;
+        sb.append(")");
+
+        sb.append(" -> ");
+
+        // Retornos
+        sb.append("(");
+        if (returnTypes != null && returnTypes.length > 0) {
+            sb.append(returnTypes[0]);
+            for (int i = 1; i < returnTypes.length; i++) {
+                sb.append(", ").append(returnTypes[i]);
+            }
+        }
+        sb.append(")");
+
+        return sb.toString();
     }
 
 
