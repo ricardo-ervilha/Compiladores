@@ -717,12 +717,12 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * cmd --> return exp {‘,’ exp} ‘;’
-     *
+     * verificar se o comando de retorno bate com a assinatura da função
      * @param r
      */
     @Override
     public void visit(CmdReturn r) {
-        List<SType> typesReturnCmd = new ArrayList<>(); // vai guardar os tipos das expreções do comando de retorno
+        List<SType> typesReturnCmd = new ArrayList<>();
 
         //avalia cada expressão e adiciona no tipo da pilha stk
         for (Expr e : r.getExpressions()) {
@@ -730,32 +730,42 @@ public class TypeCheckVisitor extends Visitor {
             typesReturnCmd.add(stk.pop());
         }
 
-        if (temp.getFuncType() instanceof STyFun) {
-            SType[] tiposRetorno = ((STyFun) temp.getFuncType()).getReturnTypes();//pega os retornos
-            if (tiposRetorno == null) {
-                logError.add(r.getLine() + ", " + r.getCol() +
-                        ": Retorno fora de função");
-            }
-
-            if (tiposRetorno.length != typesReturnCmd.size()) {
-                logError.add(r.getLine() + ", " + r.getCol() +
-                        ": Número de valores retornados "+typesReturnCmd.size()+" diferente do esperado "+tiposRetorno.length+".");
-            }
-
-            for (int i = 0; i < typesReturnCmd.size(); i++) {
-                if (!typesReturnCmd.get(i).match(tiposRetorno[i])) {
-                    // se o tipo de retorno i for null e o tipo de retorno da função não for um Data/Array, tem que dar erro
-                    if(typesReturnCmd.get(i).match(tynull) && !(tiposRetorno[i] instanceof STyData || tiposRetorno[i] instanceof STyArr)) {
-                        logError.add(r.getLine() + ", " + r.getCol() +
-                                ": Tipo de retorno " + i + " é " + tiposRetorno[i] + ", mas esperava " + typesReturnCmd.get(i) + "..");
-                    }
-
-
-                }
-            }
-        } else {
-            stk.pop().match(temp.getFuncType());//faz sentido?
+        if (!(temp.getFuncType() instanceof STyFun)) {
+            logError.add(r.getLine() + ", " + r.getCol() + ": Comando return fora de função.");
+            retChk = false;
+            return;
         }
+
+        SType[] tiposRetorno = ((STyFun) temp.getFuncType()).getReturnTypes();
+
+        // verificar quantidade bate
+        if (tiposRetorno.length != typesReturnCmd.size()) {
+            logError.add(r.getLine() + ", " + r.getCol() +
+                    ": Número de valores retornados (" + typesReturnCmd.size() +
+                    ") diferente do esperado (" + tiposRetorno.length + ").");
+            retChk = true; // entrou no return então tem return
+            return;
+        }
+
+        // valida tipos de cada retorno
+        for (int i = 0; i < tiposRetorno.length; i++) {
+            SType esperado = tiposRetorno[i];// tipo da assinatura da função
+            SType encontrado = typesReturnCmd.get(i); // tipo do comando de retorno
+
+            // null só é aceito para Data ou Array
+            if (encontrado.match(tynull) && !(esperado instanceof STyData || esperado instanceof STyArr)) {
+                logError.add(r.getLine() + ", " + r.getCol() +
+                        ": Retorno na posição " + (i+1) + " é null, mas o tipo esperado é " + esperado);
+                continue; //já encontrou um erro vai pro proximo
+            }
+
+            if (!esperado.match(encontrado)) {
+                logError.add(r.getLine() + ", " + r.getCol() +
+                        ": Retorno na posição " + (i+1) +
+                        " incompatível. Esperado: " + esperado + ", encontrado: " + encontrado);
+            }
+        }
+
         retChk = true;
     }
 
