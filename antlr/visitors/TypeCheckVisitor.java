@@ -191,66 +191,82 @@ public class TypeCheckVisitor extends Visitor {
     */
     @Override
     public void visit(CmdFuncCall e) {
+        // Verifica se a função existe no ambiente global
         LocalEnv<SType> sTypeLocalEnv = env.get(e.getId());
-
         if (sTypeLocalEnv == null) {
             logError.add(e.getLine() + ", " + e.getCol() + ": Chamada à função não declarada: " + e.getId());
-            stk.push(tyerr);
             return;
         }
 
-        STyFun tf = (STyFun) sTypeLocalEnv.getFuncType();
+        // Se a função existe, pego a assinatura dela (args, rets)
+        if (!(sTypeLocalEnv.getFuncType() instanceof STyFun tf)) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": "+e.getId() + " não é uma função.");
+            return;
+        }
+
         SType[] paramTypes = tf.getParamTypes();
         SType[] returnTypes = tf.getReturnTypes();
 
+        // Validação dos args
         List<Expr> args = (e.getExps() != null) ? e.getExps().getExpressions() : new ArrayList<>();
 
         if (args.size() != paramTypes.length) {
             logError.add(e.getLine() + ", " + e.getCol() + ": Chamada à função " + e.getId() +
-                    " incompatível com número de argumentos.");
-            stk.push(tyerr);
-            return;
-        }
-
-        boolean allArgsOk = true;// para verificar todos os argumentos e não parar no primeiro
-        for (int i = 0; i < args.size(); i++) {
-            Expr arg = args.get(i);
-            arg.accept(this);
-            SType argType = stk.pop();
-
-            if (!paramTypes[i].match(argType)) {
-                logError.add(arg.getLine() + ", " + arg.getCol() + ": " + (i + 1) +
-                        "º argumento incompatível com o parâmetro correspondente da função " + e.getId() +
-                        " (esperado: " + paramTypes[i] + ", encontrado: " + argType + ")");
-                allArgsOk = false;
-            }
-        }
-
-        List<LValue> lValues = e.getLvalues();
-        for (int i = 0; i < lValues.size(); i++) {
-            lValues.get(i).accept(this);
-            SType lvalueType = stk.pop();
-
-            if (!returnTypes[i].match(lvalueType)) {
-                logError.add(e.getLine() + ", " + e.getCol() + ": " + (i + 1) +
-                        "º retorno incompatível com o parâmetro correspondente da função " + e.getId() +
-                        " (esperado: " + returnTypes[i] + ", encontrado: " + lvalueType + ")");
-                allArgsOk = false;
-            }
-        }
-
-        if (allArgsOk) {
-            //TODO:
-            //  Corrigir, não é isso, é verificar isso divmod (5 ,2) <q , r >;
-            //  Verificar o e.getLvalues()
-            //  Se todos os argumentos estiverem corretos, empilha o tipo de retorno
-            if (returnTypes.length > 0) {
-                stk.push(returnTypes[0]); // TODO: empilhar múltiplos retornos se suportado
-            } else {
-                stk.push(tyvoid); // ou tyunit, dependendo da linguagem
-            }
+                    " incompatível com número de argumentos (esperado: " + paramTypes.length + ", encontrado: " + args.size() + ").");
         } else {
-            stk.push(tyerr);
+            for (int i = 0; i < args.size(); i++) {
+                Expr arg = args.get(i);
+                arg.accept(this);
+                SType argType = stk.pop();
+
+                if (!paramTypes[i].match(argType)) {
+                    logError.add(arg.getLine() + ", " + arg.getCol() + ": " + (i + 1) +
+                            "º argumento incompatível para função " + e.getId() +
+                            " (esperado: " + paramTypes[i] + ", encontrado: " + argType + ")");
+                }
+            }
+        }
+
+        // Validação dos retornos
+        List<LValue> lValues = (e.getLvalues() != null) ? e.getLvalues() : new ArrayList<>();
+
+        if (lValues.size() > returnTypes.length) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Chamada à função " + e.getId() +
+                    " incompatível com número de retornos " +
+                    "(definição da função tem : " + returnTypes.length + ", chamada tem: " + lValues.size() + ").");
+        } else {
+            for (int i = 0; i < lValues.size(); i++) {
+                LValue lv = lValues.get(i);
+
+                // variavel simples
+                if (lv instanceof ID id) {
+                    String nameVar = id.getName();
+                    SType retType = returnTypes[i];
+
+                    if (temp.get(nameVar) == null) {
+                        // Variável não declarada então coloco no ambiente com tipo do retorno da def da função
+                        temp.set(nameVar, retType);
+                    } else {
+                        // Variável já declarada, valido o tipo
+                        SType sTypeVar = temp.get(nameVar);
+                        if (!sTypeVar.match(retType)) {
+                            logError.add(e.getLine() + ", " + e.getCol() +
+                                    ": Atribuição ilegal ao retorno " + nameVar +
+                                    " (esperado: " + sTypeVar + ", encontrado: " + retType + ")");
+                        }
+                    }
+                } else {//REgistros ou array
+
+                    lv.accept(this);
+                    SType lvType = stk.pop();
+                    SType retType = returnTypes[i];
+                    if (!lvType.match(retType)) {
+                        logError.add(e.getLine() + ", " + e.getCol() +
+                                ": Tipo incompatível no retorno da função " + e.getId() +
+                                " (tipo retorno: " + retType + " e tipo encontrado: " + lvType + ")");
+                    }
+                }
+            }
         }
     }
 

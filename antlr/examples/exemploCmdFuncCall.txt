@@ -13,9 +13,7 @@ main() {
     v[0] = new Racional[4];
     v[0][0] = new Racional;
 
-
-
-    divMod(x,y)<v[0][0].num, t>;
+    divMod(x,y)<v[0][0].num, v[0][0].den>;
     print v[0][0].num;
 }
 
