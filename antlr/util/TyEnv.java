@@ -19,7 +19,7 @@ public class TyEnv<A> {
           return typeEnv.get(id);
      }
      
-     public boolean elem(String k){
+     public boolean containsKey(String k){
          return typeEnv.containsKey(k);
      }
      

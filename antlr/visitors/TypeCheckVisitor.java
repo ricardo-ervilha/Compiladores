@@ -72,6 +72,11 @@ public class TypeCheckVisitor extends Visitor {
          */
         for (Def def : program.getDefinitions()) {
             if (def instanceof Fun f) {
+                if(env.containsKey(f.getID())){
+                    logError.add(f.getLine() + ", " + f.getCol() +
+                            ": Função " + f.getID() + " duplicada.");
+                    return;
+                }
                 List<Param> params = (f.getParams() != null)
                         ? f.getParams().getParamList()
                         : Collections.emptyList();
@@ -92,10 +97,12 @@ public class TypeCheckVisitor extends Visitor {
 
                 STyFun paramRetFunc = new STyFun(paramTypes, returnTypes);
                 //TODO: verificar se a função com o mesmo nome já não foi adicionada
-                env.set(f.getID(), new LocalEnv<SType>(f.getID(), paramRetFunc));
-            } else if (def instanceof AbstractDataDecl abstractDataDecl) {
-//                abstractDataDecl.accept(this); caso for fazer isso no visit do ABS
 
+
+                env.set(f.getID(), new LocalEnv<SType>(f.getID(), paramRetFunc));
+
+
+            } else if (def instanceof AbstractDataDecl abstractDataDecl) {
                 String typeNameAbs = abstractDataDecl.getTypeId(); // nome do tipo, e.g "Racional"
 
                 LinkedHashMap<String, SType> atributosAbs = new LinkedHashMap<>();// atributos do tipo Abstrato
@@ -106,10 +113,15 @@ public class TypeCheckVisitor extends Visitor {
                         decl.getType().accept(this);
                         atributosAbs.put(decl.getId(), stk.pop());
 
-                    } else if (declFun instanceof FunAbstractData funAbstractData) {
+                    } else if (declFun instanceof FunAbstractData f) {
+                        if(env.containsKey(f.getID())){
+                            logError.add(f.getLine() + ", " + f.getCol() +
+                                    ": Função " + f.getID() + " duplicada.");
+                            return;
+                        }
                         // pego os parametros da função
-                        List<Param> params = (funAbstractData.getParams() != null)
-                                ? funAbstractData.getParams().getParamList()
+                        List<Param> params = (f.getParams() != null)
+                                ? f.getParams().getParamList()
                                 : Collections.emptyList();
 
                         // crio uma lista do mesmo tamanho do numero de parametros
@@ -119,19 +131,19 @@ public class TypeCheckVisitor extends Visitor {
                             paramTypes[i] = stk.pop();// vai colocando os parametros da função dentro desse vetor
                         }
 
-                        List<Type> returns = (funAbstractData.getReturnTypes() != null)
-                                ? funAbstractData.getReturnTypes()
+                        List<Type> returns = (f.getReturnTypes() != null)
+                                ? f.getReturnTypes()
                                 : Collections.emptyList();
                         SType[] returnTypes = new SType[returns.size()];
-                        for (int i = 0; i < funAbstractData.getReturnTypes().size(); i++) {
+                        for (int i = 0; i < f.getReturnTypes().size(); i++) {
                             returns.get(i).accept(this);
                             returnTypes[i] = stk.pop();
                         }
 
                         STyFun paramRetFunc = new STyFun(paramTypes, returnTypes);
                         // salvo no env, o nome da função e os tipos dos parametros/retornos
-                        env.set(funAbstractData.getID(), new LocalEnv<SType>(funAbstractData.getID(), paramRetFunc));
-                        funcsAbs.put(funAbstractData.getID(), paramRetFunc);
+                        env.set(f.getID(), new LocalEnv<SType>(f.getID(), paramRetFunc));
+                        funcsAbs.put(f.getID(), paramRetFunc);
                     }
                 }
 
@@ -700,33 +712,40 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
+    /**
+     * cmd --> return exp {‘,’ exp} ‘;’
+     *
+     * @param r
+     */
     @Override
     public void visit(CmdReturn r) {
-        List<SType> actuals = new ArrayList<>();
+        List<SType> typesReturnCmd = new ArrayList<>(); // vai guardar os tipos das expreções do comando de retorno
 
-        //avalia cada expressão e adiciona no topo da pilha stk
+        //avalia cada expressão e adiciona no tipo da pilha stk
         for (Expr e : r.getExpressions()) {
             e.accept(this);
-            actuals.add(stk.pop());
+            typesReturnCmd.add(stk.pop());
         }
 
         if (temp.getFuncType() instanceof STyFun) {
             SType[] tiposRetorno = ((STyFun) temp.getFuncType()).getReturnTypes();//pega os retornos
             if (tiposRetorno == null) {
-                logError.add("Return fora de função.");
+                logError.add(r.getLine() + ", " + r.getCol() +
+                        ": Retorno fora de função");
                 return;
             }
 
-            if (tiposRetorno.length != actuals.size()) {
-                logError.add(String.format("Número de valores retornados (%d) diferente do esperado (%d).",
-                        actuals.size(), tiposRetorno.length));
+            if (tiposRetorno.length != typesReturnCmd.size()) {
+                logError.add(r.getLine() + ", " + r.getCol() +
+                        ": Número de valores retornados "+typesReturnCmd.size()+" diferente do esperado "+tiposRetorno.length+".");
                 return;
             }
 
-            for (int i = 0; i < actuals.size(); i++) {
-                if (!actuals.get(i).match(tiposRetorno[i])) {
-                    logError.add(String.format("Tipo de retorno na posição %d é %s, mas esperava %s.",
-                            i, actuals.get(i), tiposRetorno[i]));
+            for (int i = 0; i < typesReturnCmd.size(); i++) {
+                if (!typesReturnCmd.get(i).match(tiposRetorno[i])) {
+                    logError.add(r.getLine() + ", " + r.getCol() +
+                            ": Tipo de retorno " + i + " é " + tiposRetorno[i] + ", mas esperava " + typesReturnCmd.get(i) + "..");
+
                 }
             }
         } else {
