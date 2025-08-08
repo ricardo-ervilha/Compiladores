@@ -744,8 +744,12 @@ public class TypeCheckVisitor extends Visitor {
 
             for (int i = 0; i < typesReturnCmd.size(); i++) {
                 if (!typesReturnCmd.get(i).match(tiposRetorno[i])) {
-                    logError.add(r.getLine() + ", " + r.getCol() +
-                            ": Tipo de retorno " + i + " é " + tiposRetorno[i] + ", mas esperava " + typesReturnCmd.get(i) + "..");
+                    // se o tipo de retorno i for null e o tipo de retorno da função não for um Data/Array, tem que dar erro
+                    if(typesReturnCmd.get(i).match(tynull) && !(tiposRetorno[i] instanceof STyData || tiposRetorno[i] instanceof STyArr)) {
+                        logError.add(r.getLine() + ", " + r.getCol() +
+                                ": Tipo de retorno " + i + " é " + tiposRetorno[i] + ", mas esperava " + typesReturnCmd.get(i) + "..");
+                    }
+
 
                 }
             }
@@ -795,9 +799,13 @@ public class TypeCheckVisitor extends Visitor {
             SType tyLvalue = stk.pop();
 
             if (!tyLvalue.match(tyExpression)) {
-                logError.add(p.getLine() + ", " + p.getCol() +
-                        ": Atribuição ilegal para o atributo " + ((IdLValue) p.getLvalue()).getId() +
-                        ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
+                // se a expr for null, só pode ser aplicada a registros/array
+                if(tyExpression.match(tynull) && !(tyLvalue instanceof STyData || tyLvalue instanceof STyArr)){
+                    logError.add(p.getLine() + ", " + p.getCol() +
+                            ": Atribuição ilegal para o atributo " + ((IdLValue) p.getLvalue()).getId() +
+                            ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
+                }
+
             }
         } else if (p.getLvalue() instanceof LValueExp lValueExp) {//LValueExp é acesso a array
             lValueExp.getLvalue().accept(this); // empilha o tipo do arranjo
