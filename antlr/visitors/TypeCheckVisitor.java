@@ -193,8 +193,8 @@ public class TypeCheckVisitor extends Visitor {
         f.getCmd().accept(this);
 
         //se após tipar o corpo da função a flag continua falsa, tem algum erro, deveria ter um retorno
-        if (f.getID() != "main" && !f.getReturnTypes().isEmpty() && !retChk) {
-            logError.add(f.getLine() + ", " + f.getCol() + ": Função " + f.getID() + " deve retornar algum valor.");
+        if (!f.getReturnTypes().isEmpty() && !retChk) {
+            logError.add(f.getLine() + ", " + f.getCol() + ": Comando de retorno nao encontrado na função " + f.getID() + " para todos os caminhos.");
         }
     }
 
@@ -735,13 +735,11 @@ public class TypeCheckVisitor extends Visitor {
             if (tiposRetorno == null) {
                 logError.add(r.getLine() + ", " + r.getCol() +
                         ": Retorno fora de função");
-                return;
             }
 
             if (tiposRetorno.length != typesReturnCmd.size()) {
                 logError.add(r.getLine() + ", " + r.getCol() +
                         ": Número de valores retornados "+typesReturnCmd.size()+" diferente do esperado "+tiposRetorno.length+".");
-                return;
             }
 
             for (int i = 0; i < typesReturnCmd.size(); i++) {
@@ -837,19 +835,19 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(CmdIf e) {
-        boolean rt, re;
-        re = true;
+        boolean returnThen;
+
         e.getCondition().accept(this);
         if (stk.pop().match(tybool)) {
             retChk = false;
             e.getThenCmd().accept(this);
-            rt = retChk;
+            returnThen = retChk;
+            retChk = false;
+
             if (e.getElseCmd() != null) {
-                retChk = false;
                 e.getElseCmd().accept(this);
-                re = retChk;
             }
-            retChk = rt && re;
+            retChk = retChk && returnThen;
         } else {
             logError.add(e.getLine() + ", " + e.getCol() + ": Expressão de teste do IF deve ter tipo Bool");
         }
