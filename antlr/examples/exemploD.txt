@@ -1,21 +1,28 @@
-data Racional{
-    num::Float;
-    den::Float;
+soma(x::Int,y::Int): Int, Int, Int, Char{
+    return x,y,x+y, '+';
 }
 
+sub(x::Int,y::Int): Int, Int, Int, Char{
+    return x,y,x-y,'-';
+}
+
+mult(x::Int,y::Int): Int, Int, Int, Char{
+    return x,y,x*y,'*';
+}
+
+div(x::Int,y::Int): Int, Int, Int, Char{
+    return x,y,x+y,'/';
+}
+
+printChar(){
+    print 'l';
+}
+
+teste(){
+    print 't';
+}
+
+
 main(){
-   v = new Racional[][3];
-   v[0] = new Racional[4];
-   v[0][0] = new Racional;
-
-   v[0][0].num  = 3.0;
-   v[0][0].den  = 4.0;
-
-
-   print v[0][0].num;
-   print v[0][0].den;
-
-   print v[0][0].num / v[0][0].den;
-
-   read v[0][0].num;
+    v = soma(2,3,0)[1];
 }

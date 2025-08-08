@@ -185,6 +185,7 @@ public class TypeCheckVisitor extends Visitor {
 
     /*
         cmd --> ID ‘(’ [exps] ‘)’ [‘<’ lvalue {‘,’ lvalue} ‘>’ ] ‘;’
+        divmod (5 ,2) <q , r >;
         se uma chamada de funçã da certo, o tipo resultando é o tipo que a função declara que ela retorna, ou seja, que esta no local env
         TODO: corrigir a tipagem do retorno e argumentos, não ta pegando todos
     */
@@ -225,8 +226,24 @@ public class TypeCheckVisitor extends Visitor {
             }
         }
 
+        List<LValue> lValues = e.getLvalues();
+        for (int i = 0; i < lValues.size(); i++) {
+            lValues.get(i).accept(this);
+            SType lvalueType = stk.pop();
+
+            if (!returnTypes[i].match(lvalueType)) {
+                logError.add(e.getLine() + ", " + e.getCol() + ": " + (i + 1) +
+                        "º retorno incompatível com o parâmetro correspondente da função " + e.getId() +
+                        " (esperado: " + returnTypes[i] + ", encontrado: " + lvalueType + ")");
+                allArgsOk = false;
+            }
+        }
+
         if (allArgsOk) {
-            // Se todos os argumentos estiverem corretos, empilha o tipo de retorno
+            //TODO:
+            //  Corrigir, não é isso, é verificar isso divmod (5 ,2) <q , r >;
+            //  Verificar o e.getLvalues()
+            //  Se todos os argumentos estiverem corretos, empilha o tipo de retorno
             if (returnTypes.length > 0) {
                 stk.push(returnTypes[0]); // TODO: empilhar múltiplos retornos se suportado
             } else {
@@ -237,49 +254,128 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
+    private Integer tryEvaluateIntExpr(Expr expr) {
+        if (expr instanceof IntValue iv) {
+            return Integer.parseInt(iv.getValue());
+        }
+        else if (expr instanceof Add add) {
+            Integer l = tryEvaluateIntExpr(add.getLeft());
+            Integer r = tryEvaluateIntExpr(add.getRight());
+            return (l != null && r != null) ? l + r : null;
+        }
+        else if (expr instanceof Sub sub) {
+            Integer l = tryEvaluateIntExpr(sub.getLeft());
+            Integer r = tryEvaluateIntExpr(sub.getRight());
+            return (l != null && r != null) ? l - r : null;
+        }
+        else if (expr instanceof Mul mul) {
+            Integer l = tryEvaluateIntExpr(mul.getLeft());
+            Integer r = tryEvaluateIntExpr(mul.getRight());
+            return (l != null && r != null) ? l * r : null;
+        }
+        else if (expr instanceof Div div) {
+            Integer l = tryEvaluateIntExpr(div.getLeft());
+            Integer r = tryEvaluateIntExpr(div.getRight());
+            return (l != null && r != null && r != 0) ? l / r : null;
+        }
+        else if (expr instanceof Mod mod) {
+            Integer l = tryEvaluateIntExpr(mod.getLeft());
+            Integer r = tryEvaluateIntExpr(mod.getRight());
+            return (l != null && r != null && r != 0) ? l % r : null;
+        }
+        return null;
+    }
+
+
+
+
     /*
         exp --> ID ‘(’ [exps] ‘)’ ‘[’ exp ‘]’
+        v = soma(2,4)[(1+1)*((3-3)+4)];
+        Sempre vai tentar acessar retorno
     */
     @Override
     public void visit(CallFunctionAccess e) {
         LocalEnv<SType> sTypeLocalEnv = env.get(e.getFunctionName());//pega o ambiente local da função
-        if (sTypeLocalEnv != null) {
-            STyFun tf = (STyFun) sTypeLocalEnv.getFuncType();
 
-            // verificar se tem a mesma quantidade de parametros da função ao chamar
-            // observe que pego apenas os parametros
-
-            if (e.getExps() != null && e.getExps().getExpressions().size() == tf.getParamTypes().length) {
-                int k = 0;
-                boolean r = true;
-
-                // verificar se o tipo de cada argumento ao chamar uma função casa com o tipo do parametro da função
-                for (Expr x : e.getExps().getExpressions()) {
-                    x.accept(this);
-                    if (!tf.getParamTypes()[k].match(stk.pop())) {
-                        logError.add(x.getLine() + ", " + x.getCol() + ": " + (k + 1) +
-                                "º argumento incompatível com o respectivo parâmetro de " + e.getFunctionName());
-                    }
-                    k++;
-                }
-
-                // TODO: tipar o acesso ao vetor --> fn()[2]
-
-                // se a chamada de função da certo, o tipo resultante é tipo que ela declara que ela retorna
-                // por isso jogo esse tipo para o topo da pilha
-                // stk.push(tf.getTypes()[tf.getTypes().length - 1]);//pq?
-
-                if (tf.getReturnTypes().length > 0) {
-                    stk.push(tf.getReturnTypes()[0]);//TODO: tratar retorno de varios valores
-                }
-
-            } else {
-                logError.add(e.getLine() + ", " + e.getCol() +
-                        ": Chamada a função " + e.getFunctionName() + " incompatível com argumentos. ");
-                stk.push(tyerr);
-            }
-        } else {
+        if (sTypeLocalEnv == null) {
             logError.add(e.getLine() + ", " + e.getCol() + ": Chamada a função não declarada: " + e.getFunctionName());
+            stk.push(tyerr);
+            return;
+        }
+
+        // pega o tipo da função que esta armazenado (args, rets)
+        STyFun tf = (STyFun) sTypeLocalEnv.getFuncType();
+
+        // verificar se tem a mesma quantidade de parametros da função ao chamar
+        // observe que pego apenas os parametros
+        if (
+                // chamei a função passando parametros e a função tem tamanho diferente
+                (e.getExps() != null && e.getExps().getExpressions().size() != tf.getParamTypes().length)
+                        // não chamei passando parametros e função tem parametros
+                        || (e.getExps() == null && tf.getParamTypes().length > 0)
+        ) {
+            logError.add(e.getLine() + ", " + e.getCol() +
+                    ": Chamada a função " + e.getFunctionName() + " incompatível com argumentos. ");
+            stk.push(tyerr);
+            return;
+        }
+
+        int k = 0;
+        // somente se tem argumentos, verificar se o tipo de cada argumento ao chamar uma função casa com o tipo do parametro da função
+        if (e.getExps() != null) {
+            for (Expr expr : e.getExps().getExpressions()) {
+                expr.accept(this);
+                if (!tf.getParamTypes()[k].match(stk.pop())) {
+                    logError.add(expr.getLine() + ", " + expr.getCol() + ": " + (k + 1) +
+                            "º argumento incompatível com o respectivo parâmetro de " + e.getFunctionName());
+                }
+                k++;
+            }
+        }
+
+        // Verificar que os indicadores de acesso a valores de retorno estão dentro do limite do número  de valores de retorno, p
+        e.getExp().accept(this);
+        SType sType = stk.pop();//TODO: como pegar o valor calculado da expressao???
+
+        if (!(sType.match(tyint))) {
+            logError.add(e.getLine() + ", " + e.getCol() +
+                    " o acesso ao indice de retorno da função deve ser do tipo Int.");
+            stk.push(tyerr);
+            return;
+        }
+        // calcular o valor do índice
+        Integer idxValue = tryEvaluateIntExpr(e.getExp());
+        int sizeRet = tf.getReturnTypes().length;
+
+        if (idxValue != null) {
+            if (sizeRet == 0) {
+                logError.add(e.getLine() + ", " + e.getCol() +
+                        " a função não tem retorno e está tentando acessar a posição " + idxValue);
+                stk.push(tyerr);
+                return;
+            }
+            if (idxValue < 0 || idxValue >= sizeRet) {
+                logError.add(e.getLine() + ", " + e.getCol() +
+                        ": index fora dos limites de retorno. Função retorna " + sizeRet +
+                        " valores e está acessando posição " + idxValue);
+                stk.push(tyerr);
+                return;
+            }
+
+            // se a chamada de função da certo, o tipo resultante é tipo que ela declara que ela retorna
+            // por isso jogo esse tipo para o topo da pilha
+            // stk.push(tf.getTypes()[tf.getTypes().length - 1]);//pq?
+            //expressão de chamada de função sempre retorna alguma coisa considerando que é obrigatorio ter o []
+            stk.push(tf.getReturnTypes()[idxValue]);
+        } else {
+            if (sizeRet == 0) {
+                logError.add(e.getLine() + ", " + e.getCol() +
+                        " a função não tem retorno e está tentando acessar um índice.");
+                stk.push(tyerr);
+                return;
+            }
+
             stk.push(tyerr);
         }
     }
@@ -640,11 +736,11 @@ public class TypeCheckVisitor extends Visitor {
     */
     @Override
     public void visit(CmdAssign p) {
-          if(p.getExpression() instanceof VarExpr && !(((VarExpr) p.getExpression()).getType() instanceof TYID)){
-                logError.add(p.getLine() + ", " + p.getCol() + " Não é permitido instanciar tipos primitivos.");
-                stk.push(tyerr);
-                return;
-          }
+        if (p.getExpression() instanceof VarExpr && !(((VarExpr) p.getExpression()).getType() instanceof TYID)) {
+            logError.add(p.getLine() + ", " + p.getCol() + " Não é permitido instanciar tipos primitivos.");
+            stk.push(tyerr);
+            return;
+        }
 
         if (p.getLvalue() instanceof ID) {//variavel simples
             String nameVar = ((ID) p.getLvalue()).getName();
