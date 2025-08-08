@@ -186,8 +186,6 @@ public class TypeCheckVisitor extends Visitor {
     /*
         cmd --> ID ‘(’ [exps] ‘)’ [‘<’ lvalue {‘,’ lvalue} ‘>’ ] ‘;’
         divmod (5 ,2) <q , r >;
-        se uma chamada de funçã da certo, o tipo resultando é o tipo que a função declara que ela retorna, ou seja, que esta no local env
-        TODO: corrigir a tipagem do retorno e argumentos, não ta pegando todos
     */
     @Override
     public void visit(CmdFuncCall e) {
@@ -200,7 +198,7 @@ public class TypeCheckVisitor extends Visitor {
 
         // Se a função existe, pego a assinatura dela (args, rets)
         if (!(sTypeLocalEnv.getFuncType() instanceof STyFun tf)) {
-            logError.add(e.getLine() + ", " + e.getCol() + ": "+e.getId() + " não é uma função.");
+            logError.add(e.getLine() + ", " + e.getCol() + ": " + e.getId() + " não é uma função.");
             return;
         }
 
@@ -273,37 +271,29 @@ public class TypeCheckVisitor extends Visitor {
     private Integer tryEvaluateIntExpr(Expr expr) {
         if (expr instanceof IntValue iv) {
             return Integer.parseInt(iv.getValue());
-        }
-        else if (expr instanceof Add add) {
+        } else if (expr instanceof Add add) {
             Integer l = tryEvaluateIntExpr(add.getLeft());
             Integer r = tryEvaluateIntExpr(add.getRight());
             return (l != null && r != null) ? l + r : null;
-        }
-        else if (expr instanceof Sub sub) {
+        } else if (expr instanceof Sub sub) {
             Integer l = tryEvaluateIntExpr(sub.getLeft());
             Integer r = tryEvaluateIntExpr(sub.getRight());
             return (l != null && r != null) ? l - r : null;
-        }
-        else if (expr instanceof Mul mul) {
+        } else if (expr instanceof Mul mul) {
             Integer l = tryEvaluateIntExpr(mul.getLeft());
             Integer r = tryEvaluateIntExpr(mul.getRight());
             return (l != null && r != null) ? l * r : null;
-        }
-        else if (expr instanceof Div div) {
+        } else if (expr instanceof Div div) {
             Integer l = tryEvaluateIntExpr(div.getLeft());
             Integer r = tryEvaluateIntExpr(div.getRight());
             return (l != null && r != null && r != 0) ? l / r : null;
-        }
-        else if (expr instanceof Mod mod) {
+        } else if (expr instanceof Mod mod) {
             Integer l = tryEvaluateIntExpr(mod.getLeft());
             Integer r = tryEvaluateIntExpr(mod.getRight());
             return (l != null && r != null && r != 0) ? l % r : null;
         }
         return null;
     }
-
-
-
 
     /*
         exp --> ID ‘(’ [exps] ‘)’ ‘[’ exp ‘]’
@@ -326,7 +316,7 @@ public class TypeCheckVisitor extends Visitor {
         // verificar se tem a mesma quantidade de parametros da função ao chamar
         // observe que pego apenas os parametros
         if (
-                // chamei a função passando parametros e a função tem tamanho diferente
+            // chamei a função passando parametros e a função tem tamanho diferente
                 (e.getExps() != null && e.getExps().getExpressions().size() != tf.getParamTypes().length)
                         // não chamei passando parametros e função tem parametros
                         || (e.getExps() == null && tf.getParamTypes().length > 0)
@@ -848,25 +838,25 @@ public class TypeCheckVisitor extends Visitor {
      */
     @Override
     public void visit(CmdIterate e) {
-
         if (e.getCondition() instanceof ExpItCond expItCond) { // exp
             expItCond.getExpression().accept(this);
             SType tyExpression = stk.pop();
-            if (tyExpression.match(tyint)) {//TODO: pode ser int ou tipo arranjo (vetor)
+            //tem que ser int ou array
+            // quando for array, o corpo vai ser executado a quantidade de vezes do tamanho do array
+            if (tyExpression.match(tyint) || tyExpression instanceof STyArr) {
                 e.getBody().accept(this);
             } else {
-                logError.add(e.getLine() + ", " + e.getCol() + ": Expressão de teste do Iterate deve ter tipo Int");
+                logError.add(e.getLine() + ", " + e.getCol() + ": Expressão de teste do Iterate deve ter tipo Int/Array");
             }
 
         } else if (e.getCondition() instanceof IdItCond idItCond) {// ID ‘:’ exp iterate(v:e){
-            /*
-                Na segunda forma, quando e tem tipo Int, verificamos que v não está no contexto ou está com tipo Int.
-                Caso e seja um vetor, a regra é similar, porém v deve ter o mesmo tipo dos elementos do vetor.
-             */
 
             idItCond.getExpression().accept(this);
             SType tyExpression = stk.pop();// é o exp do iterate
-            if (tyExpression.match(tyint)) {
+            // iterate ( ID : expr ) cmd
+            if (tyExpression.match(tyint)) {//TODO: pode ser int ou tipo arranjo (vetor)
+                // iterate ( v : 10 ) cmd
+                // Na segunda forma, quando e tem tipo Int, verificamos que v não está no contexto ou está com tipo Int.
                 String v = idItCond.getId();
                 SType typeV = temp.get(v);
                 if (typeV == null) {// ou seja, o v ainda não esta no contexto
@@ -875,8 +865,19 @@ public class TypeCheckVisitor extends Visitor {
                     logError.add(e.getLine() + ", " + e.getCol() + ": O tipo de " + v + " deveria ser Int mas foi encontrado " + typeV);
                 }
                 e.getBody().accept(this);
-            }
+            } else if (tyExpression instanceof STyArr) {
+                // iterate ( v : array ) cmd
+                // Caso e seja um vetor, a regra é similar, porém v deve ter o mesmo tipo dos elementos do vetor.
 
+                String v = idItCond.getId();
+                SType typeV = temp.get(v);
+                SType sTypeElementsArr = ((STyArr) tyExpression).getElemType();
+                if (typeV == null) {// ou seja, o v ainda não esta no contexto
+                    temp.set(v, tyint);// seto o v com o tipo int
+                } else if (!typeV.match(sTypeElementsArr)) {
+                    logError.add(e.getLine() + ", " + e.getCol() + ": O tipo de " + v + " deveria ser " + sTypeElementsArr + " mas foi encontrado " + typeV);
+                }
+            }
 
         }
     }
