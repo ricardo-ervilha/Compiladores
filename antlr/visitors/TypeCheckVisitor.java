@@ -161,6 +161,11 @@ public class TypeCheckVisitor extends Visitor {
         // Nesse ponto tenho todas as funções e tipos do usuario do programa
 
 
+        if(!env.containsKey("main")){
+            logError.add(program.getLine() + ", " + program.getCol() + ": Função main não foi declarada.");
+            return;
+        }
+
         for (Def def : program.getDefinitions()) {
             if (def instanceof Fun f) {
                 f.accept(this);
