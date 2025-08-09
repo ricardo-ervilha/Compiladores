@@ -87,8 +87,10 @@ public class Main {
                     ast2.accept(tcv);
                     if(tcv.getNumErrors() > 0){
                         tcv.printErrors();
+                        System.out.println("reject");
+                        System.exit(1);
                     }else{
-                        System.out.println("typing  ... [ ok ]");
+                        System.out.println("accept");
                     }
                     break;
 

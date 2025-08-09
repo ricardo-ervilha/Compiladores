@@ -53,7 +53,7 @@ public class STyData extends SType {
 
      @Override
      public boolean match(SType v) {
-          return (v instanceof STyErr) || (v instanceof STyData);
+          return (v instanceof STyErr) || (v instanceof STyData) || (v instanceof STyNull);
      }
 
      @Override
