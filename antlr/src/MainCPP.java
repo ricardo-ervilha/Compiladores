@@ -4,9 +4,14 @@ import ast.Node;
 import parser.*;
 
 import org.antlr.v4.runtime.*;
+
+import util.LocalEnv;
+import util.SType;
 import util.SyntaxErrorListener;
+import util.TyEnv;
 import visitors.CPPVisitor;
 import visitors.InterpretVisitor;
+import visitors.TypeCheckVisitor;
 
 public class MainCPP {
     
@@ -29,10 +34,19 @@ public class MainCPP {
 
             // Tenta fazer o parse do programa
             Node ast = parser.prog().ast;
+            
+            // faz o semântico para ganhar o env.
+            TypeCheckVisitor v = new TypeCheckVisitor();
+            ast.accept(v);
 
-            // SOURCE-TO-SOURCE
-            CPPVisitor iv = new CPPVisitor();
-            // ast.accept(iv);
+            if(v.getNumErrors() != 0) {
+                System.out.println( " Erros ocorreram durante a análise semântica.\nAbortando ");
+                v.printErrors();
+                System.exit(1);
+            }
+
+            TyEnv<LocalEnv<SType>> env = v.getEnv();
+            ast.accept(new CPPVisitor(env));
 
             // Se chegou até aqui, não houve erro sintático
             System.out.println("accept");

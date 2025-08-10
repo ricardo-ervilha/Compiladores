@@ -12,6 +12,8 @@
 
 package ast;
 
+import visitors.Visitor;
+
 public class Param {
     private String id;
     private Type type;
@@ -27,5 +29,9 @@ public class Param {
 
     public Type getType() {
         return type;
+    }
+
+    public void accept(Visitor v) {
+        v.visit(this);
     }
 }

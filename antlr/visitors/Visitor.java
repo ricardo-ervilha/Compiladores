@@ -57,6 +57,7 @@ public abstract class Visitor {
     public abstract void visit(ArrayType e);
     public abstract void visit(CallFunctionAccess e);
     public abstract void visit(VarExpr e);
+    public abstract void visit(Param p);
 
     // --- Types ---
     public abstract void visit(ID e);

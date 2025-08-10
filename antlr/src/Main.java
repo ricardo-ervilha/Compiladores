@@ -16,8 +16,7 @@ import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import parser.*;
-import util.InterpretException;
-import util.SyntaxErrorListener;
+import util.*;
 import visitors.InterpretVisitor;
 import visitors.TypeCheckVisitor;
 
@@ -100,6 +99,20 @@ public class Main {
 
                 case "-gen":
                     System.out.println("Gera código para uma arquitetura alvo.");
+                    Node ast4 = parser.prog().ast;
+                    if (errorListener.hasErrors()) {
+                        System.out.println("reject");
+                        System.exit(1);
+                    }
+                    TypeCheckVisitor typeCheckS2J = new TypeCheckVisitor();
+                    ast4.accept(typeCheckS2J);
+                    if(typeCheckS2J.getNumErrors() > 0){
+                        typeCheckS2J.printErrors();
+                        System.out.println("reject");
+                        System.exit(1);
+                    }else{
+                        System.out.println("accept");
+                    }
                     break;
 
                 default:

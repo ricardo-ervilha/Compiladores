@@ -736,7 +736,7 @@ public class LangParser extends Parser {
 					match(T__10);
 					setState(155);
 					match(T__11);
-					((TypeContext)_localctx).ast =  new ArrayType(((TypeContext)_localctx).t1.ast.getLine(), ((TypeContext)_localctx).t1.ast.getCol());
+					((TypeContext)_localctx).ast =  new ArrayType(((TypeContext)_localctx).t1.ast.getLine(), ((TypeContext)_localctx).t1.ast.getCol(), ((TypeContext)_localctx).t1.ast);
 					}
 					} 
 				}

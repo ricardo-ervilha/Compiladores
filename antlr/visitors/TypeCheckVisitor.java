@@ -52,6 +52,10 @@ public class TypeCheckVisitor extends Visitor {
         logError = new ArrayList<String>();
     }
 
+    public TyEnv<LocalEnv<SType>> getEnv(){
+        return this.env;
+    }
+
     public int getNumErrors() {
         return logError.size();
     }
@@ -453,6 +457,11 @@ public class TypeCheckVisitor extends Visitor {
      *
      * @param e
      */
+    @Override
+    public void visit(Param p){
+
+    }
+
     @Override
     public void visit(ArrayExpr e) {
         // Verifica se o tamanho e do tipo Int

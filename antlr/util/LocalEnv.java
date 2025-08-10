@@ -12,7 +12,6 @@
 
 package util;
 
-
 public class LocalEnv<A> extends TyEnv<A> {
     private String id; 
     private SType type;//tipo da função

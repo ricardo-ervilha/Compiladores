@@ -1,21 +1,18 @@
-fibonacci(n :: Int) : Int {
-    x=10;
-    if(x < 10){
-      if(5 < x){
-          return 2;
-      }else{
-            if(3 < 4){
-                return 3;
-                print 3;
-            }
-            return 4;
-      }
-    }else{
-        return 3;
+abstract data Person{
+
+    idade :: Int;
+
+    setAge(p :: Person, age :: Int){
+        p.idade = age;
+    }
+
+    getAge(p :: Person): Int{
+        return p.idade;
     }
 }
 
-main() {
-  v = fibonacci(15)[0];
-  print v;
+main(){
+    p1 = new Person;
+    setAge(p1, 20);
+    print getAge(p1)[0];
 }
