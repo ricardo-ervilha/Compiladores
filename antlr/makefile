@@ -25,8 +25,11 @@ run_main_type: clean compile
 	java -cp .:antlr-4.8-complete.jar src/Main -t examples/$(file)
 
 run_s2j: clean compile
-	rm Programa.j
+	rm -f Programa.j
 	java -cp .:antlr-4.8-complete.jar:ST-4.3.1.jar src/Main -gen examples/$(file)
+
+run_jasmin: run_s2j
+	java -jar jasmin.jar Programa.j  && java Programa
 
 junit: compile
 	java -cp src:.:antlr-4.8-complete.jar:$(JUNIT_CP) \

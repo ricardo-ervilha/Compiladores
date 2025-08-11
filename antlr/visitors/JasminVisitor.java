@@ -210,16 +210,27 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * a → Void, em que a ∈ {Int, Char, Bool, Float}
      * @param cmdPrint
      */
     @Override
     public void visit(CmdPrint cmdPrint) {
-        cmdPrint.getExpression().accept(this);// vai jogar na variavel expr
-        // SType t = cmdPrint.getExpression().getType();// TODO: verificar uma forma de pegar o tipo
-//        if (t instanceof STyInt) {
-//            stmt = groupTemplate.getInstanceOf("iprint");
-//        }
-        stmt = groupTemplate.getInstanceOf("iprint");
+        cmdPrint.getExpression().accept(this);// esse accept vai jogar o ST na variavel expr
+
+        SType sType = cmdPrint.getExpression().getSType();
+
+        if (sType instanceof STyInt) {
+            stmt = groupTemplate.getInstanceOf("iprint");
+        } else if (sType instanceof STyFloat) {
+            stmt = groupTemplate.getInstanceOf("fprint");
+        } else if (sType instanceof STyChar) {
+            stmt = groupTemplate.getInstanceOf("cprint");
+        } else if (sType instanceof STyBool) {
+            stmt = groupTemplate.getInstanceOf("bprint");
+        } else {
+            throw new RuntimeException("Tipo não suportado no print: " + sType);
+        }
+
         stmt.add("expr", expr);
     }
 
@@ -232,11 +243,15 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * cmd --> return exp {‘,’ exp} ‘;’
      * @param cmdReturn
      */
     @Override
     public void visit(CmdReturn cmdReturn) {
-        // TODO: no stg como colocar return corretamente? coloquei manualmente mas ne
+        /*
+            comando retorno, retorna um arraylist de expressões
+            se chegou aqui é pq tem pelo menos uma expressão
+         */
         cmdReturn.getExpressions().get(0).accept(this);
 //        SType t = e.getExpr().getType();
 //        if (t instanceof STyInt) {
@@ -254,76 +269,179 @@ public class JasminVisitor extends Visitor {
 
     }
 
-    /**
-     * @param e
-     */
+    private void binOp(BinOP binExpr, String opName) {
+        ST aux;
+        SType sType = binExpr.getSType();
+
+        boolean isIntLike = sType instanceof STyInt || sType instanceof STyChar; // int e char tratados igual
+        boolean isFloat = sType instanceof STyFloat;
+
+        String type = isIntLike ? "i" : "f";
+
+
+        if (opName.equals("+")) {
+            aux = groupTemplate.getInstanceOf(type + "add");
+        } else if (opName.equals("-")) {
+            aux = groupTemplate.getInstanceOf(type + "sub");
+        } else if (opName.equals("*")) {
+            aux = groupTemplate.getInstanceOf(type + "mul");
+        } else if (opName.equals("/")) {
+            aux = groupTemplate.getInstanceOf(type + "div");
+        } else if (opName.equals("%")) {
+            if (!(sType instanceof STyInt)) {
+                throw new RuntimeException(binExpr.getLine() + ", " + binExpr.getCol() +
+                        ": Operador % só é suportado para inteiros.");
+            }
+            aux = groupTemplate.getInstanceOf("imod");
+        } else {
+            throw new RuntimeException(binExpr.getLine() + ", " + binExpr.getCol() +
+                    ": Operador não reconhecido: " + opName);
+        }
+
+        binExpr.getLeft().accept(this);
+        aux.add("left_expr", expr);
+        binExpr.getRight().accept(this);
+        aux.add("right_expr", expr);
+        expr = aux;
+    }
+
     @Override
     public void visit(Add e) {
-
+        binOp(e, "+");
     }
 
-    /**
-     * @param e
-     */
     @Override
     public void visit(Sub e) {
-
+        binOp(e, "-");
     }
 
-    /**
-     * @param e
-     */
     @Override
     public void visit(Mul e) {
-
+        binOp(e, "*");
     }
 
-    /**
-     * @param e
-     */
     @Override
     public void visit(Div e) {
-
+        binOp(e, "/");
     }
 
-    /**
-     * @param e
-     */
     @Override
     public void visit(Mod e) {
-
+        binOp(e, "%");
     }
 
     /**
+     * [Bool, Bool] → Bool
+     *
      * @param e
      */
     @Override
     public void visit(And e) {
+        e.getLeft().accept(this);
+        ST leftExpr = expr;  // salva o resultado do lado esquerdo
 
+        e.getRight().accept(this);
+        ST rightExpr = expr; // salva o resultado do lado direito
+
+        ST andTemplate = groupTemplate.getInstanceOf("and_expr");
+        andTemplate.add("left_expr", leftExpr);
+        andTemplate.add("right_expr", rightExpr);
+
+        expr = andTemplate;
     }
 
+
     /**
-     * @param e
+     * [a, a] → Bool a ∈ {Int, Float, Char}
+     *
+     * @param relExpr
+     * @param opName
      */
-    @Override
-    public void visit(Lt e) {
+    private void relationalBinOp(BinOP relExpr, String opName) {
+        ST aux;
+        SType sType = relExpr.getLeft().getSType();
 
+        boolean isIntLike = sType instanceof STyInt || sType instanceof STyChar;
+
+        // Escolher template
+        if (opName.equals("==")) {
+            aux = groupTemplate.getInstanceOf(isIntLike ? "iequals_expr" : "fequals_expr");
+            aux.add("num", label++);
+        } else if (opName.equals("!=")) {
+            ST eq = groupTemplate.getInstanceOf(isIntLike ? "iequals_expr" : "fequals_expr");
+            eq.add("num", label++);
+
+
+            relExpr.getLeft().accept(this);
+            ST left = expr;
+
+
+            relExpr.getRight().accept(this);
+            ST right = expr;
+
+            eq.add("left_expr", left);
+            eq.add("right_expr", right);
+
+            // Uso o NOT para inverter
+            ST not = groupTemplate.getInstanceOf("not_expr");
+            not.add("expr", eq);
+
+            expr = not;
+            return;
+        } else if (opName.equals("<")) {
+            aux = groupTemplate.getInstanceOf(isIntLike ? "ilt_expr" : "flt_expr");
+            aux.add("num", label++);
+        } else {
+            throw new RuntimeException(relExpr.getLine() + ", " + relExpr.getCol() +
+                    ": Operador não reconhecido: " + opName);
+        }
+
+        // Gerar código para a esquerda
+        relExpr.getLeft().accept(this);
+        ST left = expr;
+
+        // Gerar código para a direita
+        relExpr.getRight().accept(this);
+        ST right = expr;
+
+        // Passar expressões geradas para o template
+        aux.add("left_expr", left);
+        aux.add("right_expr", right);
+
+        expr = aux;
     }
 
     /**
+     * [a, a] → Bool, em que a ∈ {Int, Float, Char}
+     * Os dois operandos devem ter o mesmo tipo
+     *
      * @param e
      */
     @Override
     public void visit(Eq e) {
-
+        relationalBinOp(e, "==");
     }
 
     /**
+     * [a, a] → Bool, em que a ∈ {Int, Float, Char}
+     * Os dois operandos devem ter o mesmo tipo
+     *
      * @param e
      */
     @Override
     public void visit(Diff e) {
+        relationalBinOp(e, "!=");
+    }
 
+    /**
+     * [a, a] → Bool, em que a ∈ {Int, Float, Char}
+     * Os dois operandos devem ter o mesmo tipo
+     *
+     * @param e
+     */
+    @Override
+    public void visit(Lt e) {
+        relationalBinOp(e, "<");
     }
 
     /**
@@ -335,19 +453,41 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * inverte o sinal do operando ao qual é aplicado
+     * a → a, em que a ∈ {Int, Float}
      * @param e
      */
     @Override
     public void visit(MinusExpr e) {
+        SType sType = e.getSType();
+        boolean isInt = sType instanceof STyInt;
 
+        // Gera código do operando
+        e.getExpr().accept(this);
+        ST operand = expr;
+
+        // Escolhe template de negação baseado no tipo
+        ST aux = groupTemplate.getInstanceOf(isInt ? "ineg_expr" : "fneg_expr");
+        aux.add("expr", operand);
+
+        expr = aux;
     }
 
     /**
+     * Bool → Bool
      * @param e
      */
     @Override
     public void visit(NotExpr e) {
+        // Gera código para o operando do NOT
+        e.getExpression().accept(this);
+        ST operand = expr;
 
+        // Cria template do NOT
+        ST aux = groupTemplate.getInstanceOf("not_expr");
+        aux.add("expr", operand);
+
+        expr = aux;
     }
 
     /**
@@ -467,13 +607,13 @@ public class JasminVisitor extends Visitor {
 
     @Override
     public void visit(TrueValue e) {
-        expr = groupTemplate.getInstanceOf("float_expr");
+        expr = groupTemplate.getInstanceOf("boolean_true");
         expr.add("value", true);
     }
 
     @Override
     public void visit(FalseValue e) {
-        expr = groupTemplate.getInstanceOf("float_expr");
+        expr = groupTemplate.getInstanceOf("boolean_false");
         expr.add("value", false);
     }
 

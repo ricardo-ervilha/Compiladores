@@ -39,6 +39,24 @@ getstatic java/lang/System/out Ljava/io/PrintStream;
 invokevirtual java/io/PrintStream/println(I)V
 >>
 
+fprint(expr) ::= <<
+getstatic java/lang/System/out Ljava/io/PrintStream;
+<expr>
+invokevirtual java/io/PrintStream/println(F)V
+>>
+
+cprint(expr) ::= <<
+getstatic java/lang/System/out Ljava/io/PrintStream;
+<expr>
+invokevirtual java/io/PrintStream/println(C)V
+>>
+
+bprint(expr) ::= <<
+getstatic java/lang/System/out Ljava/io/PrintStream;
+<expr>
+invokevirtual java/io/PrintStream/println(Z)V
+>>
+
 ireturn(expr) ::= <<
 <expr>
 ireturn
@@ -141,10 +159,22 @@ isub
 >>
 
 ilt_expr(num, left_expr, right_expr) ::= <<
-<right_expr>
 <left_expr>
+<right_expr>
 isub
-ifgt #<num>
+iflt #<num>
+iconst_0
+goto #<num>#<num>
+#<num>:
+iconst_1
+#<num>#<num>:
+>>
+
+flt_expr(num, left_expr, right_expr) ::= <<
+<left_expr>
+<right_expr>
+fcmpl
+iflt #<num>
 iconst_0
 goto #<num>#<num>
 #<num>:
@@ -164,6 +194,18 @@ iconst_1
 #<num>#<num>:
 >>
 
+fequals_expr(num, left_expr, right_expr) ::= <<
+<left_expr>
+<right_expr>
+fcmpl
+ifeq #<num>
+iconst_0
+goto #<num>#<num>
+#<num>:
+iconst_1
+#<num>#<num>:
+>>
+
 not_expr(expr) ::= <<
 <expr>
 iconst_1
@@ -175,6 +217,17 @@ and_expr(left_expr, right_expr) ::= <<
 <right_expr>
 iand
 >>
+
+ineg_expr(expr) ::= <<
+<expr>
+ineg
+>>
+
+fneg_expr(expr) ::= <<
+<expr>
+fneg
+>>
+
 
 boolean_true() ::= "iconst_1"
 boolean_false() ::= "iconst_0"
