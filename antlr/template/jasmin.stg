@@ -70,26 +70,26 @@ return
 >>
 
 while(num,expr, stmt) ::= <<
-#<num>:
+Label<num>:
 <expr>
-ifeq #<num>#end
+ifeq Label<num>end
 <stmt>
-goto #<num>
-#<num>#end:
+goto Label<num>
+Label<num>end:
 nop
 >>
 
 // Template para if-else
 if_else(elseNum, endNum, expr, thenBlock, elseBlock) ::= <<
 <expr>
-ifeq L<elseNum>
-    <thenBlock>
-    goto L<endNum>
-L<elseNum>:
-    <elseBlock>
-L<endNum>:
-nop
+ifeq Label<elseNum>
+<thenBlock>
+    goto Label<endNum>
+Label<elseNum>:
+<elseBlock>
+Label<endNum>:
 >>
+
 
 
 
@@ -164,48 +164,48 @@ ilt_expr(num, left_expr, right_expr) ::= <<
 <left_expr>
 <right_expr>
 isub
-iflt #<num>
-iconst_0
-goto #<num>#<num>
-#<num>:
-iconst_1
-#<num>#<num>:
+iflt Label<num>
+    iconst_0
+    goto Label<num>end
+Label<num>:
+    iconst_1
+Label<num>end:
 >>
 
 flt_expr(num, left_expr, right_expr) ::= <<
 <left_expr>
 <right_expr>
 fcmpl
-iflt #<num>
-iconst_0
-goto #<num>#<num>
-#<num>:
-iconst_1
-#<num>#<num>:
+iflt Label<num>
+    iconst_0
+    goto Label<num>end
+Label<num>:
+    iconst_1
+Label<num>end:
 >>
 
 iequals_expr(num, left_expr, right_expr) ::= <<
 <left_expr>
 <right_expr>
 isub
-ifeq #<num>
-iconst_0
-goto #<num>#<num>
-#<num>:
-iconst_1
-#<num>#<num>:
+ifeq Label<num>
+    iconst_0
+    goto Label<num>end
+Label<num>:
+    iconst_1
+Label<num>end:
 >>
 
 fequals_expr(num, left_expr, right_expr) ::= <<
 <left_expr>
 <right_expr>
 fcmpl
-ifeq #<num>
-iconst_0
-goto #<num>#<num>
-#<num>:
-iconst_1
-#<num>#<num>:
+ifeq Label<num>
+    iconst_0
+    goto Label<num>end
+Label<num>:
+    iconst_1
+Label<num>end:
 >>
 
 not_expr(expr) ::= <<
