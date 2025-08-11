@@ -631,6 +631,8 @@ public class JasminVisitor extends Visitor {
 
     @Override
     public void visit(CharValue e) {
+        expr = groupTemplate.getInstanceOf("char_expr");
+        expr.add("value", (int) e.getValue().charAt(1));
 
     }
 
