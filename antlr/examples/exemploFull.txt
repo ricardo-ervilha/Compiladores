@@ -1,0 +1,46 @@
+data Racional{
+    num::Int;
+    den::Int;
+}
+
+funcao1(num::Int, den::Int){
+    a = 10;
+    c = 30;
+    d = 50;
+    print num/den;
+}
+
+funcao2(s1::Int[], s2::Int[], index::Int): Int[], Int {
+    result = new Int[3];
+    result[0] = s1[index] + s2[index];
+    return result, s1[index] + s2[index];
+}
+
+funcao3(n :: Int, q :: Int ) : Int, Int{
+    x = 5.0;
+    t = '3';
+    print 'z';
+    print '\n';
+    return n / q, n % q;
+}
+
+main(){
+    a = 3;
+    b = 5;
+    x=0;
+
+    print '2';
+
+    if(x < 10){
+      v = new Racional[][3];
+      v[0] = new Racional[4];
+      v[0][0] = new Racional;
+
+    }else{
+      v1 = new Racional[][3];
+      v1[0] = new Racional[4];
+      v1[0][0] = new Racional;
+    }
+
+    funcao3(a,b)< v1[0][0].num, v1[0][0].den >;
+}

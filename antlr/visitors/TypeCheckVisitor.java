@@ -27,11 +27,13 @@ public class TypeCheckVisitor extends Visitor {
 
     private ArrayList<String> logError;
 
-    // tabela hash que mapeia nomes para environments local de tipos: nome de uma função e o tipo dela
-    // e a definição de tipos local
+    // Mapeia o nome de uma função para um LocalEnv
     // só é adicionado funçãoes dentro do visit do Program, depois só busca dentro do env
     private TyEnv<LocalEnv<SType>> env;
 
+    // O LocalEnv por sua vez tem o nome da função (id do tipo String) e o tipo da função (type do tipo StyFun)
+    // LocalEnv extends TyEnv, então cada LocalEnv, vai ter também um typeEnv que mapeia nome da variavel para o tipo dela
+    // Então o TyEnv mapeia tanto nome da função para o tipo dela, quanto o nome de uma variavel para o tipo dela
     private LocalEnv<SType> temp;// usado para construir o ambiente local de cada função
 
     private Stack<SType> stk;// pilha de tipos, usado para calcular os tipos de cada expressão
@@ -52,7 +54,7 @@ public class TypeCheckVisitor extends Visitor {
         logError = new ArrayList<String>();
     }
 
-    public TyEnv<LocalEnv<SType>> getEnv(){
+    public TyEnv<LocalEnv<SType>> getEnv() {
         return this.env;
     }
 
@@ -76,7 +78,7 @@ public class TypeCheckVisitor extends Visitor {
          */
         for (Def def : program.getDefinitions()) {
             if (def instanceof Fun f) {
-                if(env.containsKey(f.getID())){
+                if (env.containsKey(f.getID())) {
                     logError.add(f.getLine() + ", " + f.getCol() +
                             ": Função " + f.getID() + " duplicada.");
                     return;
@@ -116,7 +118,7 @@ public class TypeCheckVisitor extends Visitor {
                         atributosAbs.put(decl.getId(), stk.pop());
 
                     } else if (declFun instanceof FunAbstractData f) {
-                        if(env.containsKey(f.getID())){
+                        if (env.containsKey(f.getID())) {
                             logError.add(f.getLine() + ", " + f.getCol() +
                                     ": Função " + f.getID() + " duplicada.");
                             return;
@@ -165,7 +167,7 @@ public class TypeCheckVisitor extends Visitor {
         // Nesse ponto tenho todas as funções e tipos do usuario do programa
 
 
-        if(!env.containsKey("main")){
+        if (!env.containsKey("main")) {
             logError.add(program.getLine() + ", " + program.getCol() + ": Função main não foi declarada.");
             return;
         }
@@ -176,8 +178,8 @@ public class TypeCheckVisitor extends Visitor {
             }
         }
 
-        System.out.println("Imprimindo tabela de tipos...");
-        env.printTable();
+//        System.out.println("Imprimindo tabela de tipos...");
+//        env.printTable();
     }
 
     @Override
@@ -455,10 +457,10 @@ public class TypeCheckVisitor extends Visitor {
      * btype --> Int | Char | Bool | Float | TYID
      * TODO: não esta chegando aqui com os array vazio, ja chega com o 3
      *
-     * @param e
+     * @param p
      */
     @Override
-    public void visit(Param p){
+    public void visit(Param p) {
 
     }
 
@@ -683,7 +685,7 @@ public class TypeCheckVisitor extends Visitor {
 
         if (!(arrType instanceof STyArr)) {
             logError.add(e.getLine() + ", " + e.getCol() +
-                    ": Acesso com índice em tipo que não é array.");
+                    ": Acesso com índice em tipo que não é array na variavel " + e);
             stk.push(tyerr);
             return;
         }
@@ -727,6 +729,7 @@ public class TypeCheckVisitor extends Visitor {
     /**
      * cmd --> return exp {‘,’ exp} ‘;’
      * verificar se o comando de retorno bate com a assinatura da função
+     *
      * @param r
      */
     @Override
@@ -764,13 +767,13 @@ public class TypeCheckVisitor extends Visitor {
             // null só é aceito para Data ou Array
             if (encontrado.match(tynull) && !(esperado instanceof STyData || esperado instanceof STyArr)) {
                 logError.add(r.getLine() + ", " + r.getCol() +
-                        ": Retorno na posição " + (i+1) + " é null, mas o tipo esperado é " + esperado);
+                        ": Retorno na posição " + (i + 1) + " é null, mas o tipo esperado é " + esperado);
                 continue; //já encontrou um erro vai pro proximo
             }
 
             if (!esperado.match(encontrado)) {
                 logError.add(r.getLine() + ", " + r.getCol() +
-                        ": Retorno na posição " + (i+1) +
+                        ": Retorno na posição " + (i + 1) +
                         " incompatível. Esperado: " + esperado + ", encontrado: " + encontrado);
             }
         }
@@ -819,7 +822,7 @@ public class TypeCheckVisitor extends Visitor {
 
             if (!tyLvalue.match(tyExpression)) {
                 // se a expr for null, só pode ser aplicada a registros/array
-                if(tyExpression.match(tynull) && !(tyLvalue instanceof STyData || tyLvalue instanceof STyArr)){
+                if (tyExpression.match(tynull) && !(tyLvalue instanceof STyData || tyLvalue instanceof STyArr)) {
                     logError.add(p.getLine() + ", " + p.getCol() +
                             ": Atribuição ilegal para o atributo " + ((IdLValue) p.getLvalue()).getId() +
                             ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");

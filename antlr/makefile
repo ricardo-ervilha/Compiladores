@@ -24,6 +24,10 @@ run_main_interp: compile
 run_main_type: clean compile
 	java -cp .:antlr-4.8-complete.jar src/Main -t examples/$(file)
 
+run_s2j: clean compile
+	rm Programa.j
+	java -cp .:antlr-4.8-complete.jar:ST-4.3.1.jar src/Main -gen examples/$(file)
+
 junit: compile
 	java -cp src:.:antlr-4.8-complete.jar:$(JUNIT_CP) \
       org.junit.runner.JUnitCore src.Tester

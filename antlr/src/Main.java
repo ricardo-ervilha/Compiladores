@@ -18,9 +18,34 @@ import org.antlr.v4.runtime.CommonTokenStream;
 import parser.*;
 import util.*;
 import visitors.InterpretVisitor;
+import visitors.JasminVisitor;
 import visitors.TypeCheckVisitor;
 
 public class Main {
+
+     public static TyEnv<LocalEnv<VarInfo>> getEnvWithVarIndex(TyEnv<LocalEnv<SType>> env) {
+        TyEnv<LocalEnv<VarInfo>> newEnv = new TyEnv<>();
+
+        for (String funcName : env.getKeys()) {
+            LocalEnv<SType> oldLocalEnv = env.get(funcName);
+            LocalEnv<VarInfo> newLocalEnv = new LocalEnv<>(
+                    oldLocalEnv.getFuncID(),
+                    oldLocalEnv.getFuncType()
+            );
+
+            int index = 0;
+
+            for (String varName : oldLocalEnv.getKeys()) {
+                SType type = oldLocalEnv.get(varName);
+                newLocalEnv.set(varName, new VarInfo(type, index));
+                index++;
+            }
+
+            newEnv.set(funcName, newLocalEnv);
+        }
+
+        return newEnv;
+    }
 
     public static void main(String[] args) throws Exception {
         if (args.length != 2) {
@@ -98,7 +123,7 @@ public class Main {
                     break;
 
                 case "-gen":
-                    System.out.println("Gera código para uma arquitetura alvo.");
+                    System.out.println("Gera código para jasmin.");
                     Node ast4 = parser.prog().ast;
                     if (errorListener.hasErrors()) {
                         System.out.println("reject");
@@ -106,13 +131,21 @@ public class Main {
                     }
                     TypeCheckVisitor typeCheckS2J = new TypeCheckVisitor();
                     ast4.accept(typeCheckS2J);
+
                     if(typeCheckS2J.getNumErrors() > 0){
                         typeCheckS2J.printErrors();
                         System.out.println("reject");
                         System.exit(1);
-                    }else{
-                        System.out.println("accept");
                     }
+                    TyEnv<LocalEnv<SType>> env = typeCheckS2J.getEnv();
+                    TyEnv<LocalEnv<VarInfo>> envWithIndices = getEnvWithVarIndex(env);
+
+                    JasminVisitor jasminVisitor = new JasminVisitor(envWithIndices);
+
+                    ast4.accept(jasminVisitor);
+
+
+
                     break;
 
                 default:

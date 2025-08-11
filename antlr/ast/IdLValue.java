@@ -37,4 +37,9 @@ public class IdLValue extends LValue {
     public void accept(Visitor v) {
         v.visit(this);
     }
+
+    @Override
+    public String toString() {
+        return id;
+    }
 }

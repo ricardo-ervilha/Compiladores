@@ -1,18 +1,8 @@
-abstract data Person{
-
-    idade :: Int;
-
-    setAge(p :: Person, age :: Int){
-        p.idade = age;
-    }
-
-    getAge(p :: Person): Int{
-        return p.idade;
-    }
+teste(): Float{
+    print 366;
+    return 7.0;
 }
 
 main(){
-    p1 = new Person;
-    setAge(p1, 20);
-    print getAge(p1)[0];
+    print 244;
 }
