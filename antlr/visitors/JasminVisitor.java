@@ -127,6 +127,20 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * @param b
+     */
+    @Override
+    public void visit(Block b) {
+        List<ST> cmds = new ArrayList<>();
+        for (Cmd c : b.getCommands()) {
+            c.accept(this);
+            cmds.add(stmt);
+        }
+        stmt = groupTemplate.getInstanceOf("block");
+        stmt.add("cmds", cmds);
+    }
+
+    /**
      * @param p
      */
     @Override
@@ -176,16 +190,6 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
-     * @param b
-     */
-    @Override
-    public void visit(Block b) {
-        for (Cmd c : b.getCommands()) {
-            c.accept(this);
-        }
-    }
-
-    /**
      * @param p
      */
     @Override
@@ -206,8 +210,39 @@ public class JasminVisitor extends Visitor {
      */
     @Override
     public void visit(CmdIf p) {
+        // Avalia a condição e guarda o resultado em expr, que vai ter o ST
+        p.getCondition().accept(this);
+        ST condExpr = expr;
 
+        // Gera o código do then e else e guarda no stmt
+        p.getThenCmd().accept(this);
+        ST thenStmt = stmt; // stmt guarda o código gerado para then
+
+        ST elseStmt;
+        if (p.getElseCmd() != null) {
+            p.getElseCmd().accept(this);
+            elseStmt = stmt;
+        } else {
+            // else vazio gera um bloco vazio, apenas para não passar null para o template
+            elseStmt = groupTemplate.getInstanceOf("empty");
+        }
+
+        // incrementar labels para não repetir
+        int elseLabel = label++;
+        int endLabel = label++;
+
+        // monta o template
+        ST ifElse = groupTemplate.getInstanceOf("if_else");
+        ifElse.add("elseNum", elseLabel);
+        ifElse.add("endNum", endLabel);
+        ifElse.add("expr", condExpr);
+        ifElse.add("thenBlock", thenStmt);
+        ifElse.add("elseBlock", elseStmt);
+
+        // guarda no stmt o resultado do comando if montado
+        stmt = ifElse;
     }
+
 
     /**
      * a → Void, em que a ∈ {Int, Char, Bool, Float}

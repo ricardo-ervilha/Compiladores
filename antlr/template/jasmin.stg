@@ -14,6 +14,8 @@ program(name, funcs) ::= <<
     .end method
 >>
 
+
+// Template para funções
 func(return, name, params, decls, stack, stmt) ::= <<
 .method static <name>(<params>)<return>
     .limit stack <stack>
@@ -22,17 +24,12 @@ func(return, name, params, decls, stack, stmt) ::= <<
 .end method
 >>
 
-array_type(type) ::= "[<type>"
-int_type() ::= "I"
-float_type() ::= "F"
-boolean_type() ::= "Z"
-char_type() ::= "C"
-
-stmt_list(stmt1, stmt2) ::= <<
-<stmt1>
-<stmt2>
+// Template para um bloco: uma sequência de comandos
+block(cmds) ::= <<
+    <cmds; separator="\n">
 >>
 
+empty() ::= <<>>
 iprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
@@ -82,16 +79,19 @@ goto #<num>
 nop
 >>
 
-if(num, expr, thn, els) ::= <<
+// Template para if-else
+if_else(elseNum, endNum, expr, thenBlock, elseBlock) ::= <<
 <expr>
-ifeq #<num>
-<thn>
-goto #<num>#end
-#<num>:
-<els>
-#<num>#end:
+ifeq L<elseNum>
+    <thenBlock>
+    goto L<endNum>
+L<elseNum>:
+    <elseBlock>
+L<endNum>:
 nop
 >>
+
+
 
 iarray(num, expr) ::= <<
 <expr>
@@ -128,6 +128,8 @@ iaload(num) ::= <<
 aload <num>
 >>
 
+
+// Operadores Binários e Unários: Aritméticos e Relacionais
 imul(left_expr, right_expr) ::= <<
 <left_expr>
 <right_expr>
@@ -229,6 +231,14 @@ fneg
 >>
 
 
+// Mapeamento de tipos
+array_type(type) ::= "[<type>"
+int_type() ::= "I"
+float_type() ::= "F"
+boolean_type() ::= "Z"
+char_type() ::= "C"
+
+// Expressões de valores
 boolean_true() ::= "iconst_1"
 boolean_false() ::= "iconst_0"
 float_expr(value) ::= "ldc <value>"
