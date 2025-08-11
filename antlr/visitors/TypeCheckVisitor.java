@@ -363,7 +363,7 @@ public class TypeCheckVisitor extends Visitor {
 
         // Verificar que os indicadores de acesso a valores de retorno estão dentro do limite do número  de valores de retorno, p
         e.getExp().accept(this);
-        SType sType = stk.pop();//TODO: como pegar o valor calculado da expressao???
+        SType sType = stk.pop();
 
         if (!(sType.match(tyint))) {
             logError.add(e.getLine() + ", " + e.getCol() +
@@ -392,13 +392,12 @@ public class TypeCheckVisitor extends Visitor {
 
             // se a chamada de função da certo, o tipo resultante é tipo que ela declara que ela retorna
             // por isso jogo esse tipo para o topo da pilha
-            // stk.push(tf.getTypes()[tf.getTypes().length - 1]);//pq?
             //expressão de chamada de função sempre retorna alguma coisa considerando que é obrigatorio ter o []
             stk.push(tf.getReturnTypes()[idxValue]);
+            e.setSType(tf.getReturnTypes()[idxValue]);
         } else {
             if (sizeRet == 0) {
-                logError.add(e.getLine() + ", " + e.getCol() +
-                        " a função não tem retorno e está tentando acessar um índice.");
+                logError.add(e.getLine() + ", " + e.getCol() +" a função não tem retorno e está tentando acessar um índice.");
                 stk.push(tyerr);
                 return;
             }
@@ -455,8 +454,7 @@ public class TypeCheckVisitor extends Visitor {
      * exp --> 'new' type ('[' e = exp ']')
      * type --> type '[' ']' | btype
      * btype --> Int | Char | Bool | Float | TYID
-     * TODO: não esta chegando aqui com os array vazio, ja chega com o 3
-     *
+     *      *
      * @param p
      */
     @Override
@@ -495,7 +493,9 @@ public class TypeCheckVisitor extends Visitor {
 //        }
 
         // empilha o novo tipo array
-        stk.push(new STyArr(typeDeclared));
+        STyArr sTyArr = new STyArr(typeDeclared);
+        stk.push(sTyArr);
+        e.setSType(sTyArr);
     }
 
     @Override
@@ -505,11 +505,12 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
-    private void typeArithmeticBinOp(Node n, String opName) {
+    private void typeArithmeticBinOp(Expr n, String opName) {
         SType tyr = stk.pop();
         SType tyl = stk.pop();
-        if ((tyr.match(tyint) && tyl.match(tyint)) || (tyr.match(tyfloat) && tyl.match(tyfloat))) {
+        if (tyl.match(tyr) && (tyl.match(tyint) || tyl.match(tyfloat))) {
             stk.push(tyl);
+            n.setSType(tyl);
         } else {
             logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName + " não se aplica aos tipos " + tyl + " e " + tyr);
             stk.push(tyerr);
@@ -550,12 +551,13 @@ public class TypeCheckVisitor extends Visitor {
      * @param n
      * @param opName
      */
-    private void typeRelationalBinOp(Node n, String opName) {
+    private void typeRelationalBinOp(Expr n, String opName) {
         SType tyr = stk.pop();
         SType tyl = stk.pop();
 
         if (tyl.match(tyr) && (tyl.match(tyint) || tyl.match(tyfloat) || tyl.match(tychar))) {
             stk.push(tybool);
+            n.setSType(tybool);
         } else {
             logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName +
                     " não se aplica aos tipos " + tyl + " e " + tyr);
@@ -610,6 +612,7 @@ public class TypeCheckVisitor extends Visitor {
         SType tyl = stk.pop();
         if (tyr.match(tyint) && tyl.match(tyint)) {
             stk.push(tyint);
+            e.setSType(tyint);
         } else {
             logError.add(e.getLine() + ", " + e.getCol() + ": Operador % não se aplica aos tipos " + tyl.toString() + " e " + tyr.toString());
             stk.push(tyerr);
@@ -629,6 +632,7 @@ public class TypeCheckVisitor extends Visitor {
         SType tyl = stk.pop();
         if (tyr.match(tybool) && tyl.match(tybool)) {
             stk.push(tybool);
+            e.setSType(tybool);
         } else {
             logError.add(e.getLine() + ", " + e.getCol() + ": Operador & não se aplica aos tipos " + tyl.toString() + " e " + tyr.toString());
             stk.push(tyerr);
@@ -646,6 +650,7 @@ public class TypeCheckVisitor extends Visitor {
         SType tyr = stk.pop();
         if (tyr.match(tybool)) {
             stk.push(tybool);
+            e.setSType(tybool);
         } else {
             logError.add(e.getLine() + ", " + e.getCol() + ": Operador ! não se aplica ao tipo " + tyr.toString());
             stk.push(tyerr);
@@ -661,8 +666,9 @@ public class TypeCheckVisitor extends Visitor {
     public void visit(MinusExpr e) {
         e.getExpr().accept(this);
         SType tyr = stk.pop();
-        if (tyr.match(tybool)) {
-            stk.push(tybool);
+        if (tyr.match(tyint) || tyr.match(tyfloat)) {
+            stk.push(tyr);
+            e.setSType(tyr);
         } else {
             logError.add(e.getLine() + ", " + e.getCol() + ": Operador ! não se aplica ao tipo " + tyr.toString());
             stk.push(tyerr);
@@ -702,7 +708,7 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     /**
-     * Não entra array aqui, array entra no ArrayExpr
+     * Array não entra aqui, array entra no ArrayExpr
      * exp --> new btype
      * btype --> Int | Char | Bool | Float | TYID
      *
@@ -719,9 +725,11 @@ public class TypeCheckVisitor extends Visitor {
                 logError.add(e.getLine() + ", " + e.getCol() + ": Tipo " + tyid.getName() + " não declarado.");
                 stk.push(tyerr);
             } else {
-                //TODO: talvez possa trocar para typeStructs.get(e.getName()), já que os tipos já estao na tabela typeStructs
-                stk.push(new STyData(tyid.getName())); //vai ser usado no CmdAssign
+                // TODO: talvez possa trocar para typeStructs.get(e.getName()), já que os tipos já estao na tabela typeStructs
+                STyData tyData = new STyData(tyid.getName());
+                stk.push(tyData); //vai ser usado no CmdAssign
 //                stk.push(typeStructs.get(tyid.getName())); //vai ser usado no CmdAssign
+                e.setSType(tyData);
             }
         }
     }
@@ -904,7 +912,7 @@ public class TypeCheckVisitor extends Visitor {
             idItCond.getExpression().accept(this);
             SType tyExpression = stk.pop();// é o exp do iterate
             // iterate ( ID : expr ) cmd
-            if (tyExpression.match(tyint)) {//TODO: pode ser int ou tipo arranjo (vetor)
+            if (tyExpression.match(tyint)) {
                 // iterate ( v : 10 ) cmd
                 // Na segunda forma, quando e tem tipo Int, verificamos que v não está no contexto ou está com tipo Int.
                 String v = idItCond.getId();
@@ -973,7 +981,7 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(TypeChar e) {
-        stk.push(tychar);//TODO: descomentar e testar
+        stk.push(tychar);
     }
 
     @Override
@@ -1084,30 +1092,36 @@ public class TypeCheckVisitor extends Visitor {
     @Override
     public void visit(TrueValue e) {
         stk.push(tybool);
+        e.setSType(tybool);
     }
 
     @Override
     public void visit(FalseValue e) {
         stk.push(tybool);
+        e.setSType(tybool);
     }
 
     @Override
     public void visit(IntValue e) {
         stk.push(tyint);
+        e.setSType(tyint);
     }
 
     @Override
     public void visit(CharValue e) {
         stk.push(tychar);
+        e.setSType(tychar);
     }
 
     @Override
     public void visit(NullValue e) {
         stk.push(tynull);
+        e.setSType(tynull);
     }
 
     @Override
     public void visit(FloatValue e) {
         stk.push(tyfloat);
+        e.setSType(tyfloat);
     }
 }

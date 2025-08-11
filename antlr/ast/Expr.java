@@ -12,10 +12,18 @@
 
 package ast;
 
+import util.SType;
+
 public abstract class Expr extends Node {
+
+    private SType sType;
 
     public Expr(int l, int c){
         super(l, c);
     }
+
+    public SType getSType() { return sType; }
+
+    public void setSType(SType sType) { this.sType = sType; }
 
 }
