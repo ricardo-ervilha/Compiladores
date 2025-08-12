@@ -106,8 +106,8 @@ fun
 	};
 
 // params: ID '::' type (',' ID '::' type)*;
-params 
-	returns[Params ast] 
+params
+	returns[Params ast]
 	@init {
 	    List<Param> listParam = new ArrayList<>();
 	}:
@@ -179,36 +179,69 @@ itcond
 	| exp { $ast = new ExpItCond($exp.ast.getLine(), $exp.ast.getCol(), $exp.ast);}
 	;
 
-// exp: exp op exp | '!' exp | '-' exp | lvalue | '(' exp ')' | 'new' type ('[' exp ']')? | ID '('
-// (exps)? ')' '[' exp ']' | 'true' | 'false' | 'null' | INT | FLOAT | CHAR;
-
+// Reorganizando as expressões seguindo a precedência da tabela (nível 1 = menor precedência, nível 7 = maior precedência)
 exp
 	returns[Expr ast]:
-	not = '!' exp { $ast = new NotExpr($not.line, $not.pos, $exp.ast);}
-	| minus = '-' exp { $ast = new MinusExpr($minus.line, $minus.pos, $exp.ast);}
-	| exp1=exp op = '*' exp2=exp { $ast = new Mul($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| exp1=exp op = '/' exp2=exp { $ast = new Div($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| exp1=exp op = '%' exp2=exp { $ast = new Mod($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| exp1=exp op = '+' exp2=exp { $ast = new Add($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| exp1=exp op = '-' exp2=exp { $ast = new Sub($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| exp1=exp op = '<' exp2=exp { $ast = new Lt($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| exp1=exp op = '==' exp2=exp { $ast = new Eq($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| exp1=exp op = '!=' exp2=exp { $ast = new Diff($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| exp1=exp op = '&&' exp2=exp { $ast = new And($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast);}
-	| lvalue { $ast = $lvalue.ast;
-		}
-	| '(' exp ')' { $ast = $exp.ast; }
-	| 'new' type ('[' e = exp ']') { $ast = new ArrayExpr($type.ast.getLine(), $type.ast.getCol(), $type.ast, $e.ctx != null ? $e.ast : null);}
-	| 'new' btype                  { $ast = new VarExpr($btype.ast.getLine(), $btype.ast.getCol(), $btype.ast);}
-	| ID '(' (exps)? ')' '[' exp ']'  { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ctx !=null ? $exps.ast : null , $exp.ast);
-		}
-	| t = 'true'  { $ast = new TrueValue($t.line, $t.pos);}
-	| f = 'false'  { $ast = new FalseValue($f.line, $f.pos);}
-	| n = 'null'  { $ast = new NullValue($n.line, $n.pos);}
-	| INT { $ast = new IntValue($INT.line, $INT.pos, $INT.text);}
-	| FLOAT { $ast = new FloatValue($FLOAT.line, $FLOAT.pos, $FLOAT.text);}
-	| CHAR { $ast = new CharValue($CHAR.line, $CHAR.pos, $CHAR.text);};
+	// Nível 1: && (conjunção) - associativa à esquerda
+	exp1=exp op='&&' exp2=andExp { $ast = new And($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast); }
+	| andExp { $ast = $andExp.ast; }
+	;
 
+andExp
+	returns[Expr ast]:
+	// Nível 2: == != (igualdade/diferença) - associativas à esquerda
+	exp1=andExp op='==' exp2=eqExp { $ast = new Eq($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast); }
+	| exp1=andExp op='!=' exp2=eqExp { $ast = new Diff($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast); }
+	| eqExp { $ast = $eqExp.ast; }
+	;
+
+eqExp
+	returns[Expr ast]:
+	// Nível 3: < (relacional) - não associativo (apenas uma comparação)
+	exp1=addExp op='<' exp2=addExp { $ast = new Lt($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast); }
+	| addExp { $ast = $addExp.ast; }
+	;
+
+addExp
+	returns[Expr ast]:
+	// Nível 4: + - (adição/subtração) - associativas à esquerda
+	exp1=addExp op='+' exp2=mulExp { $ast = new Add($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast); }
+	| exp1=addExp op='-' exp2=mulExp { $ast = new Sub($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast); }
+	| mulExp { $ast = $mulExp.ast; }
+	;
+
+mulExp
+	returns[Expr ast]:
+	// Nível 5: * / % (multiplicação/divisão/resto) - associativas à esquerda
+	exp1=mulExp op='*' exp2=unaryExp { $ast = new Mul($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast); }
+	| exp1=mulExp op='/' exp2=unaryExp { $ast = new Div($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast); }
+	| exp1=mulExp op='%' exp2=unaryExp { $ast = new Mod($exp1.ast.getLine(), $exp1.ast.getCol(), $exp1.ast, $exp2.ast); }
+	| unaryExp { $ast = $unaryExp.ast; }
+	;
+
+unaryExp
+	returns[Expr ast]:
+	// Nível 6: ! - (negação lógica e menos unário) - associativas à direita
+	not='!' unaryExp { $ast = new NotExpr($not.line, $not.pos, $unaryExp.ast); }
+	| minus='-' unaryExp { $ast = new MinusExpr($minus.line, $minus.pos, $unaryExp.ast); }
+	| othersExp { $ast = $othersExp.ast; }
+	;
+
+othersExp
+	returns[Expr ast]:
+	// Nível 7: [] . () (acesso a vetores, registros, parêntesis) - associativos à esquerda
+	lvalue { $ast = $lvalue.ast; }
+	| '(' exp ')' { $ast = $exp.ast; }
+	| 'new' type ('[' e=exp ']') { $ast = new ArrayExpr($type.ast.getLine(), $type.ast.getCol(), $type.ast, $e.ctx != null ? $e.ast : null); }
+	| 'new' btype { $ast = new VarExpr($btype.ast.getLine(), $btype.ast.getCol(), $btype.ast); }
+	| ID '(' (exps)? ')' '[' exp ']' { $ast = new CallFunctionAccess($ID.line, $ID.pos, $ID.text, $exps.ctx != null ? $exps.ast : null, $exp.ast); }
+	| t='true' { $ast = new TrueValue($t.line, $t.pos); }
+	| f='false' { $ast = new FalseValue($f.line, $f.pos); }
+	| n='null' { $ast = new NullValue($n.line, $n.pos); }
+	| INT { $ast = new IntValue($INT.line, $INT.pos, $INT.text); }
+	| FLOAT { $ast = new FloatValue($FLOAT.line, $FLOAT.pos, $FLOAT.text); }
+	| CHAR { $ast = new CharValue($CHAR.line, $CHAR.pos, $CHAR.text); }
+	;
 
 // lvalue: ID | lvalue '[' exp ']' | lvalue '.' ID | TYID ID;
 lvalue returns[LValue ast]:
