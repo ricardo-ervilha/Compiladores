@@ -13,6 +13,15 @@ replay_pid*
 *.antlr
 *.j
 
+antlr/parser/Lang.interp
+antlr/parser/Lang.tokens
+antlr/parser/LangLexer.interp
+antlr/parser/LangLexer.java
+antlr/parser/LangLexer.tokens
+antlr/parser/LangParser.java
+antlr/parser/teste.txt
+
+
 ##############################
 ## Maven
 ##############################
