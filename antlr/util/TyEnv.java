@@ -1,5 +1,6 @@
 package util;
 
+import java.util.LinkedHashMap;
 import java.util.Set;
 import java.util.TreeMap;
 
@@ -8,11 +9,12 @@ public class TyEnv<A> {
     // O LocalEnv por sua vez tem o nome da função (id do tipo String) e o tipo da função (type do tipo StyFun)
     // LocalEnv extends TyEnv, então cada LocalEnv, vai ter também um typeEnv que mapeia nome da variavel para o tipo dela
     // Então o TyEnv mapeia tanto nome da função para o tipo dela, quanto o nome de uma variavel para o tipo dela
-    private TreeMap<String, A> typeEnv;
+    // Troquei de TreeMap para LinkedHashMap para manter os campos ordenados
+    private LinkedHashMap<String, A> typeEnv;
 
 
     public TyEnv() {
-        typeEnv = new TreeMap<String, A>();
+        typeEnv = new LinkedHashMap<String, A>();
     }
 
     public void set(String id, A t) {

@@ -68,6 +68,20 @@ public class TypeCheckVisitor extends Visitor {
         }
     }
 
+    /**
+     * verifica se a função tem o mesmo nome e o mesmo tipo
+     * @param localEnvNewFun
+     * @return boolean
+     */
+    private boolean isDuplicatedFunc(LocalEnv<SType> localEnvNewFun) {
+        if (env.containsKey(localEnvNewFun.getFuncID())) {
+            SType sTyFunNewFunc = localEnvNewFun.getFuncType();
+            SType sTyFunOldFunc = env.get(localEnvNewFun.getFuncID()).getFuncType();
+            return sTyFunNewFunc.match(sTyFunOldFunc);
+        }
+        return false;
+    }
+    
     @Override
     public void visit(Program program) {
         /*
@@ -78,11 +92,6 @@ public class TypeCheckVisitor extends Visitor {
          */
         for (Def def : program.getDefinitions()) {
             if (def instanceof Fun f) {
-                if (env.containsKey(f.getID())) {
-                    logError.add(f.getLine() + ", " + f.getCol() +
-                            ": Função " + f.getID() + " duplicada.");
-                    return;
-                }
                 List<Param> params = (f.getParams() != null)
                         ? f.getParams().getParamList()
                         : Collections.emptyList();
@@ -102,8 +111,16 @@ public class TypeCheckVisitor extends Visitor {
                 }
 
                 STyFun paramRetFunc = new STyFun(paramTypes, returnTypes);
+                LocalEnv<SType> localEnvNewFun = new LocalEnv<>(f.getID(), paramRetFunc);
 
-                env.set(f.getID(), new LocalEnv<SType>(f.getID(), paramRetFunc));
+                //verifica se a função tem o mesmo nome e o mesmo tipo
+                if(isDuplicatedFunc(localEnvNewFun)) {
+                    logError.add(f.getLine() + ", " + f.getCol() +
+                            ": Função " + f.getID() + " duplicada. Tipo da Função: "+f.getID()+localEnvNewFun.getFuncType());
+
+                    return;
+                }
+                env.set(f.getID(), localEnvNewFun);
 
 
             } else if (def instanceof AbstractDataDecl abstractDataDecl) {
@@ -118,11 +135,6 @@ public class TypeCheckVisitor extends Visitor {
                         atributosAbs.put(decl.getId(), stk.pop());
 
                     } else if (declFun instanceof FunAbstractData f) {
-                        if (env.containsKey(f.getID())) {
-                            logError.add(f.getLine() + ", " + f.getCol() +
-                                    ": Função " + f.getID() + " duplicada.");
-                            return;
-                        }
                         // pego os parametros da função
                         List<Param> params = (f.getParams() != null)
                                 ? f.getParams().getParamList()
@@ -145,8 +157,18 @@ public class TypeCheckVisitor extends Visitor {
                         }
 
                         STyFun paramRetFunc = new STyFun(paramTypes, returnTypes);
+                        LocalEnv<SType> localEnvNewFun = new LocalEnv<>(f.getID(), paramRetFunc);
+
+                        //verifica se a função tem o mesmo nome e o mesmo tipo
+                        if(isDuplicatedFunc(localEnvNewFun)) {
+                            logError.add(f.getLine() + ", " + f.getCol() +
+                                    ": Função " + f.getID() + " duplicada. Tipo da Função: "+f.getID()+localEnvNewFun.getFuncType());
+
+                            return;
+                        }
+
                         // salvo no env, o nome da função e os tipos dos parametros/retornos
-                        env.set(f.getID(), new LocalEnv<SType>(f.getID(), paramRetFunc));
+                        env.set(f.getID(), localEnvNewFun);
                         funcsAbs.put(f.getID(), paramRetFunc);
                     }
                 }
@@ -397,7 +419,7 @@ public class TypeCheckVisitor extends Visitor {
             e.setSType(tf.getReturnTypes()[idxValue]);
         } else {
             if (sizeRet == 0) {
-                logError.add(e.getLine() + ", " + e.getCol() +" a função não tem retorno e está tentando acessar um índice.");
+                logError.add(e.getLine() + ", " + e.getCol() + " a função não tem retorno e está tentando acessar um índice.");
                 stk.push(tyerr);
                 return;
             }
@@ -454,7 +476,7 @@ public class TypeCheckVisitor extends Visitor {
      * exp --> 'new' type ('[' e = exp ']')
      * type --> type '[' ']' | btype
      * btype --> Int | Char | Bool | Float | TYID
-     *      *
+     * *
      * @param p
      */
     @Override
@@ -462,6 +484,11 @@ public class TypeCheckVisitor extends Visitor {
 
     }
 
+    /**
+     * exp --> new type [ ‘[’ exp ‘]’ ]
+     *
+     * @param e
+     */
     @Override
     public void visit(ArrayExpr e) {
         // Verifica se o tamanho e do tipo Int
