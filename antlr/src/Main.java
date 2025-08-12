@@ -96,6 +96,16 @@ public class Main {
                         System.out.println("reject");
                         System.exit(1);
                     }
+
+                    TypeCheckVisitor typeCheckVisitor = new TypeCheckVisitor();
+                    ast.accept(typeCheckVisitor);
+
+                    if(typeCheckVisitor.getNumErrors() > 0){
+                        typeCheckVisitor.printErrors();
+                        System.out.println("reject");
+                        System.exit(1);
+                    }
+
                     InterpretVisitor iv = new InterpretVisitor();
                     ast.accept(iv);
                     break;
