@@ -190,11 +190,62 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
-     * @param p
+     * cmd --> lvalue ‘=’ exp ‘;’
+     * lvalue --> ID | lvalue '[' exp ']' | lvalue '.' ID | TYID ID;
+     * ou seja, posso fazer atribuição em variavel ou atributo de um registro
+     * @param cmdAssign
      */
     @Override
-    public void visit(CmdAssign p) {
+    public void visit(CmdAssign cmdAssign) {
+        // x = 2
+        // LHS = RHS empilhar o RHS (iconst_2) e depois salvar com store o que está na pilha no index da variavel x (istore_1)
 
+        // RHS
+        cmdAssign.getExpression().accept(this);
+        ST rhsExpr = expr;
+
+        // LHS
+        // cmdAssign.getLvalue().accept(this);// TODO: precisa?
+        //ST lhsCode = expr; // ou um campo separado se preferir TODO: precisa?
+
+        SType sType = cmdAssign.getExpression().getSType();
+
+        if (cmdAssign.getLvalue() instanceof ID varID) {
+            int index = local.get(varID.getName()).getIndex();
+
+            // o código é o mesmo para os tres: istore <index>
+            if (sType instanceof STyInt || sType instanceof STyBool || sType instanceof STyChar) {
+                stmt = groupTemplate.getInstanceOf("store_int");
+            } else if (sType instanceof STyFloat) {
+                stmt = groupTemplate.getInstanceOf("store_float");
+            }
+            stmt.add("index", index);
+            stmt.add("rhs", rhsExpr);
+        } else if (cmdAssign.getLvalue() instanceof LValueExp) {
+            LValueExp arr = (LValueExp) cmdAssign.getLvalue();
+            ST arrayRef = expr;/* gera código para referência do array */;
+            ST indexExpr = expr;/* gera código para índice */;
+            if (sType instanceof STyInt) {
+                stmt = groupTemplate.getInstanceOf("astore_int_array");
+            } else if (sType instanceof STyFloat) {
+                stmt = groupTemplate.getInstanceOf("astore_float_array");
+            }
+            stmt.add("arrayRef", arrayRef);
+            stmt.add("indexExpr", indexExpr);
+            stmt.add("rhs", rhsExpr);
+        } else if (cmdAssign.getLvalue() instanceof IdLValue) {
+            IdLValue fld = (IdLValue) cmdAssign.getLvalue();
+            ST objRef = expr; /* gera código para referência do objeto */;
+            if (sType instanceof STyInt) {
+                stmt = groupTemplate.getInstanceOf("putfield_int");
+            } else if (sType instanceof STyFloat) {
+                stmt = groupTemplate.getInstanceOf("putfield_float");
+            }
+            stmt.add("objRef", objRef);
+            stmt.add("fieldName", fld.getId());
+            stmt.add("fieldDescriptor", fld.getLvalue());
+            stmt.add("rhs", rhsExpr);
+        }
     }
 
     /**
@@ -242,7 +293,6 @@ public class JasminVisitor extends Visitor {
         // guarda no stmt o resultado do comando if montado
         stmt = ifElse;
     }
-
 
     /**
      * a → Void, em que a ∈ {Int, Char, Bool, Float}
@@ -384,7 +434,6 @@ public class JasminVisitor extends Visitor {
 
         expr = andTemplate;
     }
-
 
     /**
      * [a, a] → Bool a ∈ {Int, Float, Char}
@@ -566,19 +615,24 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
-     * @param e
+     * @param varId
      */
     @Override
-    public void visit(ID e) {
+    public void visit(ID varId) {
+        /*
+            Aqui vai ser um acesso a um variável
+            Tenho que pegar do store e jogar pra pilha
+        */
+        int index = local.get(varId.getName()).getIndex();
+        SType sType = varId.getSType();
 
-    }
+        if(sType instanceof STyInt || sType instanceof STyChar || sType instanceof STyBool) {
+            expr = groupTemplate.getInstanceOf("load_int");
+        }else if (sType instanceof STyFloat) {
+            expr = groupTemplate.getInstanceOf("load_float");
+        }
 
-    /**
-     * @param e
-     */
-    @Override
-    public void visit(TYID e) {
-
+        expr.add("index", index);
     }
 
     /**
@@ -613,6 +667,13 @@ public class JasminVisitor extends Visitor {
         type = groupTemplate.getInstanceOf("int_type");
     }
 
+    /**
+     * @param e
+     */
+    @Override
+    public void visit(TYID e) {
+
+    }
 
     /**
      * @param e

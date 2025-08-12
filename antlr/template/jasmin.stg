@@ -90,6 +90,56 @@ Label<elseNum>:
 Label<endNum>:
 >>
 
+// ==================== STORE VARIAVEL SIMPES (PILHA --> STORE) ====================
+
+store_int(index, rhs) ::= <<
+<rhs>
+istore <index>
+>>
+
+store_float(index, rhs) ::= <<
+<rhs>
+fstore <index>
+>>
+
+// ==================== LOAD VARIAVEL SIMPES (STORE --> PILHA) ====================
+load_int(index) ::= <<
+iload <index>
+>>
+
+load_float(index) ::= <<
+fload <index>
+>>
+
+// ==================== STORE ELEMENTO DE ARRAY ====================
+
+astore_int_array(arrayRef, indexExpr, rhs) ::= <<
+<arrayRef>
+<indexExpr>
+<rhs>
+iastore
+>>
+
+astore_float_array(arrayRef, indexExpr, rhs) ::= <<
+<arrayRef>
+<indexExpr>
+<rhs>
+fastore
+>>
+
+// ==================== STORE REGISTRO ====================
+putfield_int(objRef, fieldName, fieldDescriptor, rhs) ::= <<
+<objRef>
+<rhs>
+putfield <fieldName> <fieldDescriptor>
+>>
+
+putfield_float(objRef, fieldName, fieldDescriptor, rhs) ::= <<
+<objRef>
+<rhs>
+putfield <fieldName> <fieldDescriptor>
+>>
+
 
 
 

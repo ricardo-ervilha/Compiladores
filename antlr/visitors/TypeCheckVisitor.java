@@ -705,6 +705,7 @@ public class TypeCheckVisitor extends Visitor {
 
         // O tipo do acesso a arr[i] é o tipo do elemento do array
         stk.push(((STyArr) arrType).getElemType());
+        e.setSType(((STyArr) arrType).getElemType());
     }
 
     /**
@@ -795,35 +796,35 @@ public class TypeCheckVisitor extends Visitor {
         ou seja, posso fazer atribuição em variavel ou atributo de um registro
     */
     @Override
-    public void visit(CmdAssign p) {
-        if (p.getExpression() instanceof VarExpr && !(((VarExpr) p.getExpression()).getType() instanceof TYID)) {
-            logError.add(p.getLine() + ", " + p.getCol() + " Não é permitido instanciar tipos primitivos.");
+    public void visit(CmdAssign cmdAssign) {
+        if (cmdAssign.getExpression() instanceof VarExpr && !(((VarExpr) cmdAssign.getExpression()).getType() instanceof TYID)) {
+            logError.add(cmdAssign.getLine() + ", " + cmdAssign.getCol() + " Não é permitido instanciar tipos primitivos.");
             stk.push(tyerr);
             return;
         }
 
-        if (p.getLvalue() instanceof ID) {//variavel simples
-            String nameVar = ((ID) p.getLvalue()).getName();
+        if (cmdAssign.getLvalue() instanceof ID) {// variavel simples
+            String nameVar = ((ID) cmdAssign.getLvalue()).getName();
             //variavel ainda não foi declarada
             if (temp.get(nameVar) == null) {
-                p.getExpression().accept(this); // esse accept vai empilhar o tipo no stk
+                cmdAssign.getExpression().accept(this); // esse accept vai empilhar o tipo no stk
                 temp.set(nameVar, stk.pop());
             } else {//já esta declarada
-                p.getLvalue().accept(this);
-                p.getExpression().accept(this);
+                cmdAssign.getLvalue().accept(this);
+                cmdAssign.getExpression().accept(this);
 
                 SType tyExpression = stk.pop();
                 SType tyLvalue = stk.pop();
 
                 if (!tyLvalue.match(tyExpression)) {
-                    logError.add(p.getLine() + ", " + p.getCol() +
+                    logError.add(cmdAssign.getLine() + ", " + cmdAssign.getCol() +
                             ": Atribuição ilegal para a variável " + nameVar +
                             ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
                 }
             }
-        } else if (p.getLvalue() instanceof IdLValue) {//acesso a atributo de registro
-            p.getLvalue().accept(this);
-            p.getExpression().accept(this);
+        } else if (cmdAssign.getLvalue() instanceof IdLValue) {//acesso a atributo de registro
+            cmdAssign.getLvalue().accept(this);
+            cmdAssign.getExpression().accept(this);
 
             SType tyExpression = stk.pop();
             SType tyLvalue = stk.pop();
@@ -831,13 +832,13 @@ public class TypeCheckVisitor extends Visitor {
             if (!tyLvalue.match(tyExpression)) {
                 // se a expr for null, só pode ser aplicada a registros/array
                 if (tyExpression.match(tynull) && !(tyLvalue instanceof STyData || tyLvalue instanceof STyArr)) {
-                    logError.add(p.getLine() + ", " + p.getCol() +
-                            ": Atribuição ilegal para o atributo " + ((IdLValue) p.getLvalue()).getId() +
+                    logError.add(cmdAssign.getLine() + ", " + cmdAssign.getCol() +
+                            ": Atribuição ilegal para o atributo " + ((IdLValue) cmdAssign.getLvalue()).getId() +
                             ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
                 }
 
             }
-        } else if (p.getLvalue() instanceof LValueExp lValueExp) {//LValueExp é acesso a array
+        } else if (cmdAssign.getLvalue() instanceof LValueExp lValueExp) {//LValueExp é acesso a array
             lValueExp.getLvalue().accept(this); // empilha o tipo do arranjo
             lValueExp.getIndex().accept(this);  // empilha o tipo do índice
 
@@ -846,25 +847,25 @@ public class TypeCheckVisitor extends Visitor {
 
             // Verifica se está acessando um array
             if (!(tyArray instanceof STyArr arr)) {
-                logError.add(p.getLine() + ", " + p.getCol() +
+                logError.add(cmdAssign.getLine() + ", " + cmdAssign.getCol() +
                         ": Tentando acessar como array algor que não é array.");
                 return;
             }
 
             // Verifica se o índice é inteiro
             if (!tyIndex.match(tyint)) {
-                logError.add(p.getLine() + ", " + p.getCol() +
+                logError.add(cmdAssign.getLine() + ", " + cmdAssign.getCol() +
                         ": Índice de acesso ao array deve ser do tipo Int.");
                 return;
             }
 
             // Agora verifica o tipo da expressão que será atribuída
-            p.getExpression().accept(this);
+            cmdAssign.getExpression().accept(this);
             SType tyExpression = stk.pop();
             SType tyElem = arr.getElemType();
 
             if (!tyElem.match(tyExpression)) {
-                logError.add(p.getLine() + ", " + p.getCol() +
+                logError.add(cmdAssign.getLine() + ", " + cmdAssign.getCol() +
                         ": Não é possivel fazer esse acesso ao array. Esperava " +
                         tyElem.toString() + " mas encontrou " + tyExpression.toString() + ".");
             }
@@ -1020,6 +1021,7 @@ public class TypeCheckVisitor extends Visitor {
         SType t = temp.get(e.getName());
         if (t != null) {
             stk.push(t);
+            e.setSType(t);
         } else {
             logError.add(e.getLine() + ", " + e.getCol() + ": Variável não declarada " + e.getName());
             stk.push(tyerr);
@@ -1087,6 +1089,7 @@ public class TypeCheckVisitor extends Visitor {
 
         // Coloco na pilha o tipo do campo acessado
         stk.push(atributos.get(atributo));
+        e.setSType(atributos.get(atributo));
     }
 
     @Override
