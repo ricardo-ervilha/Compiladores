@@ -1,0 +1,88 @@
+group java;
+
+program(funcs) ::= <<
+#include \<iostream>
+#include \<tuple>
+
+using namespace std;
+
+<funcs; separator="\n\n">
+
+int main(int argc, char* argv[]) {
+    main_aux();
+}
+>>
+
+func(types, name, params, cmds) ::= <<
+<if(types)>
+tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
+<else>
+void <name>(<params; separator=", ">) {
+<endif>
+    <if(cmds)>
+    <cmds; separator=";\n">;
+    <endif>
+}
+>>
+
+attr(var, expr) ::= <<
+<var> = <expr>
+>>
+
+var_decl(type, name) ::= <<
+<type> <name>
+>>
+
+param(type, name) ::= "<type> <name>"
+
+array_type(type) ::= "<type>[]"
+int_type() ::= "int"
+float_type() ::= "float"
+bool_type() ::= "bool"
+char_type() ::= "char"
+
+print(expr) ::= "System.out.println(<expr>);"
+return(expr) ::= "return <expr>;"
+
+while(expr, stmt) ::= <<
+while(<expr>) {
+    <stmt>
+}
+>>
+
+if(expr, thn, els) ::= <<
+if(<expr>) {
+    <thn>
+} <if(els)>else {
+    <els>
+}
+<endif>
+>>
+
+stmt_list(stmt1, stmt2) ::= <<
+<stmt1>
+<stmt2>
+>>
+
+id(name) ::= "<name>"
+lvalue(name, array) ::= "<name><array>"
+array_access(expr) ::= "[<expr>]"
+
+boolean_expr(value) ::= "<value>"
+float_expr(value) ::= "<value>"
+int_expr(value) ::= "<value>"
+
+new_array(var, type, expr) ::= "<var> = new <type>[<expr>];"
+
+call(name, args) ::= <<<name>(<args; separator=", ">)>>
+
+mul_expr(left_expr, right_expr) ::= "(<left_expr> * <right_expr>)"
+div_expr(left_expr, right_expr) ::= "(<left_expr> / <right_expr>)"
+mod_expr(left_expr, right_expr) ::= "(<left_expr> % <right_expr>)"
+add_expr(left_expr, right_expr) ::= "(<left_expr> + <right_expr>)"
+sub_expr(left_expr, right_expr) ::= "(<left_expr> - <right_expr>)"
+
+lt_expr(left_expr, right_expr) ::= "(<left_expr> \< <right_expr>)"
+equals_expr(left_expr, right_expr) ::= "(<left_expr> == <right_expr>)"
+and_expr(left_expr, right_expr) ::= "(<left_expr> && <right_expr>)"
+not_expr(expr) ::= "!<expr>"

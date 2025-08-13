@@ -1,5 +1,6 @@
 group java;
 
+/*Definição da estrutura geral do programa C++*/
 program(funcs) ::= <<
 #include \<iostream>
 #include \<tuple>
@@ -9,10 +10,12 @@ using namespace std;
 <funcs; separator="\n\n">
 
 int main(int argc, char* argv[]) {
+    cout \<\< boolalpha;
     main_aux();
 }
 >>
 
+/*Estrutura geral das funções do programa*/
 func(types, name, params, cmds) ::= <<
 <if(types)>
 tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
@@ -25,20 +28,53 @@ void <name>(<params; separator=", ">) {
 }
 >>
 
-attr(type, var, expr) ::= <<
-<if(type)><type><endif> <var> = <expr>
+
+/*Declaração das variáveis no início das funções.*/
+var_decl(type, name) ::= <<
+<type> <name>
 >>
 
+/*Atribuição de valor a variável.*/
+attr(var, expr) ::= <<
+<var> = <expr>
+>>
 
+/*Parâmetro das funções*/
 param(type, name) ::= "<type> <name>"
 
-array_type(type) ::= "<type>[]"
+/*Nome dos tipos no formato do do C++*/
 int_type() ::= "int"
 float_type() ::= "float"
 bool_type() ::= "bool"
 char_type() ::= "char"
 
-print(expr) ::= "System.out.println(<expr>);"
+/*Impressão de valor*/
+print(expr) ::= "cout \<\< <expr>"
+
+/*Usando variavel simples*/
+id(name) ::= "<name>"
+
+/*Comandos de OPERAÇÕES*/
+mul_expr(left_expr, right_expr) ::= "(<left_expr> * <right_expr>)"
+div_expr(left_expr, right_expr) ::= "(<left_expr> / <right_expr>)"
+mod_expr(left_expr, right_expr) ::= "(<left_expr> % <right_expr>)"
+add_expr(left_expr, right_expr) ::= "(<left_expr> + <right_expr>)"
+sub_expr(left_expr, right_expr) ::= "(<left_expr> - <right_expr>)"
+lt_expr(left_expr, right_expr) ::= "(<left_expr> \< <right_expr>)"
+equals_expr(left_expr, right_expr) ::= "(<left_expr> == <right_expr>)"
+diff_expr(left_expr, right_expr) ::= "(<left_expr> != <right_expr>)"
+and_expr(left_expr, right_expr) ::= "(<left_expr> && <right_expr>)"
+not_expr(expr) ::= "!<expr>"
+minus_expr(expr) ::= "-<expr>"
+
+/*Valores*/
+boolean_expr(value) ::= "<value>"
+float_expr(value) ::= "<value>"
+int_expr(value) ::= "<value>"
+null_expr(value) ::= "<value>"
+char_expr(value) ::= "<value>"
+char_expr_num(value) ::= "static_cast\<char>(<value>)"
+
 return(expr) ::= "return <expr>;"
 
 while(expr, stmt) ::= <<
@@ -61,25 +97,14 @@ stmt_list(stmt1, stmt2) ::= <<
 <stmt2>
 >>
 
-id(name) ::= "<name>"
+
 lvalue(name, array) ::= "<name><array>"
 array_access(expr) ::= "[<expr>]"
 
-boolean_expr(value) ::= "<value>"
-float_expr(value) ::= "<value>"
-int_expr(value) ::= "<value>"
+
 
 new_array(var, type, expr) ::= "<var> = new <type>[<expr>];"
 
 call(name, args) ::= <<<name>(<args; separator=", ">)>>
 
-mul_expr(left_expr, right_expr) ::= "(<left_expr> * <right_expr>)"
-div_expr(left_expr, right_expr) ::= "(<left_expr> / <right_expr>)"
-mod_expr(left_expr, right_expr) ::= "(<left_expr> % <right_expr>)"
-add_expr(left_expr, right_expr) ::= "(<left_expr> + <right_expr>)"
-sub_expr(left_expr, right_expr) ::= "(<left_expr> - <right_expr>)"
 
-lt_expr(left_expr, right_expr) ::= "(<left_expr> \< <right_expr>)"
-equals_expr(left_expr, right_expr) ::= "(<left_expr> == <right_expr>)"
-and_expr(left_expr, right_expr) ::= "(<left_expr> && <right_expr>)"
-not_expr(expr) ::= "!<expr>"

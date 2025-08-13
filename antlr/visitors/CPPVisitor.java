@@ -14,6 +14,7 @@ import java.util.*;
 import java.util.List;
 import java.util.ArrayList;
 import java.util.Set;
+import javax.management.monitor.StringMonitorMBean;
 
 import util.Debug;
 
@@ -98,7 +99,27 @@ public class CPPVisitor extends Visitor{
                 parametro.accept(this);
             }
         }
+
         fun.add("params", params);
+
+        /* Declarando todas as variáveis que serão utilizadas... */
+        for (String key : keys) {
+            String type_aux = "";
+            
+            if(local.get(key).toString().equals("Int"))
+                type_aux = "int";
+            else if(local.get(key).toString().equals("Float"))
+                type_aux = "float";
+            else if(local.get(key).toString().equals("Char"))
+                type_aux = "char";
+            else if(local.get(key).toString().equals("Bool"))
+                type_aux = "bool";
+            
+            fun.add("cmds", groupTemplate.getInstanceOf("var_decl")
+                .add("name", key)
+                .add("type", type_aux));
+        }
+
         
         p.getCmd().accept(this);
         fun.add("cmds", cmds);
@@ -162,7 +183,10 @@ public class CPPVisitor extends Visitor{
     
     @Override
     public  void visit(CmdPrint p){
-        
+        Debug.log("VISIT CMDPRINT");
+        stmt = groupTemplate.getInstanceOf("print");
+        p.getExpression().accept(this);
+        stmt.add("expr", expr);
     }
     
     @Override
@@ -185,62 +209,113 @@ public class CPPVisitor extends Visitor{
     
     @Override
     public  void visit(Add e){
-        
+        ST expr_add = groupTemplate.getInstanceOf("add_expr");
+        e.getLeft().accept(this);
+        expr_add.add("left_expr", expr);
+        e.getRight().accept(this);
+        expr_add.add("right_expr", expr);
+        expr = expr_add;
     }
     
     @Override
     public  void visit(Sub e){
-        
+        ST expr_sub = groupTemplate.getInstanceOf("sub_expr");
+        e.getLeft().accept(this);
+        expr_sub.add("left_expr", expr);
+        e.getRight().accept(this);
+        expr_sub.add("right_expr", expr);
+        expr = expr_sub;
     }
     
     @Override
     public  void visit(Mul e){
-        
+        ST expr_mul = groupTemplate.getInstanceOf("mul_expr");
+        e.getLeft().accept(this);
+        expr_mul.add("left_expr", expr);
+        e.getRight().accept(this);
+        expr_mul.add("right_expr", expr);
+        expr = expr_mul;
     }
     
     @Override
     public  void visit(Div e){
-        
+        ST expr_div = groupTemplate.getInstanceOf("div_expr");
+        e.getLeft().accept(this);
+        expr_div.add("left_expr", expr);
+        e.getRight().accept(this);
+        expr_div.add("right_expr", expr);
+        expr = expr_div;
     }
     
     @Override
     public  void visit(Mod e){
-        
-    }
-    
-    @Override
-    public  void visit(And e){
-        
+        ST expr_mod = groupTemplate.getInstanceOf("mod_expr");
+        e.getLeft().accept(this);
+        expr_mod.add("left_expr", expr);
+        e.getRight().accept(this);
+        expr_mod.add("right_expr", expr);
+        expr = expr_mod;
     }
     
     @Override
     public  void visit(Lt e){
-        
+        ST expr_lt = groupTemplate.getInstanceOf("lt_expr");
+        e.getLeft().accept(this);
+        expr_lt.add("left_expr", expr);
+        e.getRight().accept(this);
+        expr_lt.add("right_expr", expr);
+        expr = expr_lt;
     }
+
+    @Override
+    public  void visit(And e){
+        ST expr_and = groupTemplate.getInstanceOf("and_expr");
+        e.getLeft().accept(this);
+        expr_and.add("left_expr", expr);
+        e.getRight().accept(this);
+        expr_and.add("right_expr", expr);
+        expr = expr_and;
+    }
+    
     
     @Override
     public  void visit(Eq e){
-        
+        ST expr_eq = groupTemplate.getInstanceOf("equals_expr");
+        e.getLeft().accept(this);
+        expr_eq.add("left_expr", expr);
+        e.getRight().accept(this);
+        expr_eq.add("right_expr", expr);
+        expr = expr_eq;
     }
     
     @Override
     public  void visit(Diff e){
-        
+        ST expr_diff = groupTemplate.getInstanceOf("diff_expr");
+        e.getLeft().accept(this);
+        expr_diff.add("left_expr", expr);
+        e.getRight().accept(this);
+        expr_diff.add("right_expr", expr);
+        expr = expr_diff;
     }
-    
-    @Override
-    public  void visit(ExpItCond e){
-        
-    }
-    
 
     @Override
     public  void visit(MinusExpr e){
-        
+        ST expr_minus = groupTemplate.getInstanceOf("minus_expr");
+        e.getExpr().accept(this);
+        expr_minus.add("expr", expr);
+        expr = expr_minus;
     }
     
     @Override
     public  void visit(NotExpr e){
+        ST expr_not = groupTemplate.getInstanceOf("not_expr");
+        e.getExpression().accept(this);
+        expr_not.add("expr", expr);
+        expr = expr_not;
+    }
+    
+    @Override
+    public  void visit(ExpItCond e){
         
     }
     
@@ -310,17 +385,32 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public  void visit(CharValue e){
-        
+        String v = e.getValue();
+        if (v.matches("'\\\\[0-7]{3}'")) {
+                expr = groupTemplate.getInstanceOf("char_expr_num");
+                expr.add("value", Integer.parseInt(v.replace("'", "").replace("\\", "")));
+        } else {
+                expr = groupTemplate.getInstanceOf("char_expr");
+                expr.add("value", v);
+        }
     }
     
     @Override
-    public  void visit(FalseValue e){
-        
+    public void visit(FalseValue e){
+        expr = groupTemplate.getInstanceOf("boolean_expr");
+        expr.add("value", false);
+    }
+
+    @Override
+    public  void visit(TrueValue e){
+        expr = groupTemplate.getInstanceOf("boolean_expr");
+        expr.add("value", true);
     }
     
     @Override
     public  void visit(FloatValue e){
-        
+        expr = groupTemplate.getInstanceOf("float_expr");
+        expr.add("value", e.getValue());
     }
     
     @Override
@@ -335,10 +425,7 @@ public class CPPVisitor extends Visitor{
         
     }
 
-    @Override
-    public  void visit(TrueValue e){
-        
-    }
+   
 
     @Override
     public  void visit(IdItCond e){
@@ -353,6 +440,7 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public  void visit(NullValue e){
-        
+        expr = groupTemplate.getInstanceOf("null_expr");
+        expr.add("value", null);
     }
 }
