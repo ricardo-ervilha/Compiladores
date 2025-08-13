@@ -1,6 +1,12 @@
 group java;
 
-/*Definição da estrutura geral do programa C++*/
+/*Definição da estrutura geral do programa C++
+Programa tem:
+ cabeçalho
+ uso do namespace std
+ chama main auxiliar
+ e tem outras funções
+*/
 program(funcs) ::= <<
 #include \<iostream>
 #include \<tuple>
@@ -15,19 +21,21 @@ int main(int argc, char* argv[]) {
 }
 >>
 
-/*Estrutura geral das funções do programa*/
-func(types, name, params, cmds) ::= <<
+/*Estrutura geral das funções do programa
+func tem retorno, parametros, nome e 
+- declaração de variaveis
+- comandos
+*/
+func(types, name, params, vardecls, cmds) ::= <<
 <if(types)>
 tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
 <else>
 void <name>(<params; separator=", ">) {
 <endif>
-    <if(cmds)>
-    <cmds; separator=";\n">;
-    <endif>
+    <vardecls; separator="\n">;
+    <cmds; separator="\n">
 }
 >>
-
 
 /*Declaração das variáveis no início das funções.*/
 var_decl(type, name) ::= <<
@@ -36,7 +44,7 @@ var_decl(type, name) ::= <<
 
 /*Atribuição de valor a variável.*/
 attr(var, expr) ::= <<
-<var> = <expr>
+<var> = <expr>;
 >>
 
 /*Parâmetro das funções*/
@@ -49,7 +57,10 @@ bool_type() ::= "bool"
 char_type() ::= "char"
 
 /*Impressão de valor*/
-print(expr) ::= "cout \<\< <expr>"
+print(expr) ::= "cout \<\< <expr>;"
+
+/*Leitura*/
+read(expr) ::= "cin >> <expr>;"
 
 /*Usando variavel simples*/
 id(name) ::= "<name>"
@@ -75,22 +86,28 @@ null_expr(value) ::= "<value>"
 char_expr(value) ::= "<value>"
 char_expr_num(value) ::= "static_cast\<char>(<value>)"
 
-return(expr) ::= "return <expr>;"
-
-while(expr, stmt) ::= <<
-while(<expr>) {
-    <stmt>
-}
->>
-
+/*CMD if e else*/
 if(expr, thn, els) ::= <<
 if(<expr>) {
-    <thn>
+    <thn; separator="\n">
 } <if(els)>else {
-    <els>
+    <els; separator="\n">
 }
 <endif>
 >>
+
+/*Loop*/
+while(expr, var_name, cmds) ::= <<
+for(int <var_name> = <expr>; <var_name> > 0; <var_name>--) {
+    <cmds; separator="\n">
+}
+>>
+
+return(expr) ::= "return <expr>;"
+
+
+
+
 
 stmt_list(stmt1, stmt2) ::= <<
 <stmt1>

@@ -1,12 +1,17 @@
 main(){
-   r1 = 'A' == '\065';
-   r2 = 'A' == 'A';
-   r3 = '\066' == 'A';
-   print r1;
-   print '\n';
-   print r2;
-   print '\n';
-   print r3;
-   print '\n';
+   iterate(10){
+      print 'a';
+      print 'b';
+      iterate(40){
+         a = 12;
+      }
+   }
 
+   iterate(10){
+      print 'a';
+      print 'b';
+      iterate(40){
+         a = 12;
+      }
+   }
 }
