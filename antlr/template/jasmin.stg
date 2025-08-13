@@ -14,8 +14,12 @@ program(name, funcs) ::= <<
     .end method
 >>
 
+// ==================== SEQUENCIA DE COMANDOS ====================
+block(cmds) ::= <<
+    <cmds; separator="\n">
+>>
 
-// Template para funções
+// ==================== DECLARAÇÃO DAS FUNÇÕES ====================
 func(return, name, params, decls, stack, stmt) ::= <<
 .method static <name>(<params>)<return>
     .limit stack <stack>
@@ -24,12 +28,18 @@ func(return, name, params, decls, stack, stmt) ::= <<
 .end method
 >>
 
-// Template para um bloco: uma sequência de comandos
-block(cmds) ::= <<
-    <cmds; separator="\n">
+// ==================== EXPRESSÃO DE CHAMADA DE FUNÇÃO ====================
+// invokestatic Programa/f1()I
+call_func_expr(class, func_name, type, return_descriptor, args) ::= <<
+<args; separator="\n">
+invokestatic <class>/<func_name>(<type>)<return_descriptor>
 >>
 
-empty() ::= <<>>
+// ==================== COMANDO DE CHAMADA DE FUNÇÃO ====================
+// talvez não precise desse templa, pdendo usar de cima
+// comando e expressão são a mesma coisa !?
+
+// ==================== PRINTS ====================
 iprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
@@ -54,6 +64,7 @@ getstatic java/lang/System/out Ljava/io/PrintStream;
 invokevirtual java/io/PrintStream/println(Z)V
 >>
 
+// ==================== TIPOS DE RETORNO ====================
 ireturn(expr) ::= <<
 <expr>
 ireturn
@@ -69,17 +80,7 @@ vreturn() ::= <<
 return
 >>
 
-while(num,expr, stmt) ::= <<
-Label<num>:
-<expr>
-ifeq Label<num>end
-<stmt>
-goto Label<num>
-Label<num>end:
-nop
->>
-
-// Template para if-else
+// ==================== IF-ELSE ====================
 if_else(elseNum, endNum, expr, thenBlock, elseBlock) ::= <<
 <expr>
 ifeq Label<elseNum>
@@ -107,7 +108,6 @@ iaaccess(indexSlot, indexArray, typeAload) ::= <<
 <indexArray>            ; index do array
 <typeAload> ; iaload, falod, etc
 >>
-
 
 // ==================== STORE VARIAVEL SIMPES (PILHA --> SLOT) ====================
 
@@ -176,9 +176,6 @@ putfield_float(objRef, fieldName, fieldDescriptor, rhs) ::= <<
 <rhs>
 putfield <fieldName> <fieldDescriptor>
 >>
-
-
-
 
 call(class, name, type, return, args) ::= <<
 <args; separator="\n">
@@ -317,3 +314,6 @@ boolean_false() ::= "iconst_0"
 float_expr(value) ::= "ldc <value>"
 int_expr(value) ::= "sipush <value>"
 char_expr(value) ::= "ldc <value>"
+
+// ==================== TEMPLATE AUXILIAR ====================
+empty() ::= <<>>

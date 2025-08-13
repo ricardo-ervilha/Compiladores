@@ -107,7 +107,7 @@ public class JasminVisitor extends Visitor {
         params = new ArrayList<ST>();
         List<Param> paramsFun = (f.getParams() != null) ? f.getParams().getParamList() : Collections.emptyList();
         for (Param p : paramsFun) {
-            p.accept(this);
+            p.accept(this);// esse accept no Param, vai adiciona o tipo na variavel params
         }
         stFun.add("params", params);
 
@@ -644,11 +644,50 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * exp --> ID ‘(’ [exps] ‘)’ ‘[’ exp ‘]’
+     * v = soma(2,4)[(1+1)*((3-3)+4)];
+     * Sempre vai tentar acessar retorno
+     *
      * @param e
      */
     @Override
     public void visit(CallFunctionAccess e) {
+        // soma(2,4)[(1+1)*((3-3)+4)];
+        // ID: nome da função
+        // exps: argumentos da função
+        // exp: indice do retorno que vou acessar
 
+        ST aux = groupTemplate.getInstanceOf("call_func_expr");
+        aux.add("class", fileName);
+        aux.add("func_name", e.getFunctionName());
+
+        // processando os argumentos da chamada da função
+        if (e.getExps() != null) {// se a função tem argumentos
+            // isso é para empilhar as expressõs dos argumentos
+            // por exemplo: soma(2+3), ele vai processar a expressão colocando sipush 2, sipush 3, iadd e depois chamar o invokestatic
+            for (Expr arg : e.getExps().getExpressions()) {
+                arg.accept(this);// vai colocar em expr: sipush, iadd, etc
+                aux.add("args", expr);
+            }
+        }
+
+        SType[] fun_arg_type = ((STyFun) env.get(e.getFunctionName()).getFuncType()).getParamTypes();
+        SType[] fun_ret_type = ((STyFun) env.get(e.getFunctionName()).getFuncType()).getReturnTypes();
+
+        // processando o retorno da função
+        for (SType t : fun_ret_type) {
+            processSType(t);// TODO: pegando só 1 retorno, alterar para pegar todos
+            aux.add("return_descriptor", type);
+        }
+
+        // processando os argumentos da função
+        for (SType sType : fun_arg_type) {
+            processSType(sType);// essa função add o template do tipo na variavel global type
+            aux.add("type", type);
+        }
+
+
+        expr = aux;
     }
 
     /**
@@ -664,7 +703,8 @@ public class JasminVisitor extends Visitor {
      */
     @Override
     public void visit(Param p) {
-
+        p.getType().accept(this);
+        params.add(type);
     }
 
     /**
@@ -683,7 +723,7 @@ public class JasminVisitor extends Visitor {
             expr = groupTemplate.getInstanceOf("load_int");
         } else if (sType instanceof STyFloat) {
             expr = groupTemplate.getInstanceOf("load_float");
-        }else if  (sType instanceof STyArr) {
+        } else if (sType instanceof STyArr) {
             expr = groupTemplate.getInstanceOf("load_array");
         }
 
@@ -731,8 +771,9 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
-     *   Acesso a Arrays
-     *   lvalue --> lvalue ‘[’ exp ‘]’
+     * Acesso a Arrays
+     * lvalue --> lvalue ‘[’ exp ‘]’
+     *
      * @param e
      */
     @Override
@@ -823,5 +864,22 @@ public class JasminVisitor extends Visitor {
         } else {
             throw new RuntimeException("Tipo não reconhecido: " + sType.toString());
         }
+    }
+
+    private void processSType(SType t) {
+
+        if (t instanceof STyInt)
+            type = groupTemplate.getInstanceOf("int_type");
+        else if (t instanceof STyBool)
+            type = groupTemplate.getInstanceOf("boolean_type");
+        else if (t instanceof STyFloat)
+            type = groupTemplate.getInstanceOf("float_type");
+        else if (t instanceof STyArr) {
+            ST aux = groupTemplate.getInstanceOf("array_type");
+            processSType(((STyArr) t).getElemType());
+            aux.add("type", type);
+            type = aux;
+        }
+
     }
 }
