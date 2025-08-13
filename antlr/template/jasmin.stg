@@ -90,25 +90,62 @@ Label<elseNum>:
 Label<endNum>:
 >>
 
-// ==================== STORE VARIAVEL SIMPES (PILHA --> STORE) ====================
+// ==================== LOAD VARIAVEL SIMPES (SLOT --> PILHA) ====================
 
-store_int(index, rhs) ::= <<
+load_int(indexSlot) ::= <<
+iload <indexSlot> ; carrega a varivael do slot indexSlot para a pilha
+>>
+
+load_array(indexSlot) ::= <<
+aload <indexSlot> ; carrega array do slot indexSlot para a pilha
+>>
+
+iaccess(num) ::= "iload <num>"
+
+iaaccess(indexSlot, indexArray, typeAload) ::= <<
+<indexSlot> ; carrega array do slot indexSlot para a pilha, depois vem expressão
+<indexArray>            ; index do array
+<typeAload> ; iaload, falod, etc
+>>
+
+
+// ==================== STORE VARIAVEL SIMPES (PILHA --> SLOT) ====================
+
+store_int(indexSlot, rhs) ::= <<
 <rhs>
-istore <index>
+istore <indexSlot>
 >>
 
-store_float(index, rhs) ::= <<
+store_float(indexSlot, rhs) ::= <<
 <rhs>
-fstore <index>
+fstore <indexSlot>
 >>
 
-// ==================== LOAD VARIAVEL SIMPES (STORE --> PILHA) ====================
-load_int(index) ::= <<
-iload <index>
+// ==================== STORE ARRAY ====================
+
+store_array(indexSlot, rhs) ::= <<
+<rhs>
+astore <indexSlot>    ; salva o array no slot indexSlot
 >>
 
-load_float(index) ::= <<
-fload <index>
+iarray(num, expr) ::= <<
+<expr>          ; expressão que calcula o tamanho do array
+newarray int    ; cria o array int pegando da pilha o tamanho
+>>
+
+carray(num, expr) ::= <<
+<expr>
+newarray char   ; cria array de chars
+>>
+
+barray(num, expr) ::= <<
+<expr>
+newarray boolean ;cria array de booleans
+>>
+
+farray(num, expr) ::= <<
+<expr>
+newarray float  ;cria array de floats
 >>
 
 // ==================== STORE ELEMENTO DE ARRAY ====================
@@ -143,12 +180,6 @@ putfield <fieldName> <fieldDescriptor>
 
 
 
-iarray(num, expr) ::= <<
-<expr>
-newarray int
-astore <num>
->>
-
 call(class, name, type, return, args) ::= <<
 <args; separator="\n">
 invokestatic <class>/<name>(<type>)<return>
@@ -166,17 +197,9 @@ aload <num>
 iastore
 >>
 
-iaccess(num) ::= "iload <num>"
 
-iaaccess(num, expr) ::= <<
-aload <num>
-<expr>
-iaload
->>
 
-iaload(num) ::= <<
-aload <num>
->>
+
 
 
 // Operadores Binários e Unários: Aritméticos e Relacionais

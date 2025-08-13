@@ -90,7 +90,7 @@ public class JasminVisitor extends Visitor {
     public void visit(Fun f) {
         ST stFun = groupTemplate.getInstanceOf("func");
 
-        if(f.getID().equals("main")) {//se for a função main, cria como main_aux
+        if (f.getID().equals("main")) {//se for a função main, cria como main_aux
             stFun.add("name", "main_aux");
         } else {//senão, cria com o proprio nome da função
             stFun.add("name", f.getID());
@@ -182,17 +182,51 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * exp --> new type [ ‘[’ exp ‘]’ ]
+     * eg:  a = new Racional[3];
+     * a = new Int[3];
+     *
      * @param e
      */
     @Override
     public void visit(ArrayExpr e) {
+        if (e.getSType() instanceof STyArr sTyArr) {
+            // Encontrar o tipo base do array
+            SType base = sTyArr.getElemType();
+            while (base instanceof STyArr arr) {
+                base = arr.getElemType();
+            }
 
+            String templateName;
+            if (base instanceof STyInt) {
+                templateName = "iarray";
+            } else if (base instanceof STyFloat) {
+                templateName = "farray";
+            } else if (base instanceof STyChar) {
+                templateName = "carray";
+            } else if (base instanceof STyBool) {
+                templateName = "barray";
+            } else {
+                throw new RuntimeException("Tipo de array não suportado: " + base);
+            }
+
+            ST st = groupTemplate.getInstanceOf(templateName);
+
+            // pega o tamanho do array
+            e.getExp().accept(this);
+            ST sizeArray = expr;
+
+            st.add("expr", sizeArray);
+
+            expr = st; // guarda no expr para ser usado no CmdAssign
+        }
     }
 
     /**
      * cmd --> lvalue ‘=’ exp ‘;’
      * lvalue --> ID | lvalue '[' exp ']' | lvalue '.' ID | TYID ID;
      * ou seja, posso fazer atribuição em variavel ou atributo de um registro
+     *
      * @param cmdAssign
      */
     @Override
@@ -200,45 +234,60 @@ public class JasminVisitor extends Visitor {
         // x = 2
         // LHS = RHS empilhar o RHS (iconst_2) e depois salvar com store o que está na pilha no index da variavel x (istore_1)
 
+        // a =  new Int[3];
+        //
         // RHS
         cmdAssign.getExpression().accept(this);
+        SType sTypeRHS = cmdAssign.getExpression().getSType();
         ST rhsExpr = expr;
+
 
         // LHS
         // cmdAssign.getLvalue().accept(this);// TODO: precisa?
         //ST lhsCode = expr; // ou um campo separado se preferir TODO: precisa?
 
-        SType sType = cmdAssign.getExpression().getSType();
 
-        if (cmdAssign.getLvalue() instanceof ID varID) {
+        if (cmdAssign.getLvalue() instanceof ID varID) {// LHS é variavel simples
             int index = local.get(varID.getName()).getIndex();
 
             // o código é o mesmo para os tres: istore <index>
-            if (sType instanceof STyInt || sType instanceof STyBool || sType instanceof STyChar) {
-                stmt = groupTemplate.getInstanceOf("store_int");
-            } else if (sType instanceof STyFloat) {
+            if (sTypeRHS instanceof STyInt || sTypeRHS instanceof STyBool || sTypeRHS instanceof STyChar) {
+                stmt = groupTemplate.getInstanceOf("store_int");// store para poder tirar da pilha e jogar no slot index
+            } else if (sTypeRHS instanceof STyFloat) {
                 stmt = groupTemplate.getInstanceOf("store_float");
+            } else if (sTypeRHS instanceof STyArr) {
+                stmt = groupTemplate.getInstanceOf("store_array");
             }
-            stmt.add("index", index);
+            stmt.add("indexSlot", index);
             stmt.add("rhs", rhsExpr);
-        } else if (cmdAssign.getLvalue() instanceof LValueExp) {
-            LValueExp arr = (LValueExp) cmdAssign.getLvalue();
-            ST arrayRef = expr;/* gera código para referência do array */;
-            ST indexExpr = expr;/* gera código para índice */;
-            if (sType instanceof STyInt) {
+
+        } else if (cmdAssign.getLvalue() instanceof LValueExp arrayAccess) { // LHS é  acesso a index de array
+            //  lvalue '[' exp ']'
+//            int index = local.get(varID.getName()).getIndex();
+
+            arrayAccess.getLvalue().accept(this);
+            ST arrayRef = expr; // gera código para referência do array e.g aload 0
+
+            arrayAccess.getIndex().accept(this);
+            ST arrayIndex = expr;// gera código para índice
+
+            if (sTypeRHS instanceof STyInt) {
                 stmt = groupTemplate.getInstanceOf("astore_int_array");
-            } else if (sType instanceof STyFloat) {
+            } else if (sTypeRHS instanceof STyFloat) {
                 stmt = groupTemplate.getInstanceOf("astore_float_array");
             }
-            stmt.add("arrayRef", arrayRef);
-            stmt.add("indexExpr", indexExpr);
-            stmt.add("rhs", rhsExpr);
-        } else if (cmdAssign.getLvalue() instanceof IdLValue) {
+
+            //instruções para v[2] = 42 por exemplo
+            stmt.add("arrayRef", arrayRef); // aload 0
+            stmt.add("indexExpr", arrayIndex); // 2
+            stmt.add("rhs", rhsExpr); // sipush 42
+        } else if (cmdAssign.getLvalue() instanceof IdLValue) {// LHS é acesso a atributo de registro
             IdLValue fld = (IdLValue) cmdAssign.getLvalue();
-            ST objRef = expr; /* gera código para referência do objeto */;
-            if (sType instanceof STyInt) {
+            ST objRef = expr; /* gera código para referência do objeto */
+            ;
+            if (sTypeRHS instanceof STyInt) {
                 stmt = groupTemplate.getInstanceOf("putfield_int");
-            } else if (sType instanceof STyFloat) {
+            } else if (sTypeRHS instanceof STyFloat) {
                 stmt = groupTemplate.getInstanceOf("putfield_float");
             }
             stmt.add("objRef", objRef);
@@ -296,6 +345,7 @@ public class JasminVisitor extends Visitor {
 
     /**
      * a → Void, em que a ∈ {Int, Char, Bool, Float}
+     *
      * @param cmdPrint
      */
     @Override
@@ -329,6 +379,7 @@ public class JasminVisitor extends Visitor {
 
     /**
      * cmd --> return exp {‘,’ exp} ‘;’
+     *
      * @param cmdReturn
      */
     @Override
@@ -539,6 +590,7 @@ public class JasminVisitor extends Visitor {
     /**
      * inverte o sinal do operando ao qual é aplicado
      * a → a, em que a ∈ {Int, Float}
+     *
      * @param e
      */
     @Override
@@ -559,6 +611,7 @@ public class JasminVisitor extends Visitor {
 
     /**
      * Bool → Bool
+     *
      * @param e
      */
     @Override
@@ -621,18 +674,20 @@ public class JasminVisitor extends Visitor {
     public void visit(ID varId) {
         /*
             Aqui vai ser um acesso a um variável
-            Tenho que pegar do store e jogar pra pilha
+            Tenho que pegar do slot e jogar pra pilha
         */
-        int index = local.get(varId.getName()).getIndex();
+        int indexSlot = local.get(varId.getName()).getIndex();// index da variavel no slot
         SType sType = varId.getSType();
 
-        if(sType instanceof STyInt || sType instanceof STyChar || sType instanceof STyBool) {
+        if (sType instanceof STyInt || sType instanceof STyChar || sType instanceof STyBool) {
             expr = groupTemplate.getInstanceOf("load_int");
-        }else if (sType instanceof STyFloat) {
+        } else if (sType instanceof STyFloat) {
             expr = groupTemplate.getInstanceOf("load_float");
+        }else if  (sType instanceof STyArr) {
+            expr = groupTemplate.getInstanceOf("load_array");
         }
 
-        expr.add("index", index);
+        expr.add("indexSlot", indexSlot);
     }
 
     /**
@@ -676,11 +731,30 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     *   Acesso a Arrays
+     *   lvalue --> lvalue ‘[’ exp ‘]’
      * @param e
      */
     @Override
     public void visit(LValueExp e) {
+        // colocar o array na pilha com aload
+        // colocar o indice na pilha
+        ST st = groupTemplate.getInstanceOf("iaaccess");
 
+        e.getIndex().accept(this);
+        st.add("indexArray", expr);
+
+        e.getLvalue().accept(this);
+        st.add("indexSlot", expr);
+
+        SType sType = e.getSType();
+        if (sType instanceof STyInt || sType instanceof STyChar || sType instanceof STyBool) {
+            st.add("typeAload", "iaload");
+        } else if (sType instanceof STyFloat) {
+            st.add("typeAload", "faload");
+        }
+
+        expr = st;
     }
 
 
@@ -737,5 +811,17 @@ public class JasminVisitor extends Visitor {
 
     }
 
-
+    private String getStringType(SType sType) {
+        if (sType instanceof STyInt) {
+            return "int";
+        } else if (sType instanceof STyChar) {
+            return "char";
+        } else if (sType instanceof STyBool) {
+            return "bool";
+        } else if (sType instanceof STyFloat) {
+            return "float";
+        } else {
+            throw new RuntimeException("Tipo não reconhecido: " + sType.toString());
+        }
+    }
 }

@@ -51,8 +51,12 @@ public class STyData extends SType {
           return attrsData;
      }
 
-     @Override
      public boolean match(SType v) {
+          return (v instanceof STyErr) || (v instanceof STyData) || (v instanceof STyNull);
+     }
+
+     // para não ter que fazer instance of com StyData e STyErr toda vez
+     public static boolean matchStatic(SType v) {
           return (v instanceof STyErr) || (v instanceof STyData) || (v instanceof STyNull);
      }
 
