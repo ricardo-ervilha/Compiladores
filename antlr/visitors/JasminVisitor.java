@@ -33,11 +33,11 @@ public class JasminVisitor extends Visitor {
     private STGroup groupTemplate;
     private ST type, stmt, expr;
     private List<ST> funcs, params;
-
+    private int iterateDepth = 0; // para calcular indice do slot e não sobrescrever em casos de iterate aninhado
     private String fileName;
 
     TyEnv<LocalEnv<VarInfo>> env;
-    LocalEnv<VarInfo> local;
+    LocalEnv<VarInfo> localEnv;
 
     private int label = 0;
 
@@ -84,13 +84,16 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * Declaração da função
+     *
      * @param f
      */
     @Override
     public void visit(Fun f) {
+        localEnv = env.get(f.getID());// seta a variavel com o ambiente da função atual
         ST stFun = groupTemplate.getInstanceOf("func");
 
-        if(f.getID().equals("main")) {//se for a função main, cria como main_aux
+        if (f.getID().equals("main")) {//se for a função main, cria como main_aux
             stFun.add("name", "main_aux");
         } else {//senão, cria com o proprio nome da função
             stFun.add("name", f.getID());
@@ -99,28 +102,38 @@ public class JasminVisitor extends Visitor {
         // Variáveis locais da função com informação de tipo
         // * Os parâmetros
         // * Variáveis locais
-        local = env.get(f.getID());
 
-        stFun.add("decls", local.getKeys().size()); // número de váriaveis locais, incluíndo os parâmetros
-        stFun.add("stack", 10); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
 
         params = new ArrayList<ST>();
         List<Param> paramsFun = (f.getParams() != null) ? f.getParams().getParamList() : Collections.emptyList();
         for (Param p : paramsFun) {
-            p.accept(this);
+            p.accept(this);// esse accept no Param, vai adiciona o tipo na variavel params
         }
         stFun.add("params", params);
 
-        f.getCmd().accept(this);
+        f.getCmd().accept(this);// pegar as instruções do corpo da função, inclusive os retornos caso tenha
         stFun.add("stmt", stmt);
 
+
+        stFun.add("stack", 10); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
+        int localVars = localEnv.getKeys().size(); //TODO: arrumar isso, tem que ver uma forma de pegar as variveis pro iterate
+
+        // slots extras para iterates aninhados
+        int extraSlotsForIterates = 20;// TODO: calcular quantos iterates tenho ca função
+
         if (f.getReturnTypes().isEmpty()) {
-            stFun.add("return", "V");//tipo de retorno
+            stFun.add("return_descriptor", "V");
             stmt = groupTemplate.getInstanceOf("vreturn");
-            stFun.add("stmt", stmt);//comando de retorno
+            stFun.add("stmt", stmt);
+            stFun.add("decls", localVars + extraSlotsForIterates);
         } else {
-            f.getReturnTypes().get(0).accept(this);// por enquanto, pegando apenas o primeiro retorno
-            stFun.add("return", type); // vai colocar no type o tipo de retorno
+            // se a lista de retorno não esta em branco, então tem pelo menos 1 retorno
+            // então com certeza foi pro visitor do comando de retorno
+            // então ele mexeu/vai mexer no type !?
+            // +1 para array de retorno + slots extras para iterates
+            stFun.add("decls", localVars + 1 + extraSlotsForIterates);// número de váriaveis locais, incluíndo os parâmetros
+            f.getReturnTypes().get(0).accept(this);// TODO: por enquanto, pegando apenas o primeiro retorno
+            stFun.add("return_descriptor", "[" + type.render());
         }
 
         funcs.add(stFun);
@@ -182,17 +195,38 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * exp --> new type [ ‘[’ exp ‘]’ ]
+     * eg:  a = new Racional[3];
+     * a = new Int[3];
+     *
      * @param e
      */
     @Override
     public void visit(ArrayExpr e) {
+        if (e.getSType() instanceof STyArr sTyArr) {
+            // Encontrar o tipo base do array
+            SType base = sTyArr.getElemType();
+            while (base instanceof STyArr arr) {
+                base = arr.getElemType();
+            }
 
+            ST st = groupTemplate.getInstanceOf(getArrayCreateTemplate(base));
+
+            // pega o tamanho do array
+            e.getExp().accept(this);
+            ST sizeArray = expr;
+
+            st.add("array_size", sizeArray);
+
+            expr = st; // guarda no expr para ser usado no CmdAssign
+        }
     }
 
     /**
      * cmd --> lvalue ‘=’ exp ‘;’
      * lvalue --> ID | lvalue '[' exp ']' | lvalue '.' ID | TYID ID;
      * ou seja, posso fazer atribuição em variavel ou atributo de um registro
+     *
      * @param cmdAssign
      */
     @Override
@@ -200,45 +234,60 @@ public class JasminVisitor extends Visitor {
         // x = 2
         // LHS = RHS empilhar o RHS (iconst_2) e depois salvar com store o que está na pilha no index da variavel x (istore_1)
 
+        // a =  new Int[3];
+        //
         // RHS
         cmdAssign.getExpression().accept(this);
+        SType sTypeRHS = cmdAssign.getExpression().getSType();
         ST rhsExpr = expr;
+
 
         // LHS
         // cmdAssign.getLvalue().accept(this);// TODO: precisa?
         //ST lhsCode = expr; // ou um campo separado se preferir TODO: precisa?
 
-        SType sType = cmdAssign.getExpression().getSType();
 
-        if (cmdAssign.getLvalue() instanceof ID varID) {
-            int index = local.get(varID.getName()).getIndex();
+        if (cmdAssign.getLvalue() instanceof ID varID) {// LHS é variavel simples
+            int index = localEnv.get(varID.getName()).getIndex();
 
             // o código é o mesmo para os tres: istore <index>
-            if (sType instanceof STyInt || sType instanceof STyBool || sType instanceof STyChar) {
-                stmt = groupTemplate.getInstanceOf("store_int");
-            } else if (sType instanceof STyFloat) {
+            if (sTypeRHS instanceof STyInt || sTypeRHS instanceof STyBool || sTypeRHS instanceof STyChar) {
+                stmt = groupTemplate.getInstanceOf("store_int");// store para poder tirar da pilha e jogar no slot index
+            } else if (sTypeRHS instanceof STyFloat) {
                 stmt = groupTemplate.getInstanceOf("store_float");
+            } else if (sTypeRHS instanceof STyArr) {
+                stmt = groupTemplate.getInstanceOf("store_array");
             }
-            stmt.add("index", index);
+            stmt.add("indexSlot", index);
             stmt.add("rhs", rhsExpr);
-        } else if (cmdAssign.getLvalue() instanceof LValueExp) {
-            LValueExp arr = (LValueExp) cmdAssign.getLvalue();
-            ST arrayRef = expr;/* gera código para referência do array */;
-            ST indexExpr = expr;/* gera código para índice */;
-            if (sType instanceof STyInt) {
+
+        } else if (cmdAssign.getLvalue() instanceof LValueExp arrayAccess) { // LHS é  acesso a index de array
+            //  lvalue '[' exp ']'
+//            int index = localEnv.get(varID.getName()).getIndex();
+
+            arrayAccess.getLvalue().accept(this);
+            ST arrayRef = expr; // gera código para referência do array e.g aload 0
+
+            arrayAccess.getIndex().accept(this);
+            ST arrayIndex = expr;// gera código para índice
+
+            if (sTypeRHS instanceof STyInt) {
                 stmt = groupTemplate.getInstanceOf("astore_int_array");
-            } else if (sType instanceof STyFloat) {
+            } else if (sTypeRHS instanceof STyFloat) {
                 stmt = groupTemplate.getInstanceOf("astore_float_array");
             }
-            stmt.add("arrayRef", arrayRef);
-            stmt.add("indexExpr", indexExpr);
-            stmt.add("rhs", rhsExpr);
-        } else if (cmdAssign.getLvalue() instanceof IdLValue) {
+
+            //instruções para v[2] = 42 por exemplo
+            stmt.add("arrayRef", arrayRef); // aload 0
+            stmt.add("indexExpr", arrayIndex); // 2
+            stmt.add("rhs", rhsExpr); // sipush 42
+        } else if (cmdAssign.getLvalue() instanceof IdLValue) {// LHS é acesso a atributo de registro
             IdLValue fld = (IdLValue) cmdAssign.getLvalue();
-            ST objRef = expr; /* gera código para referência do objeto */;
-            if (sType instanceof STyInt) {
+            ST objRef = expr; /* gera código para referência do objeto */
+            ;
+            if (sTypeRHS instanceof STyInt) {
                 stmt = groupTemplate.getInstanceOf("putfield_int");
-            } else if (sType instanceof STyFloat) {
+            } else if (sTypeRHS instanceof STyFloat) {
                 stmt = groupTemplate.getInstanceOf("putfield_float");
             }
             stmt.add("objRef", objRef);
@@ -296,6 +345,7 @@ public class JasminVisitor extends Visitor {
 
     /**
      * a → Void, em que a ∈ {Int, Char, Bool, Float}
+     *
      * @param cmdPrint
      */
     @Override
@@ -329,6 +379,7 @@ public class JasminVisitor extends Visitor {
 
     /**
      * cmd --> return exp {‘,’ exp} ‘;’
+     *
      * @param cmdReturn
      */
     @Override
@@ -336,22 +387,129 @@ public class JasminVisitor extends Visitor {
         /*
             comando retorno, retorna um arraylist de expressões
             se chegou aqui é pq tem pelo menos uma expressão
-         */
-        cmdReturn.getExpressions().get(0).accept(this);
+        */
+
+
+        List<Expr> expressions = cmdReturn.getExpressions();
+        List<ST> instrsRets = new ArrayList<>();
+        for (int i = 0; i < expressions.size(); i++) {
+            ST st = groupTemplate.getInstanceOf("expr_multi_return");
+
+            Expr expr_i = expressions.get(i);
+            expr_i.accept(this);
+            st.add("slot_arr_ret", localEnv.getKeys().size()); // o slot é o numero de variaveis locais, ou seja, a ultima posição
+            st.add("idx_arr_ret", i); //idx que vai se salvo
+            st.add("expr_ret", expr); // vai calcular cada uma das expressões de retorno
+
+            st.add("expr_save_arr", getArrayStoreTemplate(expr_i.getSType()));
+//            if(expr_i.getSType() instanceof STyInt){
+//                st.add("expr_save_arr", "iastore");
+//            } else if (expr_i.getSType() instanceof STyFloat) {
+//                st.add("expr_save_arr", "fastore");
+//            }
+            instrsRets.add(st);
+        }
+
+        ST create_array = groupTemplate.getInstanceOf(getArrayCreateTemplate(expressions.get(0).getSType()));
+
+        ST aux = groupTemplate.getInstanceOf("int_expr");
+        aux.add("value", expressions.size());
+
+        create_array.add("array_size", aux);
+        ST st = groupTemplate.getInstanceOf("multi_return");
+
+
+        st.add("slot_arr_ret", localEnv.getKeys().size());
+        st.add("inst_create_array", create_array);
+        st.add("exprs_multi_ret", instrsRets);
+
+        stmt = st;
+
+
 //        SType t = e.getExpr().getType();
 //        if (t instanceof STyInt) {
 //            stmt = groupTemplate.getInstanceOf("ireturn");
 //        }
-        stmt = groupTemplate.getInstanceOf("ireturn");
-        stmt.add("expr", expr);
+//        stmt = groupTemplate.getInstanceOf("ireturn");
+//        stmt.add("expr", expr);
     }
 
     /**
-     * @param p
+     * cmd --> iterate '(' exp ')' cmd
+     *
+     * @param cmdIterate
      */
-    @Override
-    public void visit(CmdIterate p) {
 
+
+    @Override
+    public void visit(CmdIterate cmdIterate) {
+        if (cmdIterate.getCondition() instanceof ExpItCond expItCond) {
+
+            // Verifica o tipo da expressão do iterate
+            cmdIterate.getCondition().accept(this);
+            SType exprType = expItCond.getExpression().getSType();
+
+            // Calcula slots disponíveis para este iterate
+            // Cada iterate precisa de 2 slots: um para total, outro para contador atual
+            int baseSlot = localEnv.getKeys().size();
+            int totalSlot = baseSlot + (iterateDepth * 2);     // slot para o contador total
+            int currentSlot = baseSlot + (iterateDepth * 2) + 1; // slot para o contador atual
+
+            // Incrementa a profundidade antes de processar o corpo
+            iterateDepth++;
+
+            // Gera o código do corpo do iterate (pode conter outros iterates)
+            cmdIterate.getBody().accept(this);
+            ST bodyStmt = stmt;
+
+            // Decrementa a profundidade após processar o corpo
+            iterateDepth--;
+
+            if (exprType instanceof STyInt) {
+                // Caso 1: iterate(n) onde n é um inteiro
+                // O corpo será executado n vezes
+
+                expItCond.getExpression().accept(this);// gerar instr para carregar a quantidade de repetição para a pilha
+                ST iterateCountExpr = expr;
+
+                int startLabel = label++;
+                int endLabel = label++;
+
+                ST iterateInt = groupTemplate.getInstanceOf("iterate_int");
+                iterateInt.add("startNum", startLabel);
+                iterateInt.add("endNum", endLabel);
+                iterateInt.add("countExpr", iterateCountExpr);
+                iterateInt.add("bodyStmt", bodyStmt);
+                iterateInt.add("totalSlot", totalSlot);
+                iterateInt.add("currentSlot", currentSlot);
+
+                stmt = iterateInt;
+
+            } else if (exprType instanceof STyArr) {
+                // Caso 2: iterate(array) onde array é um array
+                // O corpo será executado array.length vezes
+
+                expItCond.getExpression().accept(this);
+                ST arrayExpr = expr;
+
+                int startLabel = label++;
+                int endLabel = label++;
+
+                ST iterateArray = groupTemplate.getInstanceOf("iterate_array");
+                iterateArray.add("startNum", startLabel);
+                iterateArray.add("endNum", endLabel);
+                iterateArray.add("arrayExpr", arrayExpr);
+                iterateArray.add("bodyStmt", bodyStmt);
+                iterateArray.add("totalSlot", totalSlot);
+                iterateArray.add("currentSlot", currentSlot);
+
+                stmt = iterateArray;
+
+            } else {
+                throw new RuntimeException(cmdIterate.getLine() + ", " + cmdIterate.getCol() +
+                        ": Tipo não suportado no iterate: " + exprType);
+            }
+        }
     }
 
     private void binOp(BinOP binExpr, String opName) {
@@ -539,6 +697,7 @@ public class JasminVisitor extends Visitor {
     /**
      * inverte o sinal do operando ao qual é aplicado
      * a → a, em que a ∈ {Int, Float}
+     *
      * @param e
      */
     @Override
@@ -559,6 +718,7 @@ public class JasminVisitor extends Visitor {
 
     /**
      * Bool → Bool
+     *
      * @param e
      */
     @Override
@@ -591,11 +751,58 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * exp --> ID ‘(’ [exps] ‘)’ ‘[’ exp ‘]’
+     * v = soma(2,4)[(1+1)*((3-3)+4)];
+     * Sempre vai tentar acessar retorno
+     *
      * @param e
      */
     @Override
     public void visit(CallFunctionAccess e) {
+        // soma(2,4)[(1+1)*((3-3)+4)];
+        // ID: nome da função
+        // exps: argumentos da função
+        // exp: indice do retorno que vou acessar
 
+        ST aux = groupTemplate.getInstanceOf("call_func_expr");
+        aux.add("class", fileName);
+        aux.add("func_name", e.getFunctionName());
+
+        // processando os argumentos da chamada da função
+        if (e.getExps() != null) {// se a função tem argumentos
+            // isso é para empilhar as expressõs dos argumentos
+            // por exemplo: soma(2+3), ele vai processar a expressão colocando sipush 2, sipush 3, iadd e depois chamar o invokestatic
+            for (Expr arg : e.getExps().getExpressions()) {
+                arg.accept(this);// vai colocar em expr: sipush, iadd, etc
+                aux.add("args", expr);
+            }
+        }
+
+        SType[] fun_arg_type = ((STyFun) env.get(e.getFunctionName()).getFuncType()).getParamTypes();
+        SType[] fun_ret_type = ((STyFun) env.get(e.getFunctionName()).getFuncType()).getReturnTypes();
+
+        // processando o retorno da função
+//        for (SType t : fun_ret_type) {
+//            processSType(t);// TODO: pegando só 1 retorno, alterar para pegar todos
+//            aux.add("return_descriptor", "["+type.render());
+//        }
+
+        // processando os argumentos da função
+        for (SType sType : fun_arg_type) {
+            processSType(sType);// essa função add o template do tipo na variavel global type
+            aux.add("type", type);
+        }
+
+        processSType(fun_ret_type[0]);// por enquanto, pegando apenas o primeiro retorno
+        aux.add("return_descriptor", "[" + type.render()); // vai colocar no type o tipo de retorno
+
+        e.getExp().accept(this);
+        aux.add("expr_idx_ret", expr); // indice do array de retorno que sera acesado
+
+        aux.add("typeAload", getArrayLoadTemplate(fun_ret_type[0])); // carregar o array de int, float, etc para a pilha
+
+
+        expr = aux;
     }
 
     /**
@@ -611,7 +818,8 @@ public class JasminVisitor extends Visitor {
      */
     @Override
     public void visit(Param p) {
-
+        p.getType().accept(this);
+        params.add(type);
     }
 
     /**
@@ -621,18 +829,13 @@ public class JasminVisitor extends Visitor {
     public void visit(ID varId) {
         /*
             Aqui vai ser um acesso a um variável
-            Tenho que pegar do store e jogar pra pilha
+            Tenho que pegar do slot e jogar pra pilha
         */
-        int index = local.get(varId.getName()).getIndex();
+        int indexSlot = localEnv.get(varId.getName()).getIndex();// index da variavel no slot
         SType sType = varId.getSType();
 
-        if(sType instanceof STyInt || sType instanceof STyChar || sType instanceof STyBool) {
-            expr = groupTemplate.getInstanceOf("load_int");
-        }else if (sType instanceof STyFloat) {
-            expr = groupTemplate.getInstanceOf("load_float");
-        }
 
-        expr.add("index", index);
+        expr = getVarLoadTemplate(sType, indexSlot);
     }
 
     /**
@@ -676,11 +879,28 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
+     * Acesso a Arrays
+     * lvalue --> lvalue ‘[’ exp ‘]’
+     *
      * @param e
      */
     @Override
     public void visit(LValueExp e) {
+        // colocar o array na pilha com aload
+        // colocar o indice na pilha
+        ST st = groupTemplate.getInstanceOf("iaaccess");
 
+        e.getIndex().accept(this);
+        st.add("indexArray", expr);
+
+        e.getLvalue().accept(this);
+        st.add("indexSlot", expr);
+
+        SType sType = e.getSType();
+        st.add("typeAload", getArrayLoadTemplate(sType));
+
+
+        expr = st;
     }
 
 
@@ -737,5 +957,91 @@ public class JasminVisitor extends Visitor {
 
     }
 
+    private String getStringType(SType sType) {
+        if (sType instanceof STyInt) {
+            return "int";
+        } else if (sType instanceof STyChar) {
+            return "char";
+        } else if (sType instanceof STyBool) {
+            return "bool";
+        } else if (sType instanceof STyFloat) {
+            return "float";
+        } else {
+            throw new RuntimeException("Tipo não reconhecido: " + sType.toString());
+        }
+    }
 
+    private void processSType(SType t) {
+
+        if (t instanceof STyInt)
+            type = groupTemplate.getInstanceOf("int_type");
+        else if (t instanceof STyBool)
+            type = groupTemplate.getInstanceOf("boolean_type");
+        else if (t instanceof STyFloat)
+            type = groupTemplate.getInstanceOf("float_type");
+        else if (t instanceof STyChar)
+            type = groupTemplate.getInstanceOf("char_type");
+        else if (t instanceof STyArr) {
+            ST aux = groupTemplate.getInstanceOf("array_type");
+            processSType(((STyArr) t).getElemType());
+            aux.add("type", type);
+            type = aux;
+        }
+    }
+
+    private ST getVarLoadTemplate(SType sType, int indexLoad) {
+        ST varLoad;
+
+        if (sType instanceof STyInt || sType instanceof STyChar || sType instanceof STyBool) {
+            varLoad = groupTemplate.getInstanceOf("load_int");
+            varLoad.add("indexSlot", indexLoad);
+        } else if (sType instanceof STyFloat) {
+            varLoad = groupTemplate.getInstanceOf("load_float");
+            varLoad.add("indexSlot", indexLoad);
+        } else if (sType instanceof STyArr) {
+            varLoad = groupTemplate.getInstanceOf("load_array");
+            varLoad.add("indexSlot", indexLoad);
+        } else {
+            System.err.println("Tipo não suportado: " + sType.getClass().getSimpleName());
+            return null;
+        }
+
+        return varLoad;
+    }
+
+    private String getArrayLoadTemplate(SType sType) {
+        if (sType instanceof STyInt) {
+            return "iaload";
+        } else if (sType instanceof STyChar) {
+            return "caload";
+        } else if (sType instanceof STyBool) {
+            return "baload";
+        } else {
+            return "faload";
+        }
+    }
+
+    private String getArrayCreateTemplate(SType sType) {
+        if (sType instanceof STyInt) {
+            return "iarray";
+        } else if (sType instanceof STyChar) {
+            return "carray";
+        } else if (sType instanceof STyBool) {
+            return "barray";
+        } else {
+            return "farray";
+        }
+    }
+
+    private String getArrayStoreTemplate(SType sType) {
+        if (sType instanceof STyInt) {
+            return "iastore";
+        } else if (sType instanceof STyChar) {
+            return "castore";
+        } else if (sType instanceof STyBool) {
+            return "bastore";
+        } else {
+            return "fastore";
+        }
+    }
 }

@@ -317,6 +317,11 @@ public class InterpretVisitor extends Visitor {
             Number esqNum = (Number) esq;
             Number dirNum = (Number) dir;
 
+            // Verifica se o divisor é zero
+            if (dirNum.intValue() == 0 || dirNum.floatValue() == 0) {
+                throw new ArithmeticException("Erro aritmético: divisão por zero.");
+            }
+
             // Se algum for Float ou Double, faz soma em ponto flutuante
             if (esqNum instanceof Float || dirNum instanceof Float ||
                     esqNum instanceof Double || dirNum instanceof Double) {
@@ -328,8 +333,8 @@ public class InterpretVisitor extends Visitor {
                 operands.push(resultado);
             }
 
-        } catch (Exception x) {
-            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
+        }catch (Exception ex) {
+            throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + ex.getMessage());
         }
     }
 

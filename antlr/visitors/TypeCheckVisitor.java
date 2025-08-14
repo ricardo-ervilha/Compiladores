@@ -70,18 +70,19 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * verifica se a função tem o mesmo nome e o mesmo tipo
+     *
      * @param localEnvNewFun
      * @return boolean
      */
     private boolean isDuplicatedFunc(LocalEnv<SType> localEnvNewFun) {
         if (env.containsKey(localEnvNewFun.getFuncID())) {
-            SType sTyFunNewFunc = localEnvNewFun.getFuncType();
-            SType sTyFunOldFunc = env.get(localEnvNewFun.getFuncID()).getFuncType();
-            return sTyFunNewFunc.match(sTyFunOldFunc);
+            STyFun sTyFunNewFunc = (STyFun) localEnvNewFun.getFuncType();
+            STyFun sTyFunOldFunc = (STyFun) env.get(localEnvNewFun.getFuncID()).getFuncType();
+            return sTyFunNewFunc.matchDuplicatedFun(sTyFunOldFunc);
         }
         return false;
     }
-    
+
     @Override
     public void visit(Program program) {
         /*
@@ -114,9 +115,9 @@ public class TypeCheckVisitor extends Visitor {
                 LocalEnv<SType> localEnvNewFun = new LocalEnv<>(f.getID(), paramRetFunc);
 
                 //verifica se a função tem o mesmo nome e o mesmo tipo
-                if(isDuplicatedFunc(localEnvNewFun)) {
+                if (isDuplicatedFunc(localEnvNewFun)) {
                     logError.add(f.getLine() + ", " + f.getCol() +
-                            ": Função " + f.getID() + " duplicada. Tipo da Função: "+f.getID()+localEnvNewFun.getFuncType());
+                            ": Função " + f.getID() + " já foi definida.");
 
                     return;
                 }
@@ -160,9 +161,9 @@ public class TypeCheckVisitor extends Visitor {
                         LocalEnv<SType> localEnvNewFun = new LocalEnv<>(f.getID(), paramRetFunc);
 
                         //verifica se a função tem o mesmo nome e o mesmo tipo
-                        if(isDuplicatedFunc(localEnvNewFun)) {
+                        if (isDuplicatedFunc(localEnvNewFun)) {
                             logError.add(f.getLine() + ", " + f.getCol() +
-                                    ": Função " + f.getID() + " duplicada. Tipo da Função: "+f.getID()+localEnvNewFun.getFuncType());
+                                    ": Função " + f.getID() + " já foi definida.");
 
                             return;
                         }
@@ -195,8 +196,15 @@ public class TypeCheckVisitor extends Visitor {
         }
 
         for (Def def : program.getDefinitions()) {
-            if (def instanceof Fun f) {
-                f.accept(this);
+            if (def instanceof Fun f1) {
+                f1.accept(this);
+            } else if (def instanceof AbstractDataDecl abstractDataDecl) {
+                for (Node declFun : abstractDataDecl.getDeclFuns()) { // pega declarações ( idade::Int ) e funções
+                    if (declFun instanceof FunAbstractData f2) {
+                        f2.accept(this);
+                    }
+                }
+
             }
         }
 
@@ -458,8 +466,26 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     @Override
-    public void visit(FunAbstractData p) {
+    public void visit(FunAbstractData f) {
         System.out.println(" (FunAbstractData) Não deveria entrar aqui...");
+        retChk = false;//
+        temp = env.get(f.getID());// a função já foi criada na minha tabela env previamente
+
+        // add na tabela temp cada um dos parametros da função, com o nome e o tipo do parametro
+        List<Param> params = (f.getParams() != null) ? f.getParams().getParamList() : Collections.emptyList();
+        for (Param p : params) {
+            p.getType().accept(this);
+            // p.getId é o nome do parametro, stk.pop é o tipo, eg Int
+            // coloca no typeEnv
+            temp.set(p.getId(), stk.pop());
+        }
+
+        f.getCmd().accept(this);
+
+        //se após tipar o corpo da função a flag continua falsa, tem algum erro, deveria ter um retorno
+        if (!f.getReturnTypes().isEmpty() && !retChk) {
+            logError.add(f.getLine() + ", " + f.getCol() + ": Comando de retorno nao encontrado na função " + f.getID() + " para todos os caminhos.");
+        }
     }
 
     @Override
@@ -477,6 +503,7 @@ public class TypeCheckVisitor extends Visitor {
      * type --> type '[' ']' | btype
      * btype --> Int | Char | Bool | Float | TYID
      * *
+     *
      * @param p
      */
     @Override
@@ -486,6 +513,7 @@ public class TypeCheckVisitor extends Visitor {
 
     /**
      * exp --> new type [ ‘[’ exp ‘]’ ]
+     * eg: a = new Racional[3];
      *
      * @param e
      */
@@ -511,18 +539,17 @@ public class TypeCheckVisitor extends Visitor {
             base = arr.getElemType();
         }
 
-//        // valida se o tipo base é Int
-//        if (!base.match(tyint)) {
-//            logError.add(e.getLine() + ", " + e.getCol() +
-//                    ": Só é permitido criar arrays de Int mas foi encontrado: " + base.toString());
-//            stk.push(tyerr);
-//            return;
-//        }
-
-        // empilha o novo tipo array
-        STyArr sTyArr = new STyArr(typeDeclared);
-        stk.push(sTyArr);
-        e.setSType(sTyArr);
+        // valida se o tipo base é Int, Float, Char, Bool ou Data
+        if (base.match(tyint) || base.match(tyfloat) || base.match(tychar) || base.match(tybool) || STyData.matchStatic(base)) {
+            // empilha o novo tipo array
+            STyArr sTyArr = new STyArr(typeDeclared);
+            stk.push(sTyArr);
+            e.setSType(sTyArr);
+        } else {
+            logError.add(e.getLine() + ", " + e.getCol() +
+                    ": Só é permitido criar arrays de Int, Float, Char, Bool e Data mas foi encontrado: " + base.toString());
+            stk.push(tyerr);
+        }
     }
 
     @Override
@@ -739,26 +766,21 @@ public class TypeCheckVisitor extends Visitor {
      * Array não entra aqui, array entra no ArrayExpr
      * exp --> new btype
      * btype --> Int | Char | Bool | Float | TYID
+     * eg: a = new Racional;
      *
      * @param e
      */
     @Override
     public void visit(VarExpr e) {
         e.getType().accept(this);
-
         SType type = stk.pop();
-        if (type instanceof STyData) {// Tratamento de tipos criados pelo usuario
+        if (STyData.matchStatic(type)) {// Tratamento de tipos criados pelo usuario
             TYID tyid = (TYID) e.getType();
-            if (!typeStructs.containsKey(tyid.getName())) {
-                logError.add(e.getLine() + ", " + e.getCol() + ": Tipo " + tyid.getName() + " não declarado.");
-                stk.push(tyerr);
-            } else {
-                // TODO: talvez possa trocar para typeStructs.get(e.getName()), já que os tipos já estao na tabela typeStructs
-                STyData tyData = new STyData(tyid.getName());
-                stk.push(tyData); //vai ser usado no CmdAssign
-//                stk.push(typeStructs.get(tyid.getName())); //vai ser usado no CmdAssign
-                e.setSType(tyData);
-            }
+            // TODO: talvez possa trocar para typeStructs.get(e.getName()), já que os tipos já estao na tabela typeStructs
+            STyData tyData = new STyData(tyid.getName());
+            stk.push(tyData); //vai ser usado no CmdAssign
+            //stk.push(typeStructs.get(tyid.getName())); //vai ser usado no CmdAssign
+            e.setSType(tyData);
         }
     }
 
@@ -801,7 +823,7 @@ public class TypeCheckVisitor extends Visitor {
             SType encontrado = typesReturnCmd.get(i); // tipo do comando de retorno
 
             // null só é aceito para Data ou Array
-            if (encontrado.match(tynull) && !(esperado instanceof STyData || esperado instanceof STyArr)) {
+            if (encontrado.match(tynull) && !(STyData.matchStatic(esperado) || esperado instanceof STyArr)) {
                 logError.add(r.getLine() + ", " + r.getCol() +
                         ": Retorno na posição " + (i + 1) + " é null, mas o tipo esperado é " + esperado);
                 continue; //já encontrou um erro vai pro proximo
@@ -858,7 +880,7 @@ public class TypeCheckVisitor extends Visitor {
 
             if (!tyLvalue.match(tyExpression)) {
                 // se a expr for null, só pode ser aplicada a registros/array
-                if (tyExpression.match(tynull) && !(tyLvalue instanceof STyData || tyLvalue instanceof STyArr)) {
+                if (tyExpression.match(tynull) && !(STyData.matchStatic(tyLvalue) || tyLvalue instanceof STyArr)) {
                     logError.add(cmdAssign.getLine() + ", " + cmdAssign.getCol() +
                             ": Atribuição ilegal para o atributo " + ((IdLValue) cmdAssign.getLvalue()).getId() +
                             ". Esperava um " + tyLvalue.toString() + " mas encontrou " + tyExpression.toString() + ".");
@@ -1027,6 +1049,11 @@ public class TypeCheckVisitor extends Visitor {
      */
     @Override
     public void visit(TYID e) {
+        if (!typeStructs.containsKey(e.getName())) {
+            logError.add(e.getLine() + ", " + e.getCol() + ": Tipo " + e.getName() + " não declarado.");
+            stk.push(tyerr);
+            return;
+        }
         stk.push(new STyData(e.getName()));
     }
 
@@ -1072,7 +1099,7 @@ public class TypeCheckVisitor extends Visitor {
 
         // Primeiro certifico que é um tipo Data
         if (!(baseType instanceof STyData userType)) {
-            logError.add(e.getLine() + ", " + e.getCol() + ": Tentativa de acesso a campo em tipo que não é Data: ");
+            logError.add(e.getLine() + ", " + e.getCol() + ": Tentativa de acesso a campo em tipo que não é Data.");
             stk.push(tyerr);
             return;
         }

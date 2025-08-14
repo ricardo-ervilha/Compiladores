@@ -1,8 +1,15 @@
-teste(): Float{
-    print 366;
-    return 7.0;
-}
-
 main(){
-    print 244;
+    x = new Int[4];
+    iterate(x){
+        print 123;
+    }
+
+    v = 6;
+    iterate(v){
+        print 'L';
+    }
+
+
+
+
 }

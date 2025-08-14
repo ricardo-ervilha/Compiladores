@@ -14,22 +14,73 @@ program(name, funcs) ::= <<
     .end method
 >>
 
+// ==================== SEQUENCIA DE COMANDOS ====================
+block(cmds) ::= <<
+    <cmds; separator="\n">
+>>
 
-// Template para funções
-func(return, name, params, decls, stack, stmt) ::= <<
-.method static <name>(<params>)<return>
+// ==================== DECLARAÇÃO DAS FUNÇÕES ====================
+func(return_descriptor, name, params, decls, stack, stmt) ::= <<
+.method static <name>(<params>)<return_descriptor>
     .limit stack <stack>
     .limit locals <decls>
     <stmt>
 .end method
 >>
 
-// Template para um bloco: uma sequência de comandos
-block(cmds) ::= <<
-    <cmds; separator="\n">
+// ==================== TIPOS DE RETORNO ====================
+expr_multi_return(slot_arr_ret, idx_arr_ret, expr_ret, expr_save_arr) ::= <<
+
+;expressões de retorno
+aload <slot_arr_ret>    ; carregar o array que vai ser usado para retornar os valores
+sipush <idx_arr_ret>    ; idx do array onde vai ser salvo
+<expr_ret>              ; expr para colocar o valor que tem que ser salvo na pilha
+<expr_save_arr> ; finalmente salvar o valor
 >>
 
-empty() ::= <<>>
+multi_return(slot_arr_ret, inst_create_array, exprs_multi_ret) ::= <<
+; Criar array para os retornos
+<inst_create_array>
+astore <slot_arr_ret>
+
+;expressões de retorno
+<exprs_multi_ret>
+
+; Retornar o array
+aload <slot_arr_ret>
+areturn
+>>
+
+ireturn(expr) ::= <<
+<expr>
+ireturn
+>>
+
+freturn(expr) ::= <<
+<expr>
+freturn
+>>
+
+// template para add return quando o corpo não tem comando return
+vreturn() ::= <<
+
+return
+>>
+
+// ==================== EXPRESSÃO DE CHAMADA DE FUNÇÃO ====================
+// invokestatic Programa/f1()I
+call_func_expr(class, func_name, type, return_descriptor, args, expr_idx_ret, typeAload) ::= <<
+<args; separator="\n">
+invokestatic <class>/<func_name>(<type>)<return_descriptor>
+<expr_idx_ret> ;indice do array de retorno que sera acesado
+<typeAload>
+>>
+
+// ==================== COMANDO DE CHAMADA DE FUNÇÃO ====================
+// talvez não precise desse templa, pdendo usar de cima
+// comando e expressão são a mesma coisa !?
+
+// ==================== PRINTS ====================
 iprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
@@ -54,32 +105,58 @@ getstatic java/lang/System/out Ljava/io/PrintStream;
 invokevirtual java/io/PrintStream/println(Z)V
 >>
 
-ireturn(expr) ::= <<
-<expr>
-ireturn
->>
+// ==================== ITERATE ====================
 
-freturn(expr) ::= <<
-<expr>
-freturn
->>
+// Iterate com inteiro: executa o corpo n vezes
+iterate_int(startNum, endNum, countExpr, bodyStmt, totalSlot, currentSlot) ::= <<
+<countExpr>           ; coloca o valor n na pilha
+istore <totalSlot>    ; salva n no slot totalSlot (contador total)
+iconst_0              ; coloca 0 na pilha
+istore <currentSlot>  ; salva 0 no slot currentSlot (contador atual)
 
-vreturn() ::= <<
+Label<startNum>:      ; início do loop
+iload <currentSlot>   ; carrega contador atual
+iload <totalSlot>     ; carrega contador total
+if_icmpge Label<endNum>  ; se atual >= total, sai do loop
 
-return
->>
+<bodyStmt>            ; executa o corpo do iterate
 
-while(num,expr, stmt) ::= <<
-Label<num>:
-<expr>
-ifeq Label<num>end
-<stmt>
-goto Label<num>
-Label<num>end:
+iload <currentSlot>   ; carrega contador atual
+iconst_1              ; coloca 1 na pilha
+iadd                  ; incrementa contador
+istore <currentSlot>  ; salva contador incrementado
+goto Label<startNum>  ; volta para o início do loop
+
+Label<endNum>:        ; fim do loop
 nop
 >>
 
-// Template para if-else
+// Iterate com array: executa o corpo array.length vezes
+iterate_array(startNum, endNum, arrayExpr, bodyStmt, totalSlot, currentSlot) ::= <<
+<arrayExpr>           ; coloca o array na pilha
+arraylength           ; pega o tamanho do array
+istore <totalSlot>    ; salva tamanho no slot totalSlot (contador total)
+iconst_0              ; coloca 0 na pilha
+istore <currentSlot>  ; salva 0 no slot currentSlot (contador atual)
+
+Label<startNum>:      ; início do loop
+iload <currentSlot>   ; carrega contador atual
+iload <totalSlot>     ; carrega contador total
+if_icmpge Label<endNum>  ; se atual >= total, sai do loop
+
+<bodyStmt>            ; executa o corpo do iterate
+
+iload <currentSlot>   ; carrega contador atual
+iconst_1              ; coloca 1 na pilha
+iadd                  ; incrementa contador
+istore <currentSlot>  ; salva contador incrementado
+goto Label<startNum>  ; volta para o início do loop
+
+Label<endNum>:        ; fim do loop
+nop
+>>
+
+// ==================== IF-ELSE ====================
 if_else(elseNum, endNum, expr, thenBlock, elseBlock) ::= <<
 <expr>
 ifeq Label<elseNum>
@@ -88,27 +165,66 @@ ifeq Label<elseNum>
 Label<elseNum>:
 <elseBlock>
 Label<endNum>:
+nop
 >>
 
-// ==================== STORE VARIAVEL SIMPES (PILHA --> STORE) ====================
+// ==================== LOAD VARIAVEL SIMPES (SLOT --> PILHA) ====================
 
-store_int(index, rhs) ::= <<
+load_int(indexSlot) ::= <<
+iload <indexSlot> ; carrega a varivael do slot indexSlot para a pilha
+>>
+
+load_float(indexSlot) ::= <<
+fload <indexSlot> ; carrega a varivael do slot indexSlot para a pilha
+>>
+
+load_array(indexSlot) ::= <<
+aload <indexSlot> ; carrega array do slot indexSlot para a pilha
+>>
+
+iaaccess(indexSlot, indexArray, typeAload) ::= <<
+<indexSlot> ; carrega array do slot indexSlot para a pilha, depois vem expressão
+<indexArray>            ; index do array
+<typeAload> ; iaload, falod, etc
+>>
+
+// ==================== STORE VARIAVEL SIMPES (PILHA --> SLOT) ====================
+
+store_int(indexSlot, rhs) ::= <<
 <rhs>
-istore <index>
+istore <indexSlot>
 >>
 
-store_float(index, rhs) ::= <<
+store_float(indexSlot, rhs) ::= <<
 <rhs>
-fstore <index>
+fstore <indexSlot>
 >>
 
-// ==================== LOAD VARIAVEL SIMPES (STORE --> PILHA) ====================
-load_int(index) ::= <<
-iload <index>
+// ==================== STORE ARRAY ====================
+
+store_array(indexSlot, rhs) ::= <<
+<rhs>
+astore <indexSlot>    ; salva o array no slot indexSlot
 >>
 
-load_float(index) ::= <<
-fload <index>
+iarray( array_size) ::= <<
+<array_size>          ; expressão que calcula o tamanho do array
+newarray int    ; cria o array int pegando da pilha o tamanho
+>>
+
+carray( array_size) ::= <<
+<array_size>
+newarray char   ; cria array de chars
+>>
+
+barray( array_size) ::= <<
+<array_size>
+newarray boolean ;cria array de booleans
+>>
+
+farray( array_size) ::= <<
+<array_size>
+newarray float  ;cria array de floats
 >>
 
 // ==================== STORE ELEMENTO DE ARRAY ====================
@@ -140,15 +256,6 @@ putfield_float(objRef, fieldName, fieldDescriptor, rhs) ::= <<
 putfield <fieldName> <fieldDescriptor>
 >>
 
-
-
-
-iarray(num, expr) ::= <<
-<expr>
-newarray int
-astore <num>
->>
-
 call(class, name, type, return, args) ::= <<
 <args; separator="\n">
 invokestatic <class>/<name>(<type>)<return>
@@ -166,17 +273,9 @@ aload <num>
 iastore
 >>
 
-iaccess(num) ::= "iload <num>"
 
-iaaccess(num, expr) ::= <<
-aload <num>
-<expr>
-iaload
->>
 
-iaload(num) ::= <<
-aload <num>
->>
+
 
 
 // Operadores Binários e Unários: Aritméticos e Relacionais
@@ -294,3 +393,6 @@ boolean_false() ::= "iconst_0"
 float_expr(value) ::= "ldc <value>"
 int_expr(value) ::= "sipush <value>"
 char_expr(value) ::= "ldc <value>"
+
+// ==================== TEMPLATE AUXILIAR ====================
+empty() ::= <<>>

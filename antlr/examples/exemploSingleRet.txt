@@ -1,0 +1,10 @@
+soma(a::Int, b::Int): Int{
+    r1 = 2*(a + b);
+    r2 = (a + b)/2;
+    return r1;
+}
+
+main(){
+    x = soma(400, 500)[0];
+    print x;
+}
