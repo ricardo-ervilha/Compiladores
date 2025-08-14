@@ -209,20 +209,7 @@ public class JasminVisitor extends Visitor {
                 base = arr.getElemType();
             }
 
-            String templateName;
-            if (base instanceof STyInt) {
-                templateName = "iarray";
-            } else if (base instanceof STyFloat) {
-                templateName = "farray";
-            } else if (base instanceof STyChar) {
-                templateName = "carray";
-            } else if (base instanceof STyBool) {
-                templateName = "barray";
-            } else {
-                throw new RuntimeException("Tipo de array não suportado: " + base);
-            }
-
-            ST st = groupTemplate.getInstanceOf(templateName);
+            ST st = groupTemplate.getInstanceOf(getArrayCreateTemplate(base));
 
             // pega o tamanho do array
             e.getExp().accept(this);
@@ -779,15 +766,8 @@ public class JasminVisitor extends Visitor {
         int indexSlot = localEnv.get(varId.getName()).getIndex();// index da variavel no slot
         SType sType = varId.getSType();
 
-        if (sType instanceof STyInt || sType instanceof STyChar || sType instanceof STyBool) {
-            expr = groupTemplate.getInstanceOf("load_int");
-        } else if (sType instanceof STyFloat) {
-            expr = groupTemplate.getInstanceOf("load_float");
-        } else if (sType instanceof STyArr) {
-            expr = groupTemplate.getInstanceOf("load_array");
-        }
 
-        expr.add("indexSlot", indexSlot);
+        expr =  getVarLoadTemplate(sType, indexSlot);
     }
 
     /**
@@ -850,15 +830,7 @@ public class JasminVisitor extends Visitor {
 
         SType sType = e.getSType();
         st.add("typeAload", getArrayLoadTemplate(sType));
-//        if (sType instanceof STyInt) {
-//            st.add("typeAload", "iaload");
-//        } else if (sType instanceof STyChar) {
-//            st.add("typeAload", "caload");
-//        } else if (sType instanceof STyBool) {
-//            st.add("typeAload", "baload");
-//        } else if (sType instanceof STyFloat) {
-//            st.add("typeAload", "faload");
-//        }
+
 
         expr = st;
     }
@@ -947,6 +919,26 @@ public class JasminVisitor extends Visitor {
             aux.add("type", type);
             type = aux;
         }
+    }
+
+    private ST getVarLoadTemplate(SType sType, int indexLoad) {
+        ST varLoad;
+
+        if (sType instanceof STyInt || sType instanceof STyChar || sType instanceof STyBool) {
+            varLoad = groupTemplate.getInstanceOf("load_int");
+            varLoad.add("indexSlot", indexLoad);
+        } else if (sType instanceof STyFloat) {
+            varLoad = groupTemplate.getInstanceOf("load_float");
+            varLoad.add("indexSlot", indexLoad);
+        }else if (sType instanceof STyArr){
+            varLoad = groupTemplate.getInstanceOf("load_array");
+            varLoad.add("indexSlot", indexLoad);
+         } else {
+            System.err.println("Tipo não suportado: " + sType.getClass().getSimpleName());
+            return null;
+        }
+
+        return varLoad;
     }
 
     private String getArrayLoadTemplate(SType sType){

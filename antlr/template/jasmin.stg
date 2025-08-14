@@ -130,8 +130,6 @@ load_array(indexSlot) ::= <<
 aload <indexSlot> ; carrega array do slot indexSlot para a pilha
 >>
 
-iaccess(num) ::= "iload <num>"
-
 iaaccess(indexSlot, indexArray, typeAload) ::= <<
 <indexSlot> ; carrega array do slot indexSlot para a pilha, depois vem expressão
 <indexArray>            ; index do array
