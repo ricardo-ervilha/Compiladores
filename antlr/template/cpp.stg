@@ -7,18 +7,31 @@ Programa tem:
  chama main auxiliar
  e tem outras funções
 */
-program(funcs) ::= <<
+program(decl_funcs, funcs, deta_decls) ::= <<
 #include \<iostream>
 #include \<tuple>
 
 using namespace std;
 
-<funcs; separator="\n\n">
+<deta_decls>
+
+<decl_funcs>
 
 int main(int argc, char* argv[]) {
     cout \<\< boolalpha;
     main_aux();
 }
+
+<funcs; separator="\n\n">
+>>
+
+/*Declaração de funções no cabeçalho do programa*/
+decl_func(types, name, params) ::= <<
+<if(types)>
+tuple\< <types; separator=", "> > <name>(<params; separator=", ">);
+<else>
+void <name>(<params; separator=", ">);
+<endif>    
 >>
 
 /*Estrutura geral das funções do programa
@@ -26,14 +39,14 @@ func tem retorno, parametros, nome e
 - declaração de variaveis
 - comandos
 */
-func(types, name, params, vardecls, cmds) ::= <<
+func(types, name, params, vardecls, blockCmds) ::= <<
 <if(types)>
 tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
 <else>
 void <name>(<params; separator=", ">) {
 <endif>
-    <vardecls; separator="\n">;
-    <cmds; separator="\n">
+    <if(vardecls)><vardecls; separator=";\n">;<endif>
+    <if(blockCmds)><blockCmds; separator="\n"><endif>
 }
 >>
 
@@ -56,14 +69,16 @@ float_type() ::= "float"
 bool_type() ::= "bool"
 char_type() ::= "char"
 
+stmt_type(stmt1, stmt2) ::= <<
+<stmt1><stmt2>
+>>
+
 /*Impressão de valor*/
 print(expr) ::= "cout \<\< <expr>;"
 
 /*Leitura*/
 read(expr) ::= "cin >> <expr>;"
 
-/*Usando variavel simples*/
-id(name) ::= "<name>"
 
 /*Comandos de OPERAÇÕES*/
 mul_expr(left_expr, right_expr) ::= "(<left_expr> * <right_expr>)"
@@ -97,31 +112,62 @@ if(<expr>) {
 >>
 
 /*Loop*/
-while(expr, var_name, cmds) ::= <<
-for(int <var_name> = <expr>; <var_name> > 0; <var_name>--) {
+while(type, expr, var_name, cmds) ::= <<
+for(<if(type)>int<endif> <var_name> = <expr>; <var_name> > 0; <var_name>--) {
     <cmds; separator="\n">
 }
 >>
 
-return(expr) ::= "return <expr>;"
-
-
-
-
-
-stmt_list(stmt1, stmt2) ::= <<
-<stmt1>
-<stmt2>
+/*Retorno de variaveis*/
+return(list_exprs) ::= <<
+return make_tuple(<list_exprs; separator=", ">);
 >>
 
+/*Chamada de funções passando as variaveis*/
+func_call(name, params, vars) ::= <<
+auto __return_function_func_call_ = <name>(<params; separator=",">);
+<vars; separator="\n">
+>>
 
-lvalue(name, array) ::= "<name><array>"
+var_unpacking(var, id) ::= <<
+<var> = get\< <id> >(__return_function_func_call_);
+>>
+/*--------------------------*/
+
+/*Declaração de array*/
+new_array(type, index) ::= "new <type>[<index>]"
+
+/*Acesso a array*/
 array_access(expr) ::= "[<expr>]"
 
+/*Usando variavel simples*/
+id(name) ::= "<name>"
 
+/*ponteiro*/
+pointer() ::= "*"
 
-new_array(var, type, expr) ::= "<var> = new <type>[<expr>];"
+/*Acesso a atributo*/
+attr_access(exp) ::= ".<exp>"
 
-call(name, args) ::= <<<name>(<args; separator=", ">)>>
+stmt_lvalue(stmt1, stmt2) ::= <<
+<stmt1><stmt2>
+>>
 
+// ---------*----------*--------------*-------------
+struct_def(name, var_decls) ::= <<
+typedef struct{
+    <var_decls; separator=";\n">;
+} <name>;
+>>
 
+var_decl_class(type, name) ::= <<
+private <type> <name>
+>>
+
+class_def(name, var_decls, abstract_funs) ::= <<
+class <name> {
+    <var_decls; separator=";\n">;
+
+    <abstract_funs>
+};
+>>

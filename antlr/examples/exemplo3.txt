@@ -1,17 +1,12 @@
-main(){
-   iterate(10){
-      print 'a';
-      print 'b';
-      iterate(40){
-         a = 12;
-      }
-   }
+abstract data Ponto{
+    x :: Float;
+    y :: Float;
 
-   iterate(10){
-      print 'a';
-      print 'b';
-      iterate(40){
-         a = 12;
-      }
-   }
+    add(a::Float, b::Float){
+        x = 12;
+    }
+}
+
+main(){
+    
 }
