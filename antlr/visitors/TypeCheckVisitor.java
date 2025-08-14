@@ -78,7 +78,7 @@ public class TypeCheckVisitor extends Visitor {
         if (env.containsKey(localEnvNewFun.getFuncID())) {
             STyFun sTyFunNewFunc = (STyFun) localEnvNewFun.getFuncType();
             STyFun sTyFunOldFunc = (STyFun) env.get(localEnvNewFun.getFuncID()).getFuncType();
-            return sTyFunNewFunc. matchDuplicatedFun(sTyFunOldFunc);
+            return sTyFunNewFunc.matchDuplicatedFun(sTyFunOldFunc);
         }
         return false;
     }
@@ -196,8 +196,15 @@ public class TypeCheckVisitor extends Visitor {
         }
 
         for (Def def : program.getDefinitions()) {
-            if (def instanceof Fun f) {
-                f.accept(this);
+            if (def instanceof Fun f1) {
+                f1.accept(this);
+            } else if (def instanceof AbstractDataDecl abstractDataDecl) {
+                for (Node declFun : abstractDataDecl.getDeclFuns()) { // pega declarações ( idade::Int ) e funções
+                    if (declFun instanceof FunAbstractData f2) {
+                        f2.accept(this);
+                    }
+                }
+
             }
         }
 
@@ -459,8 +466,26 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     @Override
-    public void visit(FunAbstractData p) {
+    public void visit(FunAbstractData f) {
         System.out.println(" (FunAbstractData) Não deveria entrar aqui...");
+        retChk = false;//
+        temp = env.get(f.getID());// a função já foi criada na minha tabela env previamente
+
+        // add na tabela temp cada um dos parametros da função, com o nome e o tipo do parametro
+        List<Param> params = (f.getParams() != null) ? f.getParams().getParamList() : Collections.emptyList();
+        for (Param p : params) {
+            p.getType().accept(this);
+            // p.getId é o nome do parametro, stk.pop é o tipo, eg Int
+            // coloca no typeEnv
+            temp.set(p.getId(), stk.pop());
+        }
+
+        f.getCmd().accept(this);
+
+        //se após tipar o corpo da função a flag continua falsa, tem algum erro, deveria ter um retorno
+        if (!f.getReturnTypes().isEmpty() && !retChk) {
+            logError.add(f.getLine() + ", " + f.getCol() + ": Comando de retorno nao encontrado na função " + f.getID() + " para todos os caminhos.");
+        }
     }
 
     @Override
