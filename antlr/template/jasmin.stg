@@ -108,24 +108,23 @@ invokevirtual java/io/PrintStream/println(Z)V
 // ==================== ITERATE ====================
 
 // Iterate com inteiro: executa o corpo n vezes
-iterate_int(startNum, endNum, countExpr, bodyStmt, idx_slot_atual, idx_slot_total) ::= <<
-<countExpr>           ; coloca o valor n na pilha: numero de vezes que sera feita a repetição
-istore_1              ; salva n no slot 1 (contador total)
-
+iterate_int(startNum, endNum, countExpr, bodyStmt, totalSlot, currentSlot) ::= <<
+<countExpr>           ; coloca o valor n na pilha
+istore <totalSlot>    ; salva n no slot totalSlot (contador total)
 iconst_0              ; coloca 0 na pilha
-istore_2              ; salva 0 no slot 2 (contador atual)
+istore <currentSlot>  ; salva 0 no slot currentSlot (contador atual)
 
 Label<startNum>:      ; início do loop
-iload_2               ; carrega contador atual
-iload_1               ; carrega contador total
+iload <currentSlot>   ; carrega contador atual
+iload <totalSlot>     ; carrega contador total
 if_icmpge Label<endNum>  ; se atual >= total, sai do loop
 
 <bodyStmt>            ; executa o corpo do iterate
 
-iload_2               ; carrega contador atual
+iload <currentSlot>   ; carrega contador atual
 iconst_1              ; coloca 1 na pilha
 iadd                  ; incrementa contador
-istore_2              ; salva contador incrementado
+istore <currentSlot>  ; salva contador incrementado
 goto Label<startNum>  ; volta para o início do loop
 
 Label<endNum>:        ; fim do loop
@@ -133,24 +132,24 @@ nop
 >>
 
 // Iterate com array: executa o corpo array.length vezes
-iterate_array(startNum, endNum, arrayExpr, bodyStmt) ::= <<
+iterate_array(startNum, endNum, arrayExpr, bodyStmt, totalSlot, currentSlot) ::= <<
 <arrayExpr>           ; coloca o array na pilha
 arraylength           ; pega o tamanho do array
-istore_1              ; salva tamanho no slot 1 (contador total)
+istore <totalSlot>    ; salva tamanho no slot totalSlot (contador total)
 iconst_0              ; coloca 0 na pilha
-istore_2              ; salva 0 no slot 2 (contador atual)
+istore <currentSlot>  ; salva 0 no slot currentSlot (contador atual)
 
 Label<startNum>:      ; início do loop
-iload_2               ; carrega contador atual
-iload_1               ; carrega contador total
+iload <currentSlot>   ; carrega contador atual
+iload <totalSlot>     ; carrega contador total
 if_icmpge Label<endNum>  ; se atual >= total, sai do loop
 
 <bodyStmt>            ; executa o corpo do iterate
 
-iload_2               ; carrega contador atual
+iload <currentSlot>   ; carrega contador atual
 iconst_1              ; coloca 1 na pilha
 iadd                  ; incrementa contador
-istore_2              ; salva contador incrementado
+istore <currentSlot>  ; salva contador incrementado
 goto Label<startNum>  ; volta para o início do loop
 
 Label<endNum>:        ; fim do loop

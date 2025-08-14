@@ -33,7 +33,7 @@ public class JasminVisitor extends Visitor {
     private STGroup groupTemplate;
     private ST type, stmt, expr;
     private List<ST> funcs, params;
-
+    private int iterateDepth = 0; // para calcular indice do slot e não sobrescrever em casos de iterate aninhado
     private String fileName;
 
     TyEnv<LocalEnv<VarInfo>> env;
@@ -116,22 +116,24 @@ public class JasminVisitor extends Visitor {
 
 
         stFun.add("stack", 10); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
-        int localVars = localEnv.getKeys().size()+3; //TODO: arrumar isso, tem que ver uma forma de pegar as variveis pro iterate
+        int localVars = localEnv.getKeys().size(); //TODO: arrumar isso, tem que ver uma forma de pegar as variveis pro iterate
+
+        // slots extras para iterates aninhados
+        int extraSlotsForIterates = 20;// TODO: calcular quantos iterates tenho ca função
 
         if (f.getReturnTypes().isEmpty()) {
-            stFun.add("return_descriptor", "V");// tipo de retorno
-            stmt = groupTemplate.getInstanceOf("vreturn"); // template para add return quando o corpo não tem comando return
-            stFun.add("stmt", stmt);// comando de retorno
-            stFun.add("decls", localVars); // número de váriaveis locais, incluíndo os parâmetros
+            stFun.add("return_descriptor", "V");
+            stmt = groupTemplate.getInstanceOf("vreturn");
+            stFun.add("stmt", stmt);
+            stFun.add("decls", localVars + extraSlotsForIterates);
         } else {
             // se a lista de retorno não esta em branco, então tem pelo menos 1 retorno
             // então com certeza foi pro visitor do comando de retorno
             // então ele mexeu/vai mexer no type !?
-
-            // +1 para array de retorno
-            stFun.add("decls", localVars + 1); // número de váriaveis locais, incluíndo os parâmetros
-            f.getReturnTypes().get(0).accept(this);// por enquanto, pegando apenas o primeiro retorno
-            stFun.add("return_descriptor", "["+type.render()); // vai colocar no type o tipo de retorno
+            // +1 para array de retorno + slots extras para iterates
+            stFun.add("decls", localVars + 1 + extraSlotsForIterates);// número de váriaveis locais, incluíndo os parâmetros
+            f.getReturnTypes().get(0).accept(this);// TODO: por enquanto, pegando apenas o primeiro retorno
+            stFun.add("return_descriptor", "[" + type.render());
         }
 
         funcs.add(stFun);
@@ -399,7 +401,7 @@ public class JasminVisitor extends Visitor {
             st.add("idx_arr_ret", i); //idx que vai se salvo
             st.add("expr_ret", expr); // vai calcular cada uma das expressões de retorno
 
-            st.add("expr_save_arr", getArrayStoreTemplate(expr_i.getSType() ) );
+            st.add("expr_save_arr", getArrayStoreTemplate(expr_i.getSType()));
 //            if(expr_i.getSType() instanceof STyInt){
 //                st.add("expr_save_arr", "iastore");
 //            } else if (expr_i.getSType() instanceof STyFloat) {
@@ -410,12 +412,11 @@ public class JasminVisitor extends Visitor {
 
         ST create_array = groupTemplate.getInstanceOf(getArrayCreateTemplate(expressions.get(0).getSType()));
 
-        ST aux =  groupTemplate.getInstanceOf("int_expr");
+        ST aux = groupTemplate.getInstanceOf("int_expr");
         aux.add("value", expressions.size());
 
         create_array.add("array_size", aux);
         ST st = groupTemplate.getInstanceOf("multi_return");
-
 
 
         st.add("slot_arr_ret", localEnv.getKeys().size());
@@ -423,8 +424,6 @@ public class JasminVisitor extends Visitor {
         st.add("exprs_multi_ret", instrsRets);
 
         stmt = st;
-
-
 
 
 //        SType t = e.getExpr().getType();
@@ -440,18 +439,31 @@ public class JasminVisitor extends Visitor {
      *
      * @param cmdIterate
      */
+
+
     @Override
     public void visit(CmdIterate cmdIterate) {
-
-        // Gera o código do corpo do iterate
-        cmdIterate.getBody().accept(this);
-        ST bodyStmt = stmt;
-
         if (cmdIterate.getCondition() instanceof ExpItCond expItCond) {
 
             // Verifica o tipo da expressão do iterate
             cmdIterate.getCondition().accept(this);
             SType exprType = expItCond.getExpression().getSType();
+
+            // Calcula slots disponíveis para este iterate
+            // Cada iterate precisa de 2 slots: um para total, outro para contador atual
+            int baseSlot = localEnv.getKeys().size();
+            int totalSlot = baseSlot + (iterateDepth * 2);     // slot para o contador total
+            int currentSlot = baseSlot + (iterateDepth * 2) + 1; // slot para o contador atual
+
+            // Incrementa a profundidade antes de processar o corpo
+            iterateDepth++;
+
+            // Gera o código do corpo do iterate (pode conter outros iterates)
+            cmdIterate.getBody().accept(this);
+            ST bodyStmt = stmt;
+
+            // Decrementa a profundidade após processar o corpo
+            iterateDepth--;
 
             if (exprType instanceof STyInt) {
                 // Caso 1: iterate(n) onde n é um inteiro
@@ -466,8 +478,10 @@ public class JasminVisitor extends Visitor {
                 ST iterateInt = groupTemplate.getInstanceOf("iterate_int");
                 iterateInt.add("startNum", startLabel);
                 iterateInt.add("endNum", endLabel);
-                iterateInt.add("countExpr", iterateCountExpr);// numero de vezes que sera feita a repetição
+                iterateInt.add("countExpr", iterateCountExpr);
                 iterateInt.add("bodyStmt", bodyStmt);
+                iterateInt.add("totalSlot", totalSlot);
+                iterateInt.add("currentSlot", currentSlot);
 
                 stmt = iterateInt;
 
@@ -475,7 +489,6 @@ public class JasminVisitor extends Visitor {
                 // Caso 2: iterate(array) onde array é um array
                 // O corpo será executado array.length vezes
 
-//                cmdIterate.getCondition().accept(this);
                 expItCond.getExpression().accept(this);
                 ST arrayExpr = expr;
 
@@ -487,6 +500,8 @@ public class JasminVisitor extends Visitor {
                 iterateArray.add("endNum", endLabel);
                 iterateArray.add("arrayExpr", arrayExpr);
                 iterateArray.add("bodyStmt", bodyStmt);
+                iterateArray.add("totalSlot", totalSlot);
+                iterateArray.add("currentSlot", currentSlot);
 
                 stmt = iterateArray;
 
@@ -494,9 +509,6 @@ public class JasminVisitor extends Visitor {
                 throw new RuntimeException(cmdIterate.getLine() + ", " + cmdIterate.getCol() +
                         ": Tipo não suportado no iterate: " + exprType);
             }
-        }else {
-            throw new RuntimeException(cmdIterate.getLine() + ", " + cmdIterate.getCol() +
-                    ": Tipo de condição não suportado no iterate. Esperado ExpItCond.");
         }
     }
 
@@ -782,7 +794,7 @@ public class JasminVisitor extends Visitor {
         }
 
         processSType(fun_ret_type[0]);// por enquanto, pegando apenas o primeiro retorno
-        aux.add("return_descriptor", "["+type.render()); // vai colocar no type o tipo de retorno
+        aux.add("return_descriptor", "[" + type.render()); // vai colocar no type o tipo de retorno
 
         e.getExp().accept(this);
         aux.add("expr_idx_ret", expr); // indice do array de retorno que sera acesado
@@ -823,7 +835,7 @@ public class JasminVisitor extends Visitor {
         SType sType = varId.getSType();
 
 
-        expr =  getVarLoadTemplate(sType, indexSlot);
+        expr = getVarLoadTemplate(sType, indexSlot);
     }
 
     /**
@@ -986,10 +998,10 @@ public class JasminVisitor extends Visitor {
         } else if (sType instanceof STyFloat) {
             varLoad = groupTemplate.getInstanceOf("load_float");
             varLoad.add("indexSlot", indexLoad);
-        }else if (sType instanceof STyArr){
+        } else if (sType instanceof STyArr) {
             varLoad = groupTemplate.getInstanceOf("load_array");
             varLoad.add("indexSlot", indexLoad);
-         } else {
+        } else {
             System.err.println("Tipo não suportado: " + sType.getClass().getSimpleName());
             return null;
         }
@@ -997,7 +1009,7 @@ public class JasminVisitor extends Visitor {
         return varLoad;
     }
 
-    private String getArrayLoadTemplate(SType sType){
+    private String getArrayLoadTemplate(SType sType) {
         if (sType instanceof STyInt) {
             return "iaload";
         } else if (sType instanceof STyChar) {
@@ -1009,7 +1021,7 @@ public class JasminVisitor extends Visitor {
         }
     }
 
-    private String getArrayCreateTemplate(SType sType){
+    private String getArrayCreateTemplate(SType sType) {
         if (sType instanceof STyInt) {
             return "iarray";
         } else if (sType instanceof STyChar) {
@@ -1021,7 +1033,7 @@ public class JasminVisitor extends Visitor {
         }
     }
 
-    private String getArrayStoreTemplate(SType sType){
+    private String getArrayStoreTemplate(SType sType) {
         if (sType instanceof STyInt) {
             return "iastore";
         } else if (sType instanceof STyChar) {
