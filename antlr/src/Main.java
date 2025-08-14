@@ -77,25 +77,19 @@ public class Main {
             // Não construa árvore sintática padrão (usando AST customizada)
             parser.setBuildParseTree(false);
 
+            Node ast = parser.prog().ast;
+            if (errorListener.hasErrors()) {
+                System.out.println("reject");
+                System.exit(1);
+            }
             switch (directive) {
                 case "-syn":
-                    // Tenta fazer o parse do programa
-                    parser.prog();
-                    if (errorListener.hasErrors()) {
-                        System.out.println("reject");
-                        System.exit(1);
-                    }
+                    // Tenta fazer o parse do programa: já foi feito antes por default
                     System.out.println("accept");
-
                     break;
 
                 case "-i":
                     // Tenta fazer a interpretação do
-                    Node ast = parser.prog().ast;
-                    if (errorListener.hasErrors()) {
-                        System.out.println("reject");
-                        System.exit(1);
-                    }
 
                     TypeCheckVisitor typeCheckVisitor = new TypeCheckVisitor();
                     ast.accept(typeCheckVisitor);
@@ -112,13 +106,8 @@ public class Main {
 
                 case "-t":
                     System.out.println("\n--------------------Executando a verificação de tipos do programa.--------------------\n");
-                    Node ast2 = parser.prog().ast;
-                    if (errorListener.hasErrors()) {
-                        System.out.println("reject");
-                        System.exit(1);
-                    }
                     TypeCheckVisitor tcv = new TypeCheckVisitor();
-                    ast2.accept(tcv);
+                    ast.accept(tcv);
                     if(tcv.getNumErrors() > 0){
                         tcv.printErrors();
                         System.out.println("reject");
@@ -133,28 +122,24 @@ public class Main {
                     break;
 
                 case "-gen":
-                    System.out.println("Gera código para jasmin.");
-                    Node ast4 = parser.prog().ast;
-                    if (errorListener.hasErrors()) {
-                        System.out.println("reject");
-                        System.exit(1);
-                    }
+                    System.out.println("Verificação de tipos.");
+
                     TypeCheckVisitor typeCheckS2J = new TypeCheckVisitor();
-                    ast4.accept(typeCheckS2J);
+                    ast.accept(typeCheckS2J);
 
                     if(typeCheckS2J.getNumErrors() > 0){
                         typeCheckS2J.printErrors();
                         System.out.println("reject");
                         System.exit(1);
                     }
+
                     TyEnv<LocalEnv<SType>> env = typeCheckS2J.getEnv();
                     TyEnv<LocalEnv<VarInfo>> envWithIndices = getEnvWithVarIndex(env);
 
+                    System.out.println("Gera código para jasmin.");
                     JasminVisitor jasminVisitor = new JasminVisitor(envWithIndices);
 
-                    ast4.accept(jasminVisitor);
-
-
+                    ast.accept(jasminVisitor);
 
                     break;
 

@@ -1,8 +1,11 @@
-teste(): Float{
-    print 366;
-    return 7.0;
+soma(a::Int, b::Int): Char, Char{
+    return 'L','C';
 }
 
 main(){
-    print 244;
+    x = soma(400, 500)[0];
+    y = soma(400, 500)[1];
+    print x;
+    print y;
+
 }

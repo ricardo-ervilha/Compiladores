@@ -20,19 +20,60 @@ block(cmds) ::= <<
 >>
 
 // ==================== DECLARAÇÃO DAS FUNÇÕES ====================
-func(return, name, params, decls, stack, stmt) ::= <<
-.method static <name>(<params>)<return>
+func(return_descriptor, name, params, decls, stack, stmt) ::= <<
+.method static <name>(<params>)<return_descriptor>
     .limit stack <stack>
     .limit locals <decls>
     <stmt>
 .end method
 >>
 
+// ==================== TIPOS DE RETORNO ====================
+expr_multi_return(slot_arr_ret, idx_arr_ret, expr_ret, expr_save_arr) ::= <<
+
+;expressões de retorno
+aload <slot_arr_ret>    ; carregar o array que vai ser usado para retornar os valores
+sipush <idx_arr_ret>    ; idx do array onde vai ser salvo
+<expr_ret>              ; expr para colocar o valor que tem que ser salvo na pilha
+<expr_save_arr> ; finalmente salvar o valor
+>>
+
+multi_return(slot_arr_ret, inst_create_array, exprs_multi_ret) ::= <<
+; Criar array para os retornos
+<inst_create_array>
+astore <slot_arr_ret>
+
+;expressões de retorno
+<exprs_multi_ret>
+
+; Retornar o array
+aload <slot_arr_ret>
+areturn
+>>
+
+ireturn(expr) ::= <<
+<expr>
+ireturn
+>>
+
+freturn(expr) ::= <<
+<expr>
+freturn
+>>
+
+// template para add return quando o corpo não tem comando return
+vreturn() ::= <<
+
+return
+>>
+
 // ==================== EXPRESSÃO DE CHAMADA DE FUNÇÃO ====================
 // invokestatic Programa/f1()I
-call_func_expr(class, func_name, type, return_descriptor, args) ::= <<
+call_func_expr(class, func_name, type, return_descriptor, args, expr_idx_ret, typeAload) ::= <<
 <args; separator="\n">
 invokestatic <class>/<func_name>(<type>)<return_descriptor>
+<expr_idx_ret> ;indice do array de retorno que sera acesado
+<typeAload>
 >>
 
 // ==================== COMANDO DE CHAMADA DE FUNÇÃO ====================
@@ -64,22 +105,6 @@ getstatic java/lang/System/out Ljava/io/PrintStream;
 invokevirtual java/io/PrintStream/println(Z)V
 >>
 
-// ==================== TIPOS DE RETORNO ====================
-ireturn(expr) ::= <<
-<expr>
-ireturn
->>
-
-freturn(expr) ::= <<
-<expr>
-freturn
->>
-
-vreturn() ::= <<
-
-return
->>
-
 // ==================== IF-ELSE ====================
 if_else(elseNum, endNum, expr, thenBlock, elseBlock) ::= <<
 <expr>
@@ -95,6 +120,10 @@ Label<endNum>:
 
 load_int(indexSlot) ::= <<
 iload <indexSlot> ; carrega a varivael do slot indexSlot para a pilha
+>>
+
+load_float(indexSlot) ::= <<
+fload <indexSlot> ; carrega a varivael do slot indexSlot para a pilha
 >>
 
 load_array(indexSlot) ::= <<
@@ -128,23 +157,23 @@ store_array(indexSlot, rhs) ::= <<
 astore <indexSlot>    ; salva o array no slot indexSlot
 >>
 
-iarray(num, expr) ::= <<
-<expr>          ; expressão que calcula o tamanho do array
+iarray( array_size) ::= <<
+<array_size>          ; expressão que calcula o tamanho do array
 newarray int    ; cria o array int pegando da pilha o tamanho
 >>
 
-carray(num, expr) ::= <<
-<expr>
+carray( array_size) ::= <<
+<array_size>
 newarray char   ; cria array de chars
 >>
 
-barray(num, expr) ::= <<
-<expr>
+barray( array_size) ::= <<
+<array_size>
 newarray boolean ;cria array de booleans
 >>
 
-farray(num, expr) ::= <<
-<expr>
+farray( array_size) ::= <<
+<array_size>
 newarray float  ;cria array de floats
 >>
 
