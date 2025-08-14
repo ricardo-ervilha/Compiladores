@@ -115,9 +115,8 @@ public class JasminVisitor extends Visitor {
         stFun.add("stmt", stmt);
 
 
-
         stFun.add("stack", 10); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
-        int localVars = localEnv.getKeys().size();
+        int localVars = localEnv.getKeys().size()+3; //TODO: arrumar isso, tem que ver uma forma de pegar as variveis pro iterate
 
         if (f.getReturnTypes().isEmpty()) {
             stFun.add("return_descriptor", "V");// tipo de retorno
@@ -437,11 +436,68 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
-     * @param p
+     * cmd --> iterate '(' exp ')' cmd
+     *
+     * @param cmdIterate
      */
     @Override
-    public void visit(CmdIterate p) {
+    public void visit(CmdIterate cmdIterate) {
 
+        // Gera o código do corpo do iterate
+        cmdIterate.getBody().accept(this);
+        ST bodyStmt = stmt;
+
+        if (cmdIterate.getCondition() instanceof ExpItCond expItCond) {
+
+            // Verifica o tipo da expressão do iterate
+            cmdIterate.getCondition().accept(this);
+            SType exprType = expItCond.getExpression().getSType();
+
+            if (exprType instanceof STyInt) {
+                // Caso 1: iterate(n) onde n é um inteiro
+                // O corpo será executado n vezes
+
+                expItCond.getExpression().accept(this);// gerar instr para carregar a quantidade de repetição para a pilha
+                ST iterateCountExpr = expr;
+
+                int startLabel = label++;
+                int endLabel = label++;
+
+                ST iterateInt = groupTemplate.getInstanceOf("iterate_int");
+                iterateInt.add("startNum", startLabel);
+                iterateInt.add("endNum", endLabel);
+                iterateInt.add("countExpr", iterateCountExpr);// numero de vezes que sera feita a repetição
+                iterateInt.add("bodyStmt", bodyStmt);
+
+                stmt = iterateInt;
+
+            } else if (exprType instanceof STyArr) {
+                // Caso 2: iterate(array) onde array é um array
+                // O corpo será executado array.length vezes
+
+//                cmdIterate.getCondition().accept(this);
+                expItCond.getExpression().accept(this);
+                ST arrayExpr = expr;
+
+                int startLabel = label++;
+                int endLabel = label++;
+
+                ST iterateArray = groupTemplate.getInstanceOf("iterate_array");
+                iterateArray.add("startNum", startLabel);
+                iterateArray.add("endNum", endLabel);
+                iterateArray.add("arrayExpr", arrayExpr);
+                iterateArray.add("bodyStmt", bodyStmt);
+
+                stmt = iterateArray;
+
+            } else {
+                throw new RuntimeException(cmdIterate.getLine() + ", " + cmdIterate.getCol() +
+                        ": Tipo não suportado no iterate: " + exprType);
+            }
+        }else {
+            throw new RuntimeException(cmdIterate.getLine() + ", " + cmdIterate.getCol() +
+                    ": Tipo de condição não suportado no iterate. Esperado ExpItCond.");
+        }
     }
 
     private void binOp(BinOP binExpr, String opName) {

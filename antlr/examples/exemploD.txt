@@ -1,11 +1,15 @@
-soma(a::Int, b::Int): Char, Char{
-    return 'L','C';
-}
-
 main(){
-    x = soma(400, 500)[0];
-    y = soma(400, 500)[1];
-    print x;
-    print y;
+    x = new Int[4];
+    iterate(x){
+        print 123;
+    }
+
+    v = 6;
+    iterate(v){
+        print 'L';
+    }
+
+
+
 
 }
