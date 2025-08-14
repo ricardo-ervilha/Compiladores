@@ -48,6 +48,20 @@ public class STyFun extends SType {
         return r;
     }
 
+    public boolean matchDuplicatedFun(SType v) {
+        boolean r = false;
+        if (v instanceof STyFun) {
+            if ((((STyFun) v).getParamTypes().length == paramTypes.length)) {
+                r = true;
+
+                for (int i = 0; i < paramTypes.length; i++) {
+                    r = r && paramTypes[i].match(((STyFun) v).getParamTypes()[i]);
+                }
+            }
+        }
+        return r;
+    }
+
 //    public String toString() {
 //        String s = "";
 //        if (paramTypes != null && paramTypes.length > 0) {

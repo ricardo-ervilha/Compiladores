@@ -76,9 +76,9 @@ public class TypeCheckVisitor extends Visitor {
      */
     private boolean isDuplicatedFunc(LocalEnv<SType> localEnvNewFun) {
         if (env.containsKey(localEnvNewFun.getFuncID())) {
-            SType sTyFunNewFunc = localEnvNewFun.getFuncType();
-            SType sTyFunOldFunc = env.get(localEnvNewFun.getFuncID()).getFuncType();
-            return sTyFunNewFunc.match(sTyFunOldFunc);
+            STyFun sTyFunNewFunc = (STyFun) localEnvNewFun.getFuncType();
+            STyFun sTyFunOldFunc = (STyFun) env.get(localEnvNewFun.getFuncID()).getFuncType();
+            return sTyFunNewFunc. matchDuplicatedFun(sTyFunOldFunc);
         }
         return false;
     }
@@ -117,7 +117,7 @@ public class TypeCheckVisitor extends Visitor {
                 //verifica se a função tem o mesmo nome e o mesmo tipo
                 if (isDuplicatedFunc(localEnvNewFun)) {
                     logError.add(f.getLine() + ", " + f.getCol() +
-                            ": Função " + f.getID() + " duplicada. Tipo da Função: " + f.getID() + localEnvNewFun.getFuncType());
+                            ": Função " + f.getID() + " já foi definida.");
 
                     return;
                 }
@@ -163,7 +163,7 @@ public class TypeCheckVisitor extends Visitor {
                         //verifica se a função tem o mesmo nome e o mesmo tipo
                         if (isDuplicatedFunc(localEnvNewFun)) {
                             logError.add(f.getLine() + ", " + f.getCol() +
-                                    ": Função " + f.getID() + " duplicada. Tipo da Função: " + f.getID() + localEnvNewFun.getFuncType());
+                                    ": Função " + f.getID() + " já foi definida.");
 
                             return;
                         }
