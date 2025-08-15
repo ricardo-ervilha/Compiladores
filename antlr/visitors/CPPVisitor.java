@@ -464,12 +464,13 @@ public class CPPVisitor extends Visitor{
         }
         
         ArrayList<ST> param_exprs = new ArrayList<>();
-        for(Expr q : p.getExps().getExpressions()){
-            expr = null;
-            q.accept(this);
-            param_exprs.add(expr);
+        if(p.getExps() != null){
+            for(Expr q : p.getExps().getExpressions()){
+                expr = null;
+                q.accept(this);
+                param_exprs.add(expr);
+            }
         }
-
        
         stmt.add("name", p.getId());
         stmt.add("params", param_exprs);
@@ -782,10 +783,12 @@ public class CPPVisitor extends Visitor{
         aux.add("name", e.getFunctionName());
 
         ArrayList<ST> param_exprs = new ArrayList<>();
-        for(Expr q : e.getExps().getExpressions()){
-            expr = null;
-            q.accept(this);
-            param_exprs.add(expr);
+        if(e.getExps() != null){
+            for(Expr q : e.getExps().getExpressions()){
+                expr = null;
+                q.accept(this);
+                param_exprs.add(expr);
+            }
         }
         aux.add("params", param_exprs);
 
