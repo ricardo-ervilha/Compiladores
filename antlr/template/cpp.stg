@@ -1,85 +1,185 @@
 group java;
 
-program(funcs) ::= <<
+/*Definição da estrutura geral do programa C++
+Programa tem:
+ cabeçalho
+ uso do namespace std
+ chama main auxiliar
+ e tem outras funções
+*/
+program(decl_funcs, funcs, deta_decls) ::= <<
 #include \<iostream>
 #include \<tuple>
 
 using namespace std;
 
-<funcs; separator="\n\n">
+<deta_decls; separator="\n\n">
+
+<decl_funcs>
 
 int main(int argc, char* argv[]) {
+    cout \<\< boolalpha;
     main_aux();
 }
+
+<funcs; separator="\n\n">
 >>
 
-func(types, name, params, cmds) ::= <<
+/*Declaração de funções no cabeçalho do programa*/
+decl_func(types, name, params) ::= <<
 <if(types)>
-tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
+tuple\< <types; separator=", "> > <name>(<params; separator=", ">);
 <else>
-void <name>(<params; separator=", ">) {
+void <name>(<params; separator=", ">);
+<endif>    
+>>
+
+/*Estrutura geral das funções do programa
+func tem retorno, parametros, nome e 
+- declaração de variaveis
+- comandos
+*/
+func(types, flagStatic, name, params, vardecls, blockCmds) ::= <<
+<if(types)>
+<if(flagStatic)>static <endif>tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
+<else>
+<if(flagStatic)>static <endif>void <name>(<params; separator=", ">) {
 <endif>
-    <if(cmds)>
-    <cmds; separator=";\n">;
-    <endif>
+    <if(vardecls)><vardecls; separator=";\n">;<endif>
+    <if(blockCmds)><blockCmds; separator="\n"><endif>
 }
 >>
 
-attr(type, var, expr) ::= <<
-<if(type)><type><endif> <var> = <expr>
+/*Declaração das variáveis no início das funções.*/
+var_decl(type, name) ::= <<
+<type> <name>
 >>
 
+/*Atribuição de valor a variável.*/
+attr(var, expr) ::= <<
+<var> = <expr>;
+>>
 
+/*Parâmetro das funções*/
 param(type, name) ::= "<type> <name>"
 
-array_type(type) ::= "<type>[]"
+/*Nome dos tipos no formato do do C++*/
 int_type() ::= "int"
 float_type() ::= "float"
 bool_type() ::= "bool"
 char_type() ::= "char"
 
-print(expr) ::= "System.out.println(<expr>);"
-return(expr) ::= "return <expr>;"
-
-while(expr, stmt) ::= <<
-while(<expr>) {
-    <stmt>
-}
+stmt_type(stmt1, stmt2) ::= <<
+<stmt1><stmt2>
 >>
 
-if(expr, thn, els) ::= <<
-if(<expr>) {
-    <thn>
-} <if(els)>else {
-    <els>
-}
-<endif>
->>
+/*Impressão de valor*/
+print(expr) ::= "cout \<\< <expr>;"
 
-stmt_list(stmt1, stmt2) ::= <<
-<stmt1>
-<stmt2>
->>
+/*Leitura*/
+read(expr) ::= "cin >> <expr>;"
 
-id(name) ::= "<name>"
-lvalue(name, array) ::= "<name><array>"
-array_access(expr) ::= "[<expr>]"
 
-boolean_expr(value) ::= "<value>"
-float_expr(value) ::= "<value>"
-int_expr(value) ::= "<value>"
-
-new_array(var, type, expr) ::= "<var> = new <type>[<expr>];"
-
-call(name, args) ::= <<<name>(<args; separator=", ">)>>
-
+/*Comandos de OPERAÇÕES*/
 mul_expr(left_expr, right_expr) ::= "(<left_expr> * <right_expr>)"
 div_expr(left_expr, right_expr) ::= "(<left_expr> / <right_expr>)"
 mod_expr(left_expr, right_expr) ::= "(<left_expr> % <right_expr>)"
 add_expr(left_expr, right_expr) ::= "(<left_expr> + <right_expr>)"
 sub_expr(left_expr, right_expr) ::= "(<left_expr> - <right_expr>)"
-
 lt_expr(left_expr, right_expr) ::= "(<left_expr> \< <right_expr>)"
 equals_expr(left_expr, right_expr) ::= "(<left_expr> == <right_expr>)"
+diff_expr(left_expr, right_expr) ::= "(<left_expr> != <right_expr>)"
 and_expr(left_expr, right_expr) ::= "(<left_expr> && <right_expr>)"
 not_expr(expr) ::= "!<expr>"
+minus_expr(expr) ::= "-<expr>"
+
+/*Valores*/
+boolean_expr(value) ::= "<value>"
+float_expr(value) ::= "<value>"
+int_expr(value) ::= "<value>"
+null_expr(value) ::= "<value>"
+char_expr(value) ::= "<value>"
+char_expr_num(value) ::= "static_cast\<char>(<value>)"
+
+/*CMD if e else*/
+if(expr, thn, els) ::= <<
+if(<expr>) {
+    <thn; separator="\n">
+} <if(els)>else {
+    <els; separator="\n">
+}
+<endif>
+>>
+
+/*Loop*/
+while(type, id, expr, var_name, cmds) ::= <<
+int __aux___expr__save__<id> = <expr>;
+for(<if(type)>int<endif> <var_name> = 0 ; <var_name> \< __aux___expr__save__<id>; <var_name>++) {
+    <cmds; separator="\n">
+}
+>>
+
+while_array(type, aux_loop, loop_name, array_name, length, cmds) ::= <<
+for(<if(type)>int<endif> <aux_loop> = 0; <aux_loop> \< <length>; <aux_loop>++){
+    <loop_name> = <array_name>[<aux_loop>];
+    <cmds; separator="\n">
+}
+>>
+
+/*Retorno de variaveis*/
+return(list_exprs) ::= <<
+return make_tuple(<list_exprs; separator=", ">);
+>>
+
+/*Chamada de funções passando as variaveis*/
+func_call(flag, namespaceClass, name, params, vars) ::= <<
+<if(flag)>auto __return_function_func_call_  = <endif><if(namespaceClass)><namespaceClass>::<endif><name>(<params; separator=",">);
+<if(flag)><vars; separator="\n"><endif>
+>>
+
+/*Chamada pegando indice*/
+func_call_access(name, namespaceClass, params, index) ::= <<
+get\< <index> >(<if(namespaceClass)><namespaceClass>::<endif><name>(<params; separator=", ">))
+>>
+
+var_unpacking(var, id) ::= <<
+<var> = get\< <id> >(__return_function_func_call_);
+>>
+/*--------------------------*/
+
+/*Declaração de array*/
+new_array(type, index) ::= "new <type>[<index>]"
+new_var(type) ::= "new <type>"
+
+/*Acesso a array*/
+array_access(expr) ::= "[<expr>]"
+
+/*Usando variavel simples*/
+id(name) ::= "<name>"
+
+/*ponteiro*/
+pointer() ::= "*"
+
+/*Acesso a atributo*/
+attr_access(exp) ::= "-><exp>"
+
+stmt_lvalue(stmt1, stmt2) ::= <<
+<stmt1><stmt2>
+>>
+
+// ---------*----------*--------------*-------------
+struct_def(name, var_decls) ::= <<
+struct <name>{
+    <var_decls; separator=";\n">;
+};
+>>
+
+class_def(name, var_decls, abstract_funs) ::= <<
+class <name> {
+    private:
+        <var_decls; separator=";\n">;
+
+    public:
+        <abstract_funs>
+};
+>>
