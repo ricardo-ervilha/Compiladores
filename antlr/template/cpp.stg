@@ -13,7 +13,7 @@ program(decl_funcs, funcs, deta_decls) ::= <<
 
 using namespace std;
 
-<deta_decls>
+<deta_decls; separator="\n\n">
 
 <decl_funcs>
 
@@ -136,6 +136,7 @@ var_unpacking(var, id) ::= <<
 
 /*Declaração de array*/
 new_array(type, index) ::= "new <type>[<index>]"
+new_var(type) ::= "new <type>"
 
 /*Acesso a array*/
 array_access(expr) ::= "[<expr>]"
@@ -147,7 +148,7 @@ id(name) ::= "<name>"
 pointer() ::= "*"
 
 /*Acesso a atributo*/
-attr_access(exp) ::= ".<exp>"
+attr_access(exp) ::= "-><exp>"
 
 stmt_lvalue(stmt1, stmt2) ::= <<
 <stmt1><stmt2>

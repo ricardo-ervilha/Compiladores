@@ -5,6 +5,7 @@ import util.LocalEnv;
 import util.STyArr;
 import util.STyBool;
 import util.STyChar;
+import util.STyData;
 import util.STyFloat;
 import util.STyInt;
 import util.SType;
@@ -34,8 +35,7 @@ public class CPPVisitor extends Visitor{
     ArrayList<ST> funcs;
     ArrayList<ST> data_declarations;
 
-    ST stmt_type;
-    ST stmt_lvalue;
+    ST type;
     ST stmt; // GERAL
     ST expr; // GUARDA RESUTLADO DAS EXPRESSOES
 
@@ -73,6 +73,8 @@ public class CPPVisitor extends Visitor{
                 aux = ((STyArr)aux).getElemType();
             }
             return recoverType(aux).concat(pointers);
+        }else if(s instanceof STyData){
+            return ((STyData)s).getTypeName().concat("*");
         }
         return "";
     }
@@ -112,7 +114,7 @@ public class CPPVisitor extends Visitor{
                 ArrayList<ST> types = new ArrayList<ST>();
                 for(Type t : funcao.getReturnTypes()){
                     t.accept(this);
-                    types.add(stmt_type);
+                    types.add(type);
                 }
                 aux.add("types", types); 
 
@@ -167,7 +169,7 @@ public class CPPVisitor extends Visitor{
         ArrayList<ST> types = new ArrayList<ST>();
         for(Type t : returns){
             t.accept(this);
-            types.add(stmt_type);
+            types.add(type);
         }
         fun.add("types", types); // joga no template as strings
 
@@ -217,7 +219,7 @@ public class CPPVisitor extends Visitor{
         param = groupTemplate.getInstanceOf("param");
         e.getType().accept(this);
 		param.add("name", e.getId());
-		param.add("type", stmt_type);
+		param.add("type", type);
     }
 
     @Override
@@ -230,32 +232,40 @@ public class CPPVisitor extends Visitor{
     }
 
     @Override
+    public  void visit(TYID e){
+        Debug.log("Visit TYID");
+        type = groupTemplate.getInstanceOf("id");
+        type.add("name", e.getName().concat("*"));
+    }
+
+    @Override
     public  void visit(TypeBool e){
         Debug.log("Visit TypeBool");
-        stmt_type = groupTemplate.getInstanceOf("bool_type");
+        type = groupTemplate.getInstanceOf("bool_type");
     }
     
     @Override
     public  void visit(TypeChar e){
         Debug.log("Visit TypeChar");
-        stmt_type = groupTemplate.getInstanceOf("char_type");
+        type = groupTemplate.getInstanceOf("char_type");
     }
     
     @Override
     public  void visit(TypeFloat e){
         Debug.log("Visit TypeFloat");
-        stmt_type = groupTemplate.getInstanceOf("float_type");
+        type = groupTemplate.getInstanceOf("float_type");
     }
     
     @Override
     public  void visit(TypeInt e){
         Debug.log("Visit TypeInt");
-        stmt_type = groupTemplate.getInstanceOf("int_type");
+        type = groupTemplate.getInstanceOf("int_type");
     }
 
     @Override
     public void visit(DataDecl p){
         Debug.log("Visit DataDecl");
+
         ST aux = groupTemplate.getInstanceOf("struct_def");
         aux.add("name", p.getTypeId());
         ArrayList<ST> dcls_aux = new ArrayList<ST>();
@@ -264,12 +274,14 @@ public class CPPVisitor extends Visitor{
             dcls_aux.add(stmt);
         }
         aux.add("var_decls", dcls_aux);
+        
         data_declarations.add(aux);
     }
 
     @Override
     public  void visit(AbstractDataDecl p){
         Debug.log("Visit AbstractDataDecl");
+        
         ST aux = groupTemplate.getInstanceOf("class_def");
         aux.add("name", p.getTypeId());
         ArrayList<ST> dcls_aux = new ArrayList<ST>();
@@ -285,6 +297,7 @@ public class CPPVisitor extends Visitor{
         }
         aux.add("var_decls", dcls_aux);
         aux.add("abstract_funs", abstract_funs_aux);
+        
         data_declarations.add(aux);
     }
 
@@ -295,7 +308,7 @@ public class CPPVisitor extends Visitor{
         ST aux = groupTemplate.getInstanceOf("var_decl");
         aux.add("name", p.getId());
         p.getType().accept(this);
-        aux.add("type", stmt_type);
+        aux.add("type", type);
         stmt = aux;
     }
 
@@ -306,10 +319,7 @@ public class CPPVisitor extends Visitor{
         
         // pega o ambiente especifico dessa função
         LocalEnv<SType> local = env.get(f.getID());
-        System.out.println("NOME: " + f.getID());
-        System.out.println("AMBIENTE: " + local);
         Set<String> keys = local.getKeys();
-        System.out.println("VARIAVEIS: " + keys);
 
         // pega os retornos
         List<Type> returns = f.getReturnTypes();
@@ -318,7 +328,7 @@ public class CPPVisitor extends Visitor{
         ArrayList<ST> types = new ArrayList<ST>();
         for(Type t : returns){
             t.accept(this);
-            types.add(stmt_type);
+            types.add(type);
         }
         fun.add("types", types); // joga no template as strings
 
@@ -368,11 +378,15 @@ public class CPPVisitor extends Visitor{
     @Override
     public  void visit(ArrayExpr e){
         Debug.log("Visit ArrayExpr");
+        
         ST expr_arr = groupTemplate.getInstanceOf("new_array");
+        
         e.getType().accept(this);
-        expr_arr.add("type", stmt_type);
+        expr_arr.add("type", type);
+        
         e.getExp().accept(this);
         expr_arr.add("index", expr);
+        
         expr = expr_arr;
     }
 
@@ -380,20 +394,22 @@ public class CPPVisitor extends Visitor{
     public  void visit(ArrayType e){
         Debug.log("Visit ArrayType");
         e.getType().accept(this);
-        ST aux = stmt_type;
-        stmt_type = groupTemplate.getInstanceOf("stmt_type");
-        stmt_type.add("stmt1", aux);
-        stmt_type.add("stmt2", groupTemplate.getInstanceOf("pointer"));
+        ST aux = type; // guarda o que está atualmente em type
+        type = groupTemplate.getInstanceOf("stmt_type");
+        type.add("stmt1", aux);
+        type.add("stmt2", groupTemplate.getInstanceOf("pointer"));
+        // concatena o que tinha antes com *
     }
 
     @Override
     public void visit(CmdAssign p){
-        stmt_lvalue = null;
+        expr = null;
         Debug.log("Visit CmdAssign");
         stmt = groupTemplate.getInstanceOf("attr");
 
         p.getLvalue().accept(this);
-        stmt.add("var", stmt_lvalue);
+        stmt.add("var", expr);
+
         p.getExpression().accept(this);
         stmt.add("expr", expr);
     }
@@ -410,10 +426,21 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public void visit(CmdPrint p){
+        Debug.log("Visit CmdPrint");
+        ST aux = groupTemplate.getInstanceOf("print");
+        expr = null;
+        p.getExpression().accept(this);
+        aux.add("expr", expr);
+        stmt = aux;
     }
 
     @Override
     public  void visit(CmdRead p){
+        Debug.log("Visit CmdRead");
+        ST aux = groupTemplate.getInstanceOf("read");
+        p.getLvalue().accept(this);
+        aux.add("expr", expr);
+        stmt = aux;
     }
 
     @Override
@@ -426,7 +453,17 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public void visit(Add e){
+        ST aux = groupTemplate.getInstanceOf("add_expr");
         
+        expr = null;
+        e.getLeft().accept(this);
+        aux.add("left_expr", expr);
+        
+        expr = null;
+        e.getRight().accept(this);
+        aux.add("right_expr", expr);
+        
+        expr = aux;
     }
 
     @Override
@@ -499,16 +536,12 @@ public class CPPVisitor extends Visitor{
     
     @Override
     public  void visit(VarExpr e){
-        
+        e.getType().accept(this);
+        ST aux = groupTemplate.getInstanceOf("new_var");
+        aux.add("type", type);
+        expr = aux;
     }
-    
-    
-    @Override
-    public  void visit(TYID e){
         
-    }
-    
-    
 
     @Override
     public  void visit(CharValue e){
@@ -554,29 +587,48 @@ public class CPPVisitor extends Visitor{
     @Override
     public  void visit(LValueExp e){
         Debug.log("Visit LvalueExp");
-        e.getLvalue().accept(this);
-        ST aux_lvalue = stmt_lvalue;
-        stmt_lvalue = groupTemplate.getInstanceOf("stmt_lvalue");
-        stmt_lvalue.add("stmt1", aux_lvalue);
-        ST array_access = groupTemplate.getInstanceOf("array_access");
+        
+        ST aux_lvalue_magic_johnson = groupTemplate.getInstanceOf("stmt_lvalue");
+        ST aux_expr = expr; // pega a expr atual
+        e.getLvalue().accept(this); // resolve a expr atual
+
+        // junta o q tinha antes com o resolvido agora
+        aux_lvalue_magic_johnson.add("stmt1", expr);
+        aux_lvalue_magic_johnson.add("stmt2", aux_expr);
+
         e.getIndex().accept(this);
-        array_access.add("expr", expr);
-        stmt_lvalue.add("stmt2", array_access);
+        ST expr_index = groupTemplate.getInstanceOf("array_access");
+        expr_index.add("expr", expr);
+        
+        expr = groupTemplate.getInstanceOf("stmt_lvalue");
+        expr.add("stmt1", aux_lvalue_magic_johnson);
+        expr.add("stmt2", expr_index);
     }
 
     @Override
     public  void visit(ID e){
         Debug.log("Visit ID");
-        ST aux = stmt_lvalue;
-        stmt_lvalue = groupTemplate.getInstanceOf("stmt_lvalue");
-        stmt_lvalue.add("stmt1", e.getName());
-        stmt_lvalue.add("stmt2", aux);
-
+        ST aux = expr;
+        expr = groupTemplate.getInstanceOf("stmt_lvalue");
+        expr.add("stmt1", e.getName());
+        expr.add("stmt2", aux);
     }
 
     @Override
     public  void visit(IdLValue e){
-        Debug.log("Visit IdLvalue");
+        Debug.log("visit IdLvalue");
+        ST aux_lvalue_magic_johnson = groupTemplate.getInstanceOf("stmt_lvalue");
+
+        e.getLvalue().accept(this); // resolve a expr mais atual
+
+        // junta o q tinha antes com o resolvido agora
+        ST aux_IDLVALUE = groupTemplate.getInstanceOf("attr_access");
+        aux_IDLVALUE.add("exp", e.getId());
+        
+        aux_lvalue_magic_johnson.add("stmt2", aux_IDLVALUE);
+        aux_lvalue_magic_johnson.add("stmt1", expr);
+
+        expr = aux_lvalue_magic_johnson;
     }
 
     @Override

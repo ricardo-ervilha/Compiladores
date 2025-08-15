@@ -1,10 +1,6 @@
-abstract data Ponto{
+data Ponto{
     x :: Float;
     y :: Float;
-
-    add(a::Float, b::Float){
-        x = 12;
-    }
 }
 
 main(){
