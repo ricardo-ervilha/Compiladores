@@ -131,9 +131,14 @@ return make_tuple(<list_exprs; separator=", ">);
 >>
 
 /*Chamada de funções passando as variaveis*/
-func_call(name, params, vars) ::= <<
-auto __return_function_func_call_ = <name>(<params; separator=",">);
-<vars; separator="\n">
+func_call(flag, name, params, vars) ::= <<
+<if(flag)>auto __return_function_func_call_  = <endif><name>(<params; separator=",">);
+<if(flag)><vars; separator="\n"><endif>
+>>
+
+/*Chamada pegando indice*/
+func_call_access(name, params, index) ::= <<
+get\< <index> >(<name>(<params; separator=", ">))
 >>
 
 var_unpacking(var, id) ::= <<

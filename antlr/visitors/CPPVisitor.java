@@ -26,9 +26,9 @@ public class CPPVisitor extends Visitor{
     // variável global que pega os templates
     private STGroup groupTemplate;
 
-    HashMap<String, Integer> MapNameToLength;
+    HashMap<String, String> MapNameToLength;
     String nameArray;
-    int length;
+    String length;
     String currentFuncName;
 
     // variável global para saber variaveis e tipos
@@ -55,7 +55,7 @@ public class CPPVisitor extends Visitor{
     public CPPVisitor(TyEnv<LocalEnv<SType>> env){
         groupTemplate = new STGroupFile("./template/cpp.stg");
         this.env = env;
-        this.MapNameToLength = new HashMap<String, Integer>();
+        this.MapNameToLength = new HashMap<String, String>();
     }
 
     /* Função AUXILIAR para recuperar o tipo na hora de declarar variaveis */
@@ -392,9 +392,10 @@ public class CPPVisitor extends Visitor{
         
         e.getExp().accept(this);
         expr_arr.add("index", expr);
-        length = Integer.parseInt(expr.render());
+        length = expr.render();
         
         expr = expr_arr;
+
     }
 
     @Override
@@ -431,6 +432,33 @@ public class CPPVisitor extends Visitor{
     @Override
     public  void visit(CmdFuncCall p)
     {
+        stmt = groupTemplate.getInstanceOf("func_call");
+        ArrayList<ST> vars = new ArrayList<ST>();
+        int id = 0;
+        if(!p.getLvalues().isEmpty()){
+                for(LValue l : p.getLvalues()){
+                expr = null;
+                l.accept(this);
+                ST aux = groupTemplate.getInstanceOf("var_unpacking");
+                aux.add("var", expr);
+                aux.add("id", id);
+                id++;
+                vars.add(aux);
+            }  
+            stmt.add("flag", "");
+        }
+        
+        ArrayList<ST> param_exprs = new ArrayList<>();
+        for(Expr q : p.getExps().getExpressions()){
+            expr = null;
+            q.accept(this);
+            param_exprs.add(expr);
+        }
+
+       
+        stmt.add("name", p.getId());
+        stmt.add("params", param_exprs);
+        stmt.add("vars", vars); 
     }
 
     @Override
@@ -490,6 +518,14 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public  void visit(CmdReturn p){
+        ArrayList<ST> list_exprs = new ArrayList<ST>();
+        for(Expr r: p.getExpressions()){
+            expr = null;
+            r.accept(this);
+            list_exprs.add(expr);
+        }
+        stmt = groupTemplate.getInstanceOf("return");
+        stmt.add("list_exprs", list_exprs);
     }
 
     @Override
@@ -726,7 +762,22 @@ public class CPPVisitor extends Visitor{
     
     @Override
     public  void visit(CallFunctionAccess e){
-        
+        ST aux = groupTemplate.getInstanceOf("func_call_access");
+        aux.add("name", e.getFunctionName());
+
+        ArrayList<ST> param_exprs = new ArrayList<>();
+        for(Expr q : e.getExps().getExpressions()){
+            expr = null;
+            q.accept(this);
+            param_exprs.add(expr);
+        }
+        aux.add("params", param_exprs);
+
+        expr = null;
+        e.getExp().accept(this);
+        aux.add("index", expr);
+
+        expr = aux;
     }
     
     @Override
