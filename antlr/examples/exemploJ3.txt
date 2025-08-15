@@ -1,0 +1,21 @@
+fibonacci(n :: Int) : Int {
+    x=10;
+    if(x < 10){
+      if(5 < x){
+          return 2;
+      }else{
+            if(3 < 4){
+                return 3;
+                print 3;
+            }
+            return 4;
+      }
+    }else{
+        return 3;
+    }
+}
+
+main() {
+  v = fibonacci(15)[0];
+  print v;
+}
