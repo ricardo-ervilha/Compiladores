@@ -139,8 +139,6 @@ public class Main {
                     break;
 
                 case "-gen":
-                    System.out.println("Verificação de tipos.");
-
                     TypeCheckVisitor typeCheckS2J = new TypeCheckVisitor();
                     ast.accept(typeCheckS2J);
 
