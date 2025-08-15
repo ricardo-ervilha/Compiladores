@@ -51,8 +51,8 @@ void <name>(<params; separator=", ">) {
 >>
 
 /*Declaração das variáveis no início das funções.*/
-var_decl(type, name) ::= <<
-<type> <name>
+var_decl(flag, type, name) ::= <<
+<if(flag)>private <endif><type> <name>
 >>
 
 /*Atribuição de valor a variável.*/
@@ -113,7 +113,7 @@ if(<expr>) {
 
 /*Loop*/
 while(type, expr, var_name, cmds) ::= <<
-for(<if(type)>int<endif> <var_name> = <expr>; <var_name> > 0; <var_name>--) {
+for(<if(type)>int<endif> <var_name> - 1 = <expr>; <var_name> >= 0; <var_name>--) {
     <cmds; separator="\n">
 }
 >>
@@ -171,10 +171,6 @@ struct_def(name, var_decls) ::= <<
 typedef struct{
     <var_decls; separator=";\n">;
 } <name>;
->>
-
-var_decl_class(type, name) ::= <<
-private <type> <name>
 >>
 
 class_def(name, var_decls, abstract_funs) ::= <<

@@ -31,6 +31,9 @@ public class CPPVisitor extends Visitor{
     String length;
     String currentFuncName;
 
+    boolean flagForArrayData = false;
+    boolean flagClassPrivate = false;
+
     // variável global para saber variaveis e tipos
     TyEnv<LocalEnv<SType>> env;
 
@@ -241,7 +244,11 @@ public class CPPVisitor extends Visitor{
     public  void visit(TYID e){
         Debug.log("Visit TYID");
         type = groupTemplate.getInstanceOf("id");
-        type.add("name", e.getName().concat("*"));
+        if(flagForArrayData)
+            type.add("name", e.getName().concat("*"));
+        else
+            type.add("name", e.getName());
+        flagForArrayData = false;
     }
 
     @Override
@@ -287,16 +294,18 @@ public class CPPVisitor extends Visitor{
     @Override
     public  void visit(AbstractDataDecl p){
         Debug.log("Visit AbstractDataDecl");
-        
+
         ST aux = groupTemplate.getInstanceOf("class_def");
         aux.add("name", p.getTypeId());
         ArrayList<ST> dcls_aux = new ArrayList<ST>();
         ArrayList<ST> abstract_funs_aux = new ArrayList<ST>();
         for(Node n : p.getDeclFuns()){
             if(n instanceof Decl){
+                flagClassPrivate = true;
                 n.accept(this);
                 dcls_aux.add(stmt);
             }else{
+                currentFuncName = ((FunAbstractData) n).getID();
                 n.accept(this);
                 abstract_funs_aux.add(stmt);
             }
@@ -315,13 +324,18 @@ public class CPPVisitor extends Visitor{
         aux.add("name", p.getId());
         p.getType().accept(this);
         aux.add("type", type);
+        if(flagClassPrivate)
+            aux.add("flag", "");
         stmt = aux;
+        flagClassPrivate = false;
     }
 
     @Override
     public void visit(FunAbstractData f){
         Debug.log("Visit FunAbstactData");
         ST fun = groupTemplate.getInstanceOf("func");
+
+        fun.add("name", f.getID());
         
         // pega o ambiente especifico dessa função
         LocalEnv<SType> local = env.get(f.getID());
@@ -387,6 +401,7 @@ public class CPPVisitor extends Visitor{
         
         ST expr_arr = groupTemplate.getInstanceOf("new_array");
         
+        flagForArrayData = true;
         e.getType().accept(this);
         expr_arr.add("type", type);
         
@@ -553,10 +568,10 @@ public class CPPVisitor extends Visitor{
             id_var_loop = id_var_loop - 1;
         }else{
             // loop tem id
-            
             IdItCond q = (IdItCond) p.getCondition();
             q.getExpression().accept(this); // RESOLVE DE UMA VEZ
             if(env.get(currentFuncName).get(expr.render()) instanceof STyArr){
+                System.out.println("CAIU ACOLA");
                 aux = groupTemplate.getInstanceOf("while_array");
                 aux.add("type", ""); // faz adicionar tipo
 
@@ -575,6 +590,7 @@ public class CPPVisitor extends Visitor{
                 aux.add("cmds", blockCmds);
 
             }else{
+                System.out.println("CAIU AQUI");
                 aux = groupTemplate.getInstanceOf("while");
                 aux.add("var_name", q.getId());
             
