@@ -774,8 +774,19 @@ public class InterpretVisitor extends Visitor {
                     currentAccessMode = AccessMode.READ;
                     ((ExpItCond) e.getCondition()).getExpression().accept(this);
 
-                    int i = (Integer) operands.pop();
-                    while (i >= 0) {
+                    Object objeto = operands.pop();
+
+                    int i;
+                    if(objeto instanceof Integer){
+                        i = (Integer) objeto;
+
+                    }else if (objeto instanceof HashMap){
+                        i = ((HashMap<?, ?>) objeto).size();
+                    }else {
+                        throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") Erro no iterate, tentando iterar em um objeto desconhecido...");
+                    }
+
+                    while (i > 0) {
                         e.getBody().accept(this);
                         i--;
                     }
@@ -790,7 +801,7 @@ public class InterpretVisitor extends Visitor {
                         int counter = (int) var;
                         Object oldValue = env.peek().get(nameVar);
                         env.peek().put(nameVar, var);
-                        while (counter >= 0) {
+                        while (counter > 0) {
                             e.getBody().accept(this);
                             counter--;
                             env.peek().put(nameVar, counter); // atualiza na memória o valor.
