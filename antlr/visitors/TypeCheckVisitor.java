@@ -22,7 +22,6 @@ public class TypeCheckVisitor extends Visitor {
     private final STyBool tybool = STyBool.newSTyBool();
     private final SType tynull = STyNull.newSTyNull();
     private final SType tychar = STyChar.newSTyChar();
-    private final SType tyvoid = STyVoid.newSTyVoid();
     private final STyErr tyerr = STyErr.newSTyErr();
 
     private ArrayList<String> logError;
@@ -83,7 +82,7 @@ public class TypeCheckVisitor extends Visitor {
         return false;
     }
 
-    private boolean isDuplicatedData(String funcId){
+    private boolean isDuplicatedData(String funcId) {
         return typeStructs.containsKey(funcId);
     }
 
@@ -611,19 +610,93 @@ public class TypeCheckVisitor extends Visitor {
      * @param n
      * @param opName
      */
-    private void typeRelationalBinOp(Expr n, String opName) {
+    /*private void typeRelationalBinOp(Expr n, String opName) {
         SType tyr = stk.pop();
         SType tyl = stk.pop();
 
         if (tyl.match(tyr) && (tyl.match(tyint) || tyl.match(tyfloat) || tyl.match(tychar))) {
             stk.push(tybool);
             n.setSType(tybool);
+        } else if ((opName.equals("==") || opName.equals("!=")) && tyr.match(tynull)) {
+            // aqui sabemos que o nado direito é null
+            // o lado esquerdo pode ser um StyData
+            // ou o tipo base do vetor pode se um StyData
+
+            if (tyl instanceof STyData) {
+                stk.push(tybool);
+                n.setSType(tybool);
+            } else if (tyl instanceof STyArr) {
+                SType base = tyl;
+                while (base instanceof STyArr arr) {
+                    base = arr.getElemType();
+                }
+                if (base instanceof STyData) {
+                    stk.push(tybool);
+                    n.setSType(tybool);
+                } else {
+                    logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName +
+                            " não se aplica aos tipos " + tyl + " e " + tyr);
+                    stk.push(tyerr);
+                }
+            }else{
+                logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName +
+                        " não se aplica aos tipos " + tyl + " e " + tyr);
+                stk.push(tyerr);
+            }
         } else {
             logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName +
                     " não se aplica aos tipos " + tyl + " e " + tyr);
             stk.push(tyerr);
         }
+    }*/
+    private void typeRelationalBinOp(Expr n, String opName) {
+        SType tyl = stk.pop();
+        SType tyr = stk.pop();
+
+        if (tyl.match(tyr) && (tyl.match(tyint) || tyl.match(tyfloat) || tyl.match(tychar))) {
+            stk.push(tybool);
+            n.setSType(tybool);
+            return;
+        }
+        // comparação com null apenas com Data
+        if ((opName.equals("==") || opName.equals("!=")) && (tyl.match(tynull) || tyr.match(tynull))) {
+            SType refType;
+
+            if(tyr instanceof STyNull){
+                refType = tyl;
+            }else{
+                refType = tyr;
+            }
+
+            if (refType instanceof STyData) {
+                stk.push(tybool);
+                n.setSType(tybool);
+                return;
+            }
+            if (refType instanceof STyArr) {
+                SType base = refType;
+                while (base instanceof STyArr arr) {
+                    base = arr.getElemType();
+                }
+                if (base instanceof STyData) {
+                    stk.push(tybool);
+                    n.setSType(tybool);
+                    return;
+                }
+            }
+            logError.add(n.getLine() + ", " + n.getCol() +
+                    ": Operador " + opName + " não se aplica aos tipos " + tyl + " e " + tyr);
+            stk.push(tyerr);
+            n.setSType(tyerr);
+            return;
+        }
+
+        logError.add(n.getLine() + ", " + n.getCol() +
+                ": Operador " + opName + " não se aplica aos tipos " + tyl + " e " + tyr);
+        stk.push(tyerr);
+        n.setSType(tyerr);
     }
+
 
     /**
      * [a, a] → Bool, em que a ∈ {Int, Float, Char}
