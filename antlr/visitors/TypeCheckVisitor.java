@@ -83,6 +83,10 @@ public class TypeCheckVisitor extends Visitor {
         return false;
     }
 
+    private boolean isDuplicatedData(String funcId){
+        return typeStructs.containsKey(funcId);
+    }
+
     @Override
     public void visit(Program program) {
         /*
@@ -126,16 +130,20 @@ public class TypeCheckVisitor extends Visitor {
 
             } else if (def instanceof AbstractDataDecl abstractDataDecl) {
                 String typeNameAbs = abstractDataDecl.getTypeId(); // nome do tipo, e.g "Racional"
+                if (isDuplicatedData(typeNameAbs)) {
+                    logError.add(abstractDataDecl.getLine() + ", " + abstractDataDecl.getCol() + ": Tipo " + typeNameAbs + " já foi declarado.");
+                    return;
+                }
+                typeStructs.put(typeNameAbs, null);// colocando antes para permitir auto-referencia
 
                 LinkedHashMap<String, SType> atributosAbs = new LinkedHashMap<>();// atributos do tipo Abstrato
                 LinkedHashMap<String, STyFun> funcsAbs = new LinkedHashMap<>(); // Funções do tipo abstrato, juntamente com argumentos/retorno
 
                 for (Node declFun : abstractDataDecl.getDeclFuns()) {// pega declarações ( idade::Int ) e funções
                     if (declFun instanceof Decl decl) {
-                        decl.getType().accept(this);
+                        decl.getType().accept(this);//( idade::Int )
                         atributosAbs.put(decl.getId(), stk.pop());
-
-                    } else if (declFun instanceof FunAbstractData f) {
+                    } else if (declFun instanceof FunAbstractData f) {//funções
                         // pego os parametros da função
                         List<Param> params = (f.getParams() != null)
                                 ? f.getParams().getParamList()
@@ -174,15 +182,17 @@ public class TypeCheckVisitor extends Visitor {
                     }
                 }
 
-                if (typeStructs.containsKey(typeNameAbs)) {
-                    logError.add(abstractDataDecl.getLine() + ", " + abstractDataDecl.getCol() + ": Tipo " + typeNameAbs + " já foi declarado.");
-                } else {
-                    STyData sTyData = new STyData(typeNameAbs, atributosAbs, funcsAbs);
-                    typeStructs.put(typeNameAbs, sTyData);// coloco o nome do tipo e os campos dele na tabela de Registros
 
-                    abstractTypes.add(typeNameAbs); // salvo para saber os tipos que são ABS
-                }
+                STyData sTyData = new STyData(typeNameAbs, atributosAbs, funcsAbs);
+                typeStructs.put(typeNameAbs, sTyData);// coloco o nome do tipo e os campos dele na tabela de Registros
+                abstractTypes.add(typeNameAbs); // salvo para saber os tipos que são ABS
+
             } else if (def instanceof DataDecl dataDecl) {
+                if (isDuplicatedData(dataDecl.getTypeId())) {
+                    logError.add(dataDecl.getLine() + ", " + dataDecl.getCol() + ": Tipo " + dataDecl.getTypeId() + " já foi declarado.");
+                    return;
+                }
+                typeStructs.put(dataDecl.getTypeId(), null);
                 dataDecl.accept(this);
             }
         }
@@ -452,12 +462,8 @@ public class TypeCheckVisitor extends Visitor {
             fields.put(decl.getId(), fieldType);
         }
 
-        if (typeStructs.containsKey(typeName)) {
-            logError.add(p.getLine() + ", " + p.getCol() + ": Tipo " + typeName + " já foi declarado.");
-        } else {
-            STyData sTyData = new STyData(typeName, fields);
-            typeStructs.put(typeName, sTyData);
-        }
+        STyData sTyData = new STyData(typeName, fields);
+        typeStructs.put(typeName, sTyData);
     }
 
     @Override
@@ -467,7 +473,7 @@ public class TypeCheckVisitor extends Visitor {
 
     @Override
     public void visit(FunAbstractData f) {
-        System.out.println(" (FunAbstractData) Não deveria entrar aqui...");
+//        System.out.println(" (FunAbstractData) Não deveria entrar aqui...");
         retChk = false;//
         temp = env.get(f.getID());// a função já foi criada na minha tabela env previamente
 

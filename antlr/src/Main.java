@@ -105,7 +105,6 @@ public class Main {
                     break;
 
                 case "-t":
-                    System.out.println("\n--------------------Executando a verificação de tipos do programa.--------------------\n");
                     TypeCheckVisitor tcv = new TypeCheckVisitor();
                     ast.accept(tcv);
                     if(tcv.getNumErrors() > 0){
