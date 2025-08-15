@@ -118,6 +118,13 @@ for(<if(type)>int<endif> <var_name> = <expr>; <var_name> > 0; <var_name>--) {
 }
 >>
 
+while_array(type, aux_loop, loop_name, array_name, length, cmds) ::= <<
+for(<if(type)>int<endif> <aux_loop> = 0; <aux_loop> \< <length>; <aux_loop>++){
+    <loop_name> = <array_name>[<aux_loop>];
+    <cmds; separator="\n">
+}
+>>
+
 /*Retorno de variaveis*/
 return(list_exprs) ::= <<
 return make_tuple(<list_exprs; separator=", ">);

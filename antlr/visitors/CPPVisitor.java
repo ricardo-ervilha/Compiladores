@@ -17,16 +17,19 @@ import org.stringtemplate.v4.STGroupFile;
 
 import java.util.*;
 
-import java.util.List;
-import java.util.ArrayList;
-import java.util.Set;
 import javax.management.monitor.StringMonitorMBean;
+import javax.print.attribute.HashAttributeSet;
 
 import util.Debug;
 
 public class CPPVisitor extends Visitor{
     // variável global que pega os templates
     private STGroup groupTemplate;
+
+    HashMap<String, Integer> MapNameToLength;
+    String nameArray;
+    int length;
+    String currentFuncName;
 
     // variável global para saber variaveis e tipos
     TyEnv<LocalEnv<SType>> env;
@@ -52,6 +55,7 @@ public class CPPVisitor extends Visitor{
     public CPPVisitor(TyEnv<LocalEnv<SType>> env){
         groupTemplate = new STGroupFile("./template/cpp.stg");
         this.env = env;
+        this.MapNameToLength = new HashMap<String, Integer>();
     }
 
     /* Função AUXILIAR para recuperar o tipo na hora de declarar variaveis */
@@ -157,6 +161,8 @@ public class CPPVisitor extends Visitor{
             fun.add("name", "main_aux"); 
         else
             fun.add("name", p.getID());
+
+        currentFuncName = p.getID(); // SALVA PARA O ITERATE
 
         // pega o ambiente especifico dessa função
         LocalEnv<SType> local = env.get(p.getID());
@@ -386,6 +392,7 @@ public class CPPVisitor extends Visitor{
         
         e.getExp().accept(this);
         expr_arr.add("index", expr);
+        length = Integer.parseInt(expr.render());
         
         expr = expr_arr;
     }
@@ -408,10 +415,17 @@ public class CPPVisitor extends Visitor{
         stmt = groupTemplate.getInstanceOf("attr");
 
         p.getLvalue().accept(this);
+        nameArray = expr.render();
         stmt.add("var", expr);
-
+        
+        expr = null;
         p.getExpression().accept(this);
         stmt.add("expr", expr);
+
+        if(p.getExpression() instanceof ArrayExpr){
+            MapNameToLength.put(nameArray, length);
+        }
+
     }
 
     @Override
@@ -421,7 +435,37 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public void visit(CmdIf p) {
+        expr = null;
         Debug.log("Visit CmdIF");
+
+        ST aux = groupTemplate.getInstanceOf("if");
+        p.getCondition().accept(this);
+        aux.add("expr", expr);
+
+        ArrayList<ST> aux_cmdsBlock = blockCmds; // chega blocos parciais para ele
+
+        if(p.getThenCmd() instanceof Block){
+            blockCmds = new ArrayList<ST>(); // crio o novo bloco desse if e else
+            p.getThenCmd().accept(this);
+            aux.add("thn", blockCmds);
+        }else{
+            p.getThenCmd().accept(this);
+            aux.add("thn", stmt);
+        }
+
+        if(p.getElseCmd() != null){
+            if(p.getElseCmd() instanceof Block){
+                blockCmds = new ArrayList<ST>();
+                p.getElseCmd().accept(this);
+                aux.add("els", blockCmds);
+            }else{
+                p.getElseCmd().accept(this);
+                aux.add("els", stmt);
+            }
+        }
+
+        stmt = aux;
+        blockCmds = aux_cmdsBlock;
     }
 
     @Override
@@ -436,6 +480,7 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public  void visit(CmdRead p){
+        expr = null;
         Debug.log("Visit CmdRead");
         ST aux = groupTemplate.getInstanceOf("read");
         p.getLvalue().accept(this);
@@ -449,6 +494,65 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public  void visit(CmdIterate p){
+        expr = null;
+        Debug.log("Visit CmdIterate");
+        ArrayList<ST> aux_cmdsBlock = blockCmds; // chega blocos parciais para ele
+        ST aux = null; // VAI ARMAZENAR A STRING
+        if (p.getCondition() instanceof ExpItCond) {
+            // caso seja loop com numero tipo while(10)
+
+            aux = groupTemplate.getInstanceOf("while");
+            p.getCondition().accept(this);
+            aux.add("type", ""); // faz adicionar tipo
+            
+            aux.add("expr", expr);
+            
+            aux.add("var_name", var_name + Integer.toString(id_var_loop)); // usa um nome criado
+            
+            id_var_loop = id_var_loop + 1;
+            blockCmds = new ArrayList<ST>(); // crio novo bloco pra esse iterate
+            p.getBody().accept(this);
+            
+            aux.add("cmds", blockCmds);
+            id_var_loop = id_var_loop - 1;
+        }else{
+            // loop tem id
+            
+            IdItCond q = (IdItCond) p.getCondition();
+            q.getExpression().accept(this); // RESOLVE DE UMA VEZ
+            if(env.get(currentFuncName).get(expr.render()) instanceof STyArr){
+                aux = groupTemplate.getInstanceOf("while_array");
+                aux.add("type", ""); // faz adicionar tipo
+
+                aux.add("loop_name", q.getId()); // variavel q será usada no loop
+                aux.add("aux_loop", var_name + Integer.toString(id_var_loop)); // variavel auxiliar do for
+                id_var_loop = id_var_loop + 1;
+
+                
+                aux.add("array_name", expr); // adiciona nome do array
+
+                aux.add("length", MapNameToLength.get(expr.render()));
+
+                blockCmds = new ArrayList<ST>(); // crio novo bloco pra esse iterate
+                p.getBody().accept(this);
+                
+                aux.add("cmds", blockCmds);
+
+            }else{
+                aux = groupTemplate.getInstanceOf("while");
+                aux.add("var_name", q.getId());
+            
+                aux.add("expr", expr);
+                
+                blockCmds = new ArrayList<ST>(); // crio novo bloco pra esse iterate
+                p.getBody().accept(this);
+                
+                aux.add("cmds", blockCmds);
+            }
+        }
+
+        blockCmds = aux_cmdsBlock;
+        stmt = aux;
     }
 
     @Override
@@ -468,58 +572,149 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public void visit(Sub e){
+        ST aux = groupTemplate.getInstanceOf("sub_expr");
+
+        expr = null;
+        e.getLeft().accept(this);
+        aux.add("left_expr", expr);
         
+        expr = null;
+        e.getRight().accept(this);
+        aux.add("right_expr", expr);
+        
+        expr = aux;
     }
 
     @Override
     public void visit(Mul e){
+        ST aux = groupTemplate.getInstanceOf("mul_expr");
+
+        expr = null;
+        e.getLeft().accept(this);
+        aux.add("left_expr", expr);
         
+        expr = null;
+        e.getRight().accept(this);
+        aux.add("right_expr", expr);
+        
+        expr = aux;
     }
 
     @Override
     public void visit(Div e){
+        ST aux = groupTemplate.getInstanceOf("div_expr");
+
+        expr = null;
+        e.getLeft().accept(this);
+        aux.add("left_expr", expr);
         
+        expr = null;
+        e.getRight().accept(this);
+        aux.add("right_expr", expr);
+        
+        expr = aux;
     }
 
     @Override
     public void visit(Mod e){
+        ST aux = groupTemplate.getInstanceOf("mod_expr");
+
+        expr = null;
+        e.getLeft().accept(this);
+        aux.add("left_expr", expr);
         
+        expr = null;
+        e.getRight().accept(this);
+        aux.add("right_expr", expr);
+        
+        expr = aux;
     }
 
     @Override
     public void visit(Lt e){
+        ST aux = groupTemplate.getInstanceOf("lt_expr");
+
+        expr = null;
+        e.getLeft().accept(this);
+        aux.add("left_expr", expr);
         
+        expr = null;
+        e.getRight().accept(this);
+        aux.add("right_expr", expr);
+        
+        expr = aux;
     }
 
     @Override
     public void visit(And e){
+        ST aux = groupTemplate.getInstanceOf("and_expr");
+
+        expr = null;
+        e.getLeft().accept(this);
+        aux.add("left_expr", expr);
         
+        expr = null;
+        e.getRight().accept(this);
+        aux.add("right_expr", expr);
+        
+        expr = aux;
     }
 
     @Override
     public void visit(Eq e){
+        ST aux = groupTemplate.getInstanceOf("equals_expr");
+
+        expr = null;
+        e.getLeft().accept(this);
+        aux.add("left_expr", expr);
         
+        expr = null;
+        e.getRight().accept(this);
+        aux.add("right_expr", expr);
+        
+        expr = aux;
     }
 
     @Override
     public void visit(Diff e){
-       
+       ST aux = groupTemplate.getInstanceOf("diff_expr");
+
+       expr = null;
+        e.getLeft().accept(this);
+        aux.add("left_expr", expr);
+        
+        expr = null;
+        e.getRight().accept(this);
+        aux.add("right_expr", expr);
+        
+        expr = aux;
     }
 
     @Override
     public void visit(MinusExpr e){
-       
+       ST aux = groupTemplate.getInstanceOf("minus_expr");
+       expr = null;
+       e.getExpr().accept(this);
+       aux.add("expr", expr);
+       expr = aux;
     }
 
     @Override
     public void visit(NotExpr e){
-        
+        ST aux = groupTemplate.getInstanceOf("not_expr");
+        expr = null;
+       e.getExpression().accept(this);
+       aux.add("expr", expr);
+       expr = aux;
     }
 
     
     @Override
     public  void visit(ExpItCond e){
-        
+        e.getExpression().accept(this);
+        ST aux = groupTemplate.getInstanceOf("int_expr");
+        aux.add("value", expr);
+        expr = aux;
     }
     
 
@@ -596,6 +791,7 @@ public class CPPVisitor extends Visitor{
         aux_lvalue_magic_johnson.add("stmt1", expr);
         aux_lvalue_magic_johnson.add("stmt2", aux_expr);
 
+        expr = null;
         e.getIndex().accept(this);
         ST expr_index = groupTemplate.getInstanceOf("array_access");
         expr_index.add("expr", expr);
