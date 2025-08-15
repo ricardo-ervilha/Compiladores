@@ -786,9 +786,10 @@ public class InterpretVisitor extends Visitor {
                         throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") Erro no iterate, tentando iterar em um objeto desconhecido...");
                     }
 
-                    while (i > 0) {
+                    int j = 0;
+                    while (j < i) {
                         e.getBody().accept(this);
-                        i--;
+                        j++;
                     }
                 } else {
                     currentAccessMode = AccessMode.READ;
@@ -800,16 +801,16 @@ public class InterpretVisitor extends Visitor {
                     if (var instanceof Integer) {
                         int counter = (int) var;
                         Object oldValue = env.peek().get(nameVar);
-                        env.peek().put(nameVar, var);
-                        while (counter > 0) {
+                        int j = 0;
+                        while (j < counter) {
+                            env.peek().put(nameVar,j);
                             e.getBody().accept(this);
-                            counter--;
-                            env.peek().put(nameVar, counter); // atualiza na memória o valor.
+                            j++;
                         }
-                        if (oldValue == null)
-                            env.peek().remove(nameVar);
-                        else
-                            env.peek().put(nameVar, oldValue);
+                        // if (oldValue == null)
+                        //     env.peek().remove(nameVar);
+                        // else
+                        //     env.peek().put(nameVar, oldValue); // não precisa RECUPERAR VALOR POIS PARECE NAO CRIAR NOVO ESCOPO (EXEMPLO itervarDec.lan)
                     } else if (var instanceof HashMap) {
                         Object oldValue = env.peek().get(nameVar);
                         HashMap<Integer, Object> aux = (HashMap<Integer, Object>) var;
