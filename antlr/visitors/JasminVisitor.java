@@ -35,16 +35,18 @@ public class JasminVisitor extends Visitor {
     private List<ST> funcs, params;
     private int iterateDepth = 0; // para calcular indice do slot e não sobrescrever em casos de iterate aninhado
     private String fileName;
+    private int maxStackSize;
 
     TyEnv<LocalEnv<VarInfo>> env;
     LocalEnv<VarInfo> localEnv;
 
     private int label = 0;
 
-    public JasminVisitor(TyEnv<LocalEnv<VarInfo>> env) {
+    public JasminVisitor(TyEnv<LocalEnv<VarInfo>> env, int maxStackSize) {
         groupTemplate = new STGroupFile("./template/jasmin.stg");
         this.fileName = "Programa";
         this.env = env;
+        this.maxStackSize = maxStackSize;
     }
 
 
@@ -115,7 +117,7 @@ public class JasminVisitor extends Visitor {
         stFun.add("stmt", stmt);
 
 
-        stFun.add("stack", 10); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
+        stFun.add("stack", this.maxStackSize); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
         int localVars = localEnv.getKeys().size(); //TODO: arrumar isso, tem que ver uma forma de pegar as variveis pro iterate
 
         // slots extras para iterates aninhados
@@ -301,7 +303,9 @@ public class JasminVisitor extends Visitor {
      * @param p
      */
     @Override
-    public void visit(CmdFuncCall p) {
+    public void visit(CmdFuncCall cmdFuncCall) {
+        String nomeFuncao = cmdFuncCall.getId();
+        List<LValue> variaveis = (cmdFuncCall.getLvalues() != null) ? cmdFuncCall.getLvalues() : new ArrayList<>();
 
     }
 

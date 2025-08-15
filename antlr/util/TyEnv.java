@@ -46,4 +46,8 @@ public class TyEnv<A> {
     public Set<String> getKeys() {
         return typeEnv.keySet();
     }
+
+    public void remove(String varName) {
+        typeEnv.remove(varName);
+    }
 }

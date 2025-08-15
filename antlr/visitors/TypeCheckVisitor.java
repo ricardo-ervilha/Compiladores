@@ -35,7 +35,7 @@ public class TypeCheckVisitor extends Visitor {
     // Então o TyEnv mapeia tanto nome da função para o tipo dela, quanto o nome de uma variavel para o tipo dela
     private LocalEnv<SType> temp;// usado para construir o ambiente local de cada função
 
-    private Stack<SType> stk;// pilha de tipos, usado para calcular os tipos de cada expressão
+    private StackOp<SType> stk;// pilha de tipos, usado para calcular os tipos de cada expressão e o tamano maximo da pilha
     private boolean retChk;// variavel para poder verificar se houve retorno de função
 
 
@@ -48,7 +48,7 @@ public class TypeCheckVisitor extends Visitor {
     private Set<String> abstractTypes = new HashSet<>();//útil para fazer verificação de acesso apenas se for em um tipo ABS
 
     public TypeCheckVisitor() {
-        stk = new Stack<SType>();
+        stk = new StackOp<SType>();
         env = new TyEnv<LocalEnv<SType>>();
         logError = new ArrayList<String>();
     }
@@ -65,6 +65,10 @@ public class TypeCheckVisitor extends Visitor {
         for (String s : logError) {
             System.out.println(s);
         }
+    }
+
+    public int getMaxStackSize() {
+        return stk.getMaxSize();
     }
 
     /**
@@ -362,7 +366,7 @@ public class TypeCheckVisitor extends Visitor {
     */
     @Override
     public void visit(CallFunctionAccess e) {
-        LocalEnv<SType> sTypeLocalEnv = env.get(e.getFunctionName());//pega o ambiente local da função
+        LocalEnv<SType> sTypeLocalEnv = env.get(e.getFunctionName());// pega o ambiente local da função
 
         if (sTypeLocalEnv == null) {
             logError.add(e.getLine() + ", " + e.getCol() + ": Chamada a função não declarada: " + e.getFunctionName());

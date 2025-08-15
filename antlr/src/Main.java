@@ -136,7 +136,7 @@ public class Main {
                     TyEnv<LocalEnv<VarInfo>> envWithIndices = getEnvWithVarIndex(env);
 
                     System.out.println("Gera código para jasmin.");
-                    JasminVisitor jasminVisitor = new JasminVisitor(envWithIndices);
+                    JasminVisitor jasminVisitor = new JasminVisitor(envWithIndices, typeCheckS2J.getMaxStackSize());
 
                     ast.accept(jasminVisitor);
 
