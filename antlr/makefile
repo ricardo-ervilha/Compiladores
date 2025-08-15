@@ -36,7 +36,7 @@ junit: compile
       org.junit.runner.JUnitCore src.Tester
 
 lang: compile
-	java -cp .:antlr-4.8-complete.jar:ST-4.3.1.jar src/Main $(filepath) $(flag) $(genfilepath)
+	java -cp .:antlr-4.8-complete.jar:ST-4.3.1.jar src/Main $(flag) $(filepath)
 
 clean:
 	@echo "Limpando arquivos compilados e temporários..."

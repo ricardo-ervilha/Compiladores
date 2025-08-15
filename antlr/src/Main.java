@@ -49,21 +49,13 @@ public class Main {
     }
 
     public static void main(String[] args) throws Exception {
-        String filePath = "";
+        String filePath  = "";
         String directive = "";
-        String genFilePath = "";
         if(args.length == 2){
-            filePath = args[0];
-            directive = args[1];
-            if(directive == "-src" || directive == "-gen"){
-                throw new Exception("Erro! Parâmetros inválidos. Falta o arquivo de destino!\n");
-            }
-        }else if(args.length == 3){
-            filePath = args[0];
-            directive = args[1];
-            genFilePath = args[2];
+            directive = args[0];
+            filePath = args[1];
         }else{
-            throw new Exception("Erro! Parâmetros inválidos.\n");
+            throw new Exception("Argumentos inválidos. Tente novamente!\n");
         }
 
         SyntaxErrorListener errorListener = SyntaxErrorListener.INSTANCE;
@@ -141,7 +133,7 @@ public class Main {
                     }
 
                     TyEnv<LocalEnv<SType>> envS2S = v.getEnv();
-                    CPPVisitor vis = new CPPVisitor(envS2S, genFilePath);
+                    CPPVisitor vis = new CPPVisitor(envS2S, filePath.toString().split("\\.")[0].concat("cpp"));
                     ast.accept(vis); // passa env e o filepath de destino da geração
                     
                     break;
