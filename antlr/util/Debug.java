@@ -1,7 +1,8 @@
 package util;
 
 public class Debug {
-    public static boolean ENABLED = true;
+    /*Classe para facilitar o debug do código... */
+    public static boolean ENABLED = false;
 
     public static void log(String message) {
         if (ENABLED) {

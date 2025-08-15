@@ -35,6 +35,9 @@ junit: compile
 	java -cp src:.:antlr-4.8-complete.jar:$(JUNIT_CP) \
       org.junit.runner.JUnitCore src.Tester
 
+lang: compile
+	java -cp .:antlr-4.8-complete.jar:ST-4.3.1.jar src/Main $(filepath) $(flag) $(genfilepath)
+
 clean:
 	@echo "Limpando arquivos compilados e temporários..."
 	find . -type f -name "*.class" -delete

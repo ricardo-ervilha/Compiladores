@@ -17,6 +17,7 @@ import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
 import parser.*;
 import util.*;
+import visitors.CPPVisitor;
 import visitors.InterpretVisitor;
 import visitors.JasminVisitor;
 import visitors.TypeCheckVisitor;
@@ -48,19 +49,29 @@ public class Main {
     }
 
     public static void main(String[] args) throws Exception {
-        if (args.length != 2) {
-            System.err.println("Uso: java Main <diretiva> <arquivo.lang>");
-            System.exit(1);
+        String filePath = "";
+        String directive = "";
+        String genFilePath = "";
+        if(args.length == 2){
+            filePath = args[0];
+            directive = args[1];
+            if(directive == "-src" || directive == "-gen"){
+                throw new Exception("Erro! Parâmetros inválidos. Falta o arquivo de destino!\n");
+            }
+        }else if(args.length == 3){
+            filePath = args[0];
+            directive = args[1];
+            genFilePath = args[2];
+        }else{
+            throw new Exception("Erro! Parâmetros inválidos.\n");
         }
 
-        String directive = args[0];
-        String filePath = args[1];
         SyntaxErrorListener errorListener = SyntaxErrorListener.INSTANCE;
         errorListener.reset();
+        
         try {
             // Criar o stream de caracteres do arquivo
             CharStream stream = CharStreams.fromFileName(filePath);
-
 
             // Inicializar lexer e parser
             LangLexer lex = new LangLexer(stream);
@@ -117,7 +128,22 @@ public class Main {
                     break;
 
                 case "-src":
-                    System.out.println("Gera código de alto n ível");
+                    // Executa geração de código source-to-source
+
+                    //Executa primeiro semântico pois precisa do env.
+                    TypeCheckVisitor v = new TypeCheckVisitor();
+                    ast.accept(v);
+
+                    if(v.getNumErrors() != 0) {
+                        System.out.println( "Erros ocorreram durante a análise semântica.\nAbortando ");
+                        v.printErrors();
+                        System.exit(1);
+                    }
+
+                    TyEnv<LocalEnv<SType>> envS2S = v.getEnv();
+                    CPPVisitor vis = new CPPVisitor(envS2S, genFilePath);
+                    ast.accept(vis); // passa env e o filepath de destino da geração
+                    
                     break;
 
                 case "-gen":

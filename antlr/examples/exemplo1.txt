@@ -3,6 +3,10 @@ main(){
    iterate(i : x + 2){
        print i;
        print ' ';
+       iterate(j : x + 1){
+            print j;
+            print ' ';
+       }
    }
    print '.';
    print '\n';

@@ -15,6 +15,8 @@ import org.stringtemplate.v4.ST;
 import org.stringtemplate.v4.STGroup;
 import org.stringtemplate.v4.STGroupFile;
 
+import java.io.FileWriter;
+import java.io.IOException;
 import java.util.*;
 
 import javax.management.monitor.StringMonitorMBean;
@@ -33,6 +35,8 @@ public class CPPVisitor extends Visitor{
     String length;
     String currentFuncName;
     String currentAbstractData;
+
+    String genFilePath;
 
     boolean flagForArrayData = false;
 
@@ -57,11 +61,12 @@ public class CPPVisitor extends Visitor{
     String var_name =  "__while_var_";
     int id_var_loop = 0; // gerencia a quantidade de laços aninhados
 
-    public CPPVisitor(TyEnv<LocalEnv<SType>> env){
+    public CPPVisitor(TyEnv<LocalEnv<SType>> env, String genFilePath){
         groupTemplate = new STGroupFile("./template/cpp.stg");
         this.env = env;
         this.MapNameToLength = new HashMap<String, String>();
         nameFuncsOnAbstractData = new HashMap<String, String>();
+        this.genFilePath = genFilePath; // resgata caminho do arquivo
     }
 
     /* Função AUXILIAR para recuperar o tipo na hora de declarar variaveis */
@@ -155,7 +160,16 @@ public class CPPVisitor extends Visitor{
         template.add("decl_funcs", decl_funcs);
         template.add("funcs", funcs);
 
-        System.out.println(template.render());
+        this.writeCode(template);
+    }
+
+    public void writeCode(ST template) {
+        try (FileWriter writer = new FileWriter(genFilePath)) {
+            writer.write(template.render());
+        } catch (IOException e) {
+            // trate ou converta para unchecked para não poluir a API do visitor
+            throw new RuntimeException("Erro ao escrever arquivo: " + genFilePath, e);
+        }
     }
 
     @Override
@@ -590,7 +604,6 @@ public class CPPVisitor extends Visitor{
             IdItCond q = (IdItCond) p.getCondition();
             q.getExpression().accept(this); // RESOLVE DE UMA VEZ
             if(env.get(currentFuncName).get(expr.render()) instanceof STyArr){
-                System.out.println("CAIU ACOLA");
                 aux = groupTemplate.getInstanceOf("while_array");
                 aux.add("type", ""); // faz adicionar tipo
 
@@ -609,16 +622,17 @@ public class CPPVisitor extends Visitor{
                 aux.add("cmds", blockCmds);
 
             }else{
-                System.out.println("CAIU AQUI");
                 aux = groupTemplate.getInstanceOf("while");
                 aux.add("var_name", q.getId());
-            
+                aux.add("id", id_var_loop);
                 aux.add("expr", expr);
                 
                 blockCmds = new ArrayList<ST>(); // crio novo bloco pra esse iterate
+                id_var_loop = id_var_loop + 1;
                 p.getBody().accept(this);
                 
                 aux.add("cmds", blockCmds);
+                id_var_loop = id_var_loop - 1;
             }
         }
 
