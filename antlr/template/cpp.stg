@@ -39,11 +39,11 @@ func tem retorno, parametros, nome e
 - declaração de variaveis
 - comandos
 */
-func(types, name, params, vardecls, blockCmds) ::= <<
+func(types, flagStatic, name, params, vardecls, blockCmds) ::= <<
 <if(types)>
-tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
+<if(flagStatic)>static <endif>tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
 <else>
-void <name>(<params; separator=", ">) {
+<if(flagStatic)>static <endif>void <name>(<params; separator=", ">) {
 <endif>
     <if(vardecls)><vardecls; separator=";\n">;<endif>
     <if(blockCmds)><blockCmds; separator="\n"><endif>
@@ -51,8 +51,8 @@ void <name>(<params; separator=", ">) {
 >>
 
 /*Declaração das variáveis no início das funções.*/
-var_decl(flag, type, name) ::= <<
-<if(flag)>private <endif><type> <name>
+var_decl(type, name) ::= <<
+<type> <name>
 >>
 
 /*Atribuição de valor a variável.*/
@@ -112,11 +112,11 @@ if(<expr>) {
 >>
 
 /*Loop*/
-while(type, expr, var_name, cmds) ::= <<
-for(<if(type)>int<endif> <var_name> = 0 ; <var_name> \< <expr>; <var_name>++) {
+while(type, id, expr, var_name, cmds) ::= <<
+int __aux___expr__save__<id> = <expr>;
+for(<if(type)>int<endif> <var_name> = 0 ; <var_name> \< __aux___expr__save__<id>; <var_name>++) {
     <cmds; separator="\n">
 }
-<var_name>--;
 >>
 
 while_array(type, aux_loop, loop_name, array_name, length, cmds) ::= <<
@@ -132,14 +132,14 @@ return make_tuple(<list_exprs; separator=", ">);
 >>
 
 /*Chamada de funções passando as variaveis*/
-func_call(flag, name, params, vars) ::= <<
-<if(flag)>auto __return_function_func_call_  = <endif><name>(<params; separator=",">);
+func_call(flag, namespaceClass, name, params, vars) ::= <<
+<if(flag)>auto __return_function_func_call_  = <endif><if(namespaceClass)><namespaceClass>::<endif><name>(<params; separator=",">);
 <if(flag)><vars; separator="\n"><endif>
 >>
 
 /*Chamada pegando indice*/
-func_call_access(name, params, index) ::= <<
-get\< <index> >(<name>(<params; separator=", ">))
+func_call_access(name, namespaceClass, params, index) ::= <<
+get\< <index> >(<if(namespaceClass)><namespaceClass>::<endif><name>(<params; separator=", ">))
 >>
 
 var_unpacking(var, id) ::= <<
@@ -169,15 +169,17 @@ stmt_lvalue(stmt1, stmt2) ::= <<
 
 // ---------*----------*--------------*-------------
 struct_def(name, var_decls) ::= <<
-typedef struct{
+struct <name>{
     <var_decls; separator=";\n">;
-} <name>;
+};
 >>
 
 class_def(name, var_decls, abstract_funs) ::= <<
 class <name> {
-    <var_decls; separator=";\n">;
+    private:
+        <var_decls; separator=";\n">;
 
-    <abstract_funs>
+    public:
+        <abstract_funs>
 };
 >>

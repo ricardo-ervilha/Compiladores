@@ -57,6 +57,10 @@ public class TypeCheckVisitor extends Visitor {
         return this.env;
     }
 
+    public HashMap<String, STyData> getTypeStructs(){
+        return this.typeStructs;
+    }
+
     public int getNumErrors() {
         return logError.size();
     }

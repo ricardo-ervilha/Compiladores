@@ -26,13 +26,15 @@ public class CPPVisitor extends Visitor{
     // variável global que pega os templates
     private STGroup groupTemplate;
 
+    HashMap<String, String> nameFuncsOnAbstractData;
+
     HashMap<String, String> MapNameToLength;
     String nameArray;
     String length;
     String currentFuncName;
+    String currentAbstractData;
 
     boolean flagForArrayData = false;
-    boolean flagClassPrivate = false;
 
     // variável global para saber variaveis e tipos
     TyEnv<LocalEnv<SType>> env;
@@ -59,6 +61,7 @@ public class CPPVisitor extends Visitor{
         groupTemplate = new STGroupFile("./template/cpp.stg");
         this.env = env;
         this.MapNameToLength = new HashMap<String, String>();
+        nameFuncsOnAbstractData = new HashMap<String, String>();
     }
 
     /* Função AUXILIAR para recuperar o tipo na hora de declarar variaveis */
@@ -120,6 +123,8 @@ public class CPPVisitor extends Visitor{
                 // trata retornos...
                 ArrayList<ST> types = new ArrayList<ST>();
                 for(Type t : funcao.getReturnTypes()){
+                    if(t instanceof TYID)
+                        flagForArrayData = true;
                     t.accept(this);
                     types.add(type);
                 }
@@ -177,6 +182,8 @@ public class CPPVisitor extends Visitor{
         // lista para guardar os tipos que resolve dps de visitar
         ArrayList<ST> types = new ArrayList<ST>();
         for(Type t : returns){
+            if(t instanceof TYID)
+                flagForArrayData = true;
             t.accept(this);
             types.add(type);
         }
@@ -226,6 +233,8 @@ public class CPPVisitor extends Visitor{
     public  void visit(Param e){
         Debug.log("Visit Param");
         param = groupTemplate.getInstanceOf("param");
+        if(e.getType() instanceof TYID)
+            flagForArrayData = true;
         e.getType().accept(this);
 		param.add("name", e.getId());
 		param.add("type", type);
@@ -294,6 +303,7 @@ public class CPPVisitor extends Visitor{
     @Override
     public  void visit(AbstractDataDecl p){
         Debug.log("Visit AbstractDataDecl");
+        currentAbstractData = p.getTypeId();
 
         ST aux = groupTemplate.getInstanceOf("class_def");
         aux.add("name", p.getTypeId());
@@ -301,7 +311,6 @@ public class CPPVisitor extends Visitor{
         ArrayList<ST> abstract_funs_aux = new ArrayList<ST>();
         for(Node n : p.getDeclFuns()){
             if(n instanceof Decl){
-                flagClassPrivate = true;
                 n.accept(this);
                 dcls_aux.add(stmt);
             }else{
@@ -310,6 +319,7 @@ public class CPPVisitor extends Visitor{
                 abstract_funs_aux.add(stmt);
             }
         }
+        
         aux.add("var_decls", dcls_aux);
         aux.add("abstract_funs", abstract_funs_aux);
         
@@ -322,18 +332,20 @@ public class CPPVisitor extends Visitor{
         Debug.log("Visit Decl");
         ST aux = groupTemplate.getInstanceOf("var_decl");
         aux.add("name", p.getId());
+        if(p.getType() instanceof TYID || p.getType() instanceof ArrayType)
+            flagForArrayData = true;
         p.getType().accept(this);
         aux.add("type", type);
-        if(flagClassPrivate)
-            aux.add("flag", "");
+        
         stmt = aux;
-        flagClassPrivate = false;
     }
 
     @Override
     public void visit(FunAbstractData f){
         Debug.log("Visit FunAbstactData");
         ST fun = groupTemplate.getInstanceOf("func");
+
+        nameFuncsOnAbstractData.put(f.getID(), currentAbstractData); // PRECISA DEPOIS PARA SABER NAMESPACE DAS FUNÇÕES QUANDO FOR CHAMAR...
 
         fun.add("name", f.getID());
         
@@ -347,6 +359,8 @@ public class CPPVisitor extends Visitor{
         // lista para guardar os tipos que resolve dps de visitar
         ArrayList<ST> types = new ArrayList<ST>();
         for(Type t : returns){
+            if(t instanceof TYID)
+                flagForArrayData = true;
             t.accept(this);
             types.add(type);
         }
@@ -378,7 +392,7 @@ public class CPPVisitor extends Visitor{
             vardecls.add(declaration);
         }
         fun.add("vardecls", vardecls); // adiciona declaração de VARIAVEIS
-
+        fun.add("flagStatic", " "); // ADICIONA STATIC LÁ PRA ACESSAR DE FORA...
 
         // chama para resolver os comandos
         blockCmds = new ArrayList<ST>();
@@ -471,6 +485,10 @@ public class CPPVisitor extends Visitor{
                 param_exprs.add(expr);
             }
         }
+
+        if(nameFuncsOnAbstractData.get(p.getId()) != null){
+            stmt.add("namespaceClass", nameFuncsOnAbstractData.get(p.getId()));
+        }
        
         stmt.add("name", p.getId());
         stmt.add("params", param_exprs);
@@ -560,7 +578,7 @@ public class CPPVisitor extends Visitor{
             aux.add("expr", expr);
             
             aux.add("var_name", var_name + Integer.toString(id_var_loop)); // usa um nome criado
-            
+            aux.add("id", id_var_loop);
             id_var_loop = id_var_loop + 1;
             blockCmds = new ArrayList<ST>(); // crio novo bloco pra esse iterate
             p.getBody().accept(this);
@@ -792,6 +810,10 @@ public class CPPVisitor extends Visitor{
         }
         aux.add("params", param_exprs);
 
+        if(nameFuncsOnAbstractData.get(e.getFunctionName()) != null){
+            aux.add("namespaceClass", nameFuncsOnAbstractData.get(e.getFunctionName()));
+        }
+
         expr = null;
         e.getExp().accept(this);
         aux.add("index", expr);
@@ -905,6 +927,8 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public  void visit(NullValue e){
-       
+        Debug.log("Visit NullValue");
+        expr = groupTemplate.getInstanceOf("null_expr");
+        expr.add("value", "nullptr");
     }
 }
