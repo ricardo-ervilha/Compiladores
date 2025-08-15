@@ -807,6 +807,7 @@ public class InterpretVisitor extends Visitor {
                             e.getBody().accept(this);
                             j++;
                         }
+                        env.peek().put(nameVar,j);
                         // if (oldValue == null)
                         //     env.peek().remove(nameVar);
                         // else
@@ -855,12 +856,12 @@ public class InterpretVisitor extends Visitor {
                 if (v instanceof AbstractMap.SimpleEntry) {
                     Integer index = (Integer) ((AbstractMap.SimpleEntry<?, ?>) v).getValue();
                     String var = (String) ((AbstractMap.SimpleEntry<?, ?>) v).getKey();
-                    System.out.print("\u001B[94m" + ((int[]) env.peek().get(var))[index] + "\u001B[0m");
+                    System.out.print(((int[]) env.peek().get(var))[index]);
                 } else {
                     if(v != null)
-                        System.out.print("\u001B[94m" +  v.toString() + "\u001B[0m");
+                        System.out.print(v.toString());
                     else
-                        System.out.println("\u001B[94m" + "NULL" +  "\u001B[0m");
+                        System.out.println("NULL");
                 }
             } catch (Exception x) {
                 throw new InterpretException(" (" + e.getLine() + ", " + e.getCol() + ") " + x.getMessage());
