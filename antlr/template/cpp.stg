@@ -19,7 +19,7 @@ using namespace std;
 
 int main(int argc, char* argv[]) {
     cout \<\< boolalpha;
-    main_aux();
+    _main_aux();
 }
 
 <funcs; separator="\n\n">
@@ -28,9 +28,9 @@ int main(int argc, char* argv[]) {
 /*Declaração de funções no cabeçalho do programa*/
 decl_func(types, name, params) ::= <<
 <if(types)>
-tuple\< <types; separator=", "> > <name>(<params; separator=", ">);
+tuple\< <types; separator=", "> > _<name>(<params; separator=", ">);
 <else>
-void <name>(<params; separator=", ">);
+void _<name>(<params; separator=", ">);
 <endif>    
 >>
 
@@ -41,9 +41,9 @@ func tem retorno, parametros, nome e
 */
 func(types, flagStatic, name, params, vardecls, blockCmds) ::= <<
 <if(types)>
-<if(flagStatic)>static <endif>tuple\< <types; separator=", "> > <name>(<params; separator=", ">) {
+<if(flagStatic)>static <endif>tuple\< <types; separator=", "> > _<name>(<params; separator=", ">) {
 <else>
-<if(flagStatic)>static <endif>void <name>(<params; separator=", ">) {
+<if(flagStatic)>static <endif>void _<name>(<params; separator=", ">) {
 <endif>
     <if(vardecls)><vardecls; separator=";\n">;<endif>
     <if(blockCmds)><blockCmds; separator="\n"><endif>
@@ -133,13 +133,13 @@ return make_tuple(<list_exprs; separator=", ">);
 
 /*Chamada de funções passando as variaveis*/
 func_call(flag, namespaceClass, name, params, vars) ::= <<
-<if(flag)>auto __return_function_func_call_  = <endif><if(namespaceClass)><namespaceClass>::<endif><name>(<params; separator=",">);
+<if(flag)>auto __return_function_func_call_  = <endif><if(namespaceClass)><namespaceClass>::<endif>_<name>(<params; separator=",">);
 <if(flag)><vars; separator="\n"><endif>
 >>
 
 /*Chamada pegando indice*/
 func_call_access(name, namespaceClass, params, index) ::= <<
-get\< <index> >(<if(namespaceClass)><namespaceClass>::<endif><name>(<params; separator=", ">))
+get\< <index> >(<if(namespaceClass)><namespaceClass>::<endif>_<name>(<params; separator=", ">))
 >>
 
 var_unpacking(var, id) ::= <<
