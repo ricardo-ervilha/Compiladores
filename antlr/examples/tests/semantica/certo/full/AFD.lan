@@ -1,3 +1,5 @@
+-- TROQUEI TODOS OS ABS POIS ELES SÃO PALAVRVA RESERVADA DO C++ E NÃO IREI FICAR TRATANDO DETALHE DESSE NIVEL.
+
 data Transition {
     sym :: Char;
     dest :: Int;
@@ -37,7 +39,7 @@ setNumTransitions(m :: AFD, st :: Int, n :: Int){
 addTransition(m :: AFD, st :: Int, a :: Char, d :: Int){
     i = 0;
     add = true;
-    iterate(abs(m.numt[st])[0]-1){
+    iterate(abs_aux(m.numt[st])[0]-1){
         if(m.st[st][i] == null && add){
              m.st[st][i] = new Transition;
              m.st[st][i].sym = a;
@@ -49,7 +51,7 @@ addTransition(m :: AFD, st :: Int, a :: Char, d :: Int){
 
 }
 
-abs(n :: Int) : Int{
+abs_aux(n :: Int) : Int{
     if(0 < n){
       return n;
     }
@@ -62,11 +64,11 @@ printAutomata(m :: AFD){
         if(isFinal(m,st)[0]){print '*';}
         print st;
         print ' ';
-        print  abs(m.numt[st])[0]-1;
+        print  abs_aux(m.numt[st])[0]-1;
         print ' ';
-        if(m.st[st] != null && 0 < abs(m.numt[st])[0]-1){
+        if(m.st[st] != null && 0 < abs_aux(m.numt[st])[0]-1){
             k = 0;
-            iterate(abs(m.numt[st])[0]-1){
+            iterate(abs_aux(m.numt[st])[0]-1){
                 if(m.st[st][k] != null){
                     print '[';
                     print m.st[st][k].sym;
@@ -87,9 +89,9 @@ printAutomata(m :: AFD){
 }
 
 delta(m :: AFD, st :: Int, c :: Char): Int{
-     if(m.st[st] != null && 0 < abs(m.numt[st])[0]-1){
+     if(m.st[st] != null && 0 < abs_aux(m.numt[st])[0]-1){
          k = 0;
-         iterate(abs(m.numt[st])[0]-1){
+         iterate(abs_aux(m.numt[st])[0]-1){
              if(m.st[st][k].sym == c){
                  return m.st[st][k].dest;
              }

@@ -141,7 +141,7 @@ public class Main {
                     }
 
                     TyEnv<LocalEnv<SType>> envS2S = v.getEnv();
-                    CPPVisitor vis = new CPPVisitor(envS2S, filePath.toString().split("\\.")[0].concat("cpp"));
+                    CPPVisitor vis = new CPPVisitor(envS2S, filePath.toString().replaceFirst("\\.[^.]+$", ".cpp"));
                     ast.accept(vis); // passa env e o filepath de destino da geração
                     
                     break;
