@@ -199,7 +199,7 @@ public class TypeCheckVisitor extends Visitor {
                     logError.add(dataDecl.getLine() + ", " + dataDecl.getCol() + ": Tipo " + dataDecl.getTypeId() + " já foi declarado.");
                     return;
                 }
-                typeStructs.put(dataDecl.getTypeId(), null);
+                typeStructs.put(dataDecl.getTypeId(), null);// colocando antes para permitir auto-referencia
                 dataDecl.accept(this);
             }
         }
@@ -1068,10 +1068,11 @@ public class TypeCheckVisitor extends Visitor {
                 SType typeV = temp.get(v);
                 SType sTypeElementsArr = ((STyArr) tyExpression).getElemType();
                 if (typeV == null) {// ou seja, o v ainda não esta no contexto
-                    temp.set(v, tyint);// seto o v com o tipo int
+                    temp.set(v, sTypeElementsArr);// seto o v com o tipo int
                 } else if (!typeV.match(sTypeElementsArr)) {
                     logError.add(e.getLine() + ", " + e.getCol() + ": O tipo de " + v + " deveria ser " + sTypeElementsArr + " mas foi encontrado " + typeV);
                 }
+                e.getBody().accept(this);
             }
 
         }
