@@ -117,7 +117,8 @@ public class JasminVisitor extends Visitor {
         stFun.add("stmt", stmt);
 
 
-        stFun.add("stack", this.maxStackSize); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
+//        stFun.add("stack", this.maxStackSize); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
+        stFun.add("stack", 10); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
         int localVars = localEnv.getKeys().size(); //TODO: arrumar isso, tem que ver uma forma de pegar as variveis pro iterate
 
         // slots extras para iterates aninhados
@@ -300,7 +301,7 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
-     * @param p
+     * @param cmdFuncCall
      */
     @Override
     public void visit(CmdFuncCall cmdFuncCall) {
@@ -374,11 +375,67 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
-     * @param p
+     * @param cmdRead
      */
     @Override
-    public void visit(CmdRead p) {
+    public void visit(CmdRead cmdRead) {
+        LValue lvalue = cmdRead.getLvalue();
 
+        if (lvalue instanceof ID varID) {
+            // Leitura para variável simples
+            int index = localEnv.get(varID.getName()).getIndex();
+            SType sType = varID.getSType();
+
+            if (sType instanceof STyInt) {
+                stmt = groupTemplate.getInstanceOf("iread");
+                stmt.add("indexSlot", index);
+            } else if (sType instanceof STyFloat) {
+                stmt = groupTemplate.getInstanceOf("fread");
+                stmt.add("indexSlot", index);
+            } else if (sType instanceof STyBool) {
+                stmt = groupTemplate.getInstanceOf("bread");
+                stmt.add("indexSlot", index);
+            } else if (sType instanceof STyChar) {
+                stmt = groupTemplate.getInstanceOf("cread");
+                stmt.add("indexSlot", index);
+            } else {
+                throw new RuntimeException(cmdRead.getLine() + ", " + cmdRead.getCol() +
+                        ": Tipo não suportado no read: " + sType);
+            }
+
+        } else if (lvalue instanceof LValueExp arrayAccess) {
+            // Leitura para elemento de array: read(arr[i]);
+
+            // Gera código para referência do array
+            arrayAccess.getLvalue().accept(this);
+            ST arrayRef = expr;
+
+            // Gera código para o índice
+            arrayAccess.getIndex().accept(this);
+            ST arrayIndex = expr;
+
+            SType elementType = arrayAccess.getSType();
+
+            if (elementType instanceof STyInt) {
+                stmt = groupTemplate.getInstanceOf("iread_array");
+            } else if (elementType instanceof STyFloat) {
+                stmt = groupTemplate.getInstanceOf("fread_array");
+            } else if (elementType instanceof STyBool) {
+                stmt = groupTemplate.getInstanceOf("bread_array");
+            } else if (elementType instanceof STyChar) {
+                stmt = groupTemplate.getInstanceOf("cread_array");
+            } else {
+                throw new RuntimeException(cmdRead.getLine() + ", " + cmdRead.getCol() +
+                        ": Tipo não suportado no read para array: " + elementType);
+            }
+
+            stmt.add("arrayRef", arrayRef);
+            stmt.add("indexExpr", arrayIndex);
+
+        } else {
+            throw new RuntimeException(cmdRead.getLine() + ", " + cmdRead.getCol() +
+                    ": Tipo de lvalue não suportado no read: " + lvalue.getClass().getSimpleName());
+        }
     }
 
     /**
@@ -513,6 +570,81 @@ public class JasminVisitor extends Visitor {
                 throw new RuntimeException(cmdIterate.getLine() + ", " + cmdIterate.getCol() +
                         ": Tipo não suportado no iterate: " + exprType);
             }
+        } else if (cmdIterate.getCondition() instanceof IdItCond idItCond) { // iterate(i:expr)
+
+            SType exprType = idItCond.getExpression().getSType();
+            int varIndexSlot = localEnv.get(idItCond.getId()).getIndex();
+
+            // Calcula slots disponíveis para este iterate
+            int baseSlot = localEnv.getKeys().size();
+            int totalSlot = baseSlot + (iterateDepth * 2);     // slot para o contador total
+            int currentSlot = baseSlot + (iterateDepth * 2) + 1; // slot para o contador atual
+
+            // Incrementa a profundidade antes de processar o corpo
+            iterateDepth++;
+
+            // Gera o código do corpo do iterate
+            cmdIterate.getBody().accept(this);
+            ST bodyStmt = stmt;
+
+            // Decrementa a profundidade após processar o corpo
+            iterateDepth--;
+
+            if (exprType instanceof STyInt) {
+                // Caso: iterate(i:x) onde x é um int
+                // i vai iterar de 0 até x-1 (x vezes no total)
+
+                idItCond.getExpression().accept(this);
+                ST iterateCountExpr = expr;
+
+                int startLabel = label++;
+                int endLabel = label++;
+
+                ST iterateIntWithVar = groupTemplate.getInstanceOf("iterate_int_with_var");
+                iterateIntWithVar.add("startNum", startLabel);
+                iterateIntWithVar.add("endNum", endLabel);
+                iterateIntWithVar.add("countExpr", iterateCountExpr);
+                iterateIntWithVar.add("bodyStmt", bodyStmt);
+                iterateIntWithVar.add("totalSlot", totalSlot);
+                iterateIntWithVar.add("currentSlot", currentSlot);
+                iterateIntWithVar.add("varSlot", varIndexSlot);
+
+                stmt = iterateIntWithVar;
+
+            } else if (exprType instanceof STyArr) {
+                // Caso: iterate(i:array) onde array é um vetor
+                // i vai receber cada elemento do array a cada iteração
+
+                idItCond.getExpression().accept(this);
+                ST arrayExpr = expr;
+
+                int startLabel = label++;
+                int endLabel = label++;
+
+                // Precisamos saber o tipo do array para usar a instrução correta de load
+                STyArr arrayType = (STyArr) exprType;
+                String loadInstruction;
+
+                loadInstruction = getArrayLoadTemplate(arrayType.getElemType());
+
+                ST iterateArrayWithVar = groupTemplate.getInstanceOf("iterate_array_with_var");
+                iterateArrayWithVar.add("startNum", startLabel);
+                iterateArrayWithVar.add("endNum", endLabel);
+                iterateArrayWithVar.add("arrayExpr", arrayExpr);
+                iterateArrayWithVar.add("bodyStmt", bodyStmt);
+                iterateArrayWithVar.add("totalSlot", totalSlot);
+                iterateArrayWithVar.add("currentSlot", currentSlot);
+                iterateArrayWithVar.add("varSlot", varIndexSlot);
+                iterateArrayWithVar.add("arraySlot", baseSlot + (iterateDepth * 2) + 2); // slot adicional para guardar o array
+                iterateArrayWithVar.add("loadInstruction", loadInstruction);
+
+                stmt = iterateArrayWithVar;
+
+            } else {
+                throw new RuntimeException(idItCond.getLine() + ", " + idItCond.getCol() +
+                        ": Tipo não suportado no iterate: " + exprType);
+            }
+
         }
     }
 
@@ -952,8 +1084,30 @@ public class JasminVisitor extends Visitor {
     @Override
     public void visit(CharValue e) {
         expr = groupTemplate.getInstanceOf("char_expr");
-        expr.add("value", (int) e.getValue().charAt(1));
 
+        String charStr = e.getValue();
+        int charCode;
+
+        if (charStr.length() == 3) {
+            charCode = (int) charStr.charAt(1);
+        } else if (charStr.length() == 4) {
+            char escapeChar = charStr.charAt(2);
+            switch (escapeChar) {
+                case 'n':
+                    charCode = 10;
+                    break;
+                case 't':
+                    charCode = 9;
+                    break;
+                default:
+                    charCode = (int) escapeChar;
+                    break;
+            }
+        } else {
+            charCode = (int) charStr.charAt(1);
+        }
+
+        expr.add("value", charCode);
     }
 
     @Override

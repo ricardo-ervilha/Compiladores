@@ -84,26 +84,130 @@ invokestatic <class>/<func_name>(<type>)<return_descriptor>
 iprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
-invokevirtual java/io/PrintStream/println(I)V
+invokevirtual java/io/PrintStream/print(I)V
 >>
 
 fprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
-invokevirtual java/io/PrintStream/println(F)V
+invokevirtual java/io/PrintStream/print(F)V
 >>
 
 cprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
-invokevirtual java/io/PrintStream/println(C)V
+invokevirtual java/io/PrintStream/print(C)V
 >>
 
 bprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
-invokevirtual java/io/PrintStream/println(Z)V
+invokevirtual java/io/PrintStream/print(Z)V
 >>
+
+// ==================== COMANDO READ ====================
+
+iread(indexSlot) ::= <<
+new java/util/Scanner
+dup
+getstatic java/lang/System/in Ljava/io/InputStream;
+invokespecial java/util/Scanner/\<init>(Ljava/io/InputStream;)V
+invokevirtual java/util/Scanner/nextInt()I
+istore <indexSlot>
+>>
+
+fread(indexSlot) ::= <<
+; --- Leitura de um Float ---
+new java/util/Scanner
+dup
+getstatic java/lang/System/in Ljava/io/InputStream;
+
+invokespecial java/util/Scanner/\<init>(Ljava/io/InputStream;)V
+invokevirtual java/util/Scanner/nextFloat()F
+fstore <indexSlot>
+>>
+
+bread(indexSlot) ::= <<
+; --- Leitura de um Booleano ---
+new java/util/Scanner
+dup
+getstatic java/lang/System/in Ljava/io/InputStream;
+invokespecial java/util/Scanner/\<init>(Ljava/io/InputStream;)V
+invokevirtual java/util/Scanner/nextBoolean()Z
+istore <indexSlot>
+>>
+
+// Lê um caractere da entrada padrão e o armazena no slot <indexSlot>
+cread(indexSlot) ::= <<
+; --- Leitura de um Caractere ---
+new java/util/Scanner
+dup
+getstatic java/lang/System/in Ljava/io/InputStream;
+invokespecial java/util/Scanner/\<init>(Ljava/io/InputStream;)V
+invokevirtual java/util/Scanner/next()Ljava/lang/String;
+iconst_0
+invokevirtual java/lang/String/charAt(I)C
+istore <indexSlot>
+>>
+
+// ==================== COMANDO READ PARA ARRAYS ====================
+
+// Lê um valor inteiro e armazena em um elemento de array
+iread_array(arrayRef, indexExpr) ::= <<
+; --- Leitura de Inteiro para Array ---
+<arrayRef>              ; carrega referência do array
+<indexExpr>             ; carrega índice do array
+new java/util/Scanner
+dup
+getstatic java/lang/System/in Ljava/io/InputStream;
+invokespecial java/util/Scanner/\<init>(Ljava/io/InputStream;)V
+invokevirtual java/util/Scanner/nextInt()I
+iastore                 ; armazena no array[index]
+>>
+
+// Lê um valor float e armazena em um elemento de array
+fread_array(arrayRef, indexExpr) ::= <<
+; --- Leitura de Float para Array ---
+<arrayRef>
+<indexExpr>
+new java/util/Scanner
+dup
+getstatic java/lang/System/in Ljava/io/InputStream;
+invokespecial java/util/Scanner/\<init>(Ljava/io/InputStream;)V
+invokevirtual java/util/Scanner/nextFloat()F
+fastore
+>>
+
+// Lê um valor booleano e armazena em um elemento de array
+bread_array(arrayRef, indexExpr) ::= <<
+; --- Leitura de Booleano para Array ---
+<arrayRef>
+<indexExpr>
+new java/util/Scanner
+dup
+getstatic java/lang/System/in Ljava/io/InputStream;
+invokespecial java/util/Scanner/\<init>(Ljava/io/InputStream;)V
+invokevirtual java/util/Scanner/nextBoolean()Z
+bastore
+>>
+
+// Lê um caractere e armazena em um elemento de array
+cread_array(arrayRef, indexExpr) ::= <<
+; --- Leitura de Caractere para Array ---
+<arrayRef>
+<indexExpr>
+new java/util/Scanner
+dup
+getstatic java/lang/System/in Ljava/io/InputStream;
+invokespecial java/util/Scanner/\<init>(Ljava/io/InputStream;)V
+invokevirtual java/util/Scanner/next()Ljava/lang/String;
+iconst_0
+invokevirtual java/lang/String/charAt(I)C
+castore
+>>
+
+
+
 
 // ==================== ITERATE ====================
 
@@ -143,6 +247,69 @@ Label<startNum>:      ; início do loop
 iload <currentSlot>   ; carrega contador atual
 iload <totalSlot>     ; carrega contador total
 if_icmpge Label<endNum>  ; se atual >= total, sai do loop
+
+<bodyStmt>            ; executa o corpo do iterate
+
+iload <currentSlot>   ; carrega contador atual
+iconst_1              ; coloca 1 na pilha
+iadd                  ; incrementa contador
+istore <currentSlot>  ; salva contador incrementado
+goto Label<startNum>  ; volta para o início do loop
+
+Label<endNum>:        ; fim do loop
+nop
+>>
+
+// ==================== ITERATE COM VARIÁVEL ====================
+
+// Iterate com inteiro e variável: iterate(i:n) onde i vai de 0 até n-1
+iterate_int_with_var(startNum, endNum, countExpr, bodyStmt, totalSlot, currentSlot, varSlot) ::= <<
+<countExpr>           ; coloca o valor n na pilha
+istore <totalSlot>    ; salva n no slot totalSlot (contador total)
+iconst_0              ; coloca 0 na pilha
+istore <currentSlot>  ; salva 0 no slot currentSlot (contador atual)
+
+Label<startNum>:      ; início do loop
+iload <currentSlot>   ; carrega contador atual
+iload <totalSlot>     ; carrega contador total
+if_icmpge Label<endNum>  ; se atual >= total, sai do loop
+
+; Atualiza a variável i com o valor atual do contador
+iload <currentSlot>   ; carrega contador atual
+istore <varSlot>      ; salva no slot da variável i
+
+<bodyStmt>            ; executa o corpo do iterate
+
+iload <currentSlot>   ; carrega contador atual
+iconst_1              ; coloca 1 na pilha
+iadd                  ; incrementa contador
+istore <currentSlot>  ; salva contador incrementado
+goto Label<startNum>  ; volta para o início do loop
+
+Label<endNum>:        ; fim do loop
+nop
+>>
+
+// Iterate com array e variável: iterate(i:array) onde i recebe cada elemento do array
+iterate_array_with_var(startNum, endNum, arrayExpr, bodyStmt, totalSlot, currentSlot, varSlot, arraySlot, loadInstruction) ::= <<
+<arrayExpr>           ; coloca o array na pilha
+dup                   ; duplica referência do array
+arraylength           ; pega o tamanho do array
+istore <totalSlot>    ; salva tamanho no slot totalSlot (contador total)
+astore <arraySlot>    ; salva referência do array
+iconst_0              ; coloca 0 na pilha
+istore <currentSlot>  ; salva 0 no slot currentSlot (contador atual)
+
+Label<startNum>:      ; início do loop
+iload <currentSlot>   ; carrega contador atual
+iload <totalSlot>     ; carrega contador total
+if_icmpge Label<endNum>  ; se atual >= total, sai do loop
+
+; Atualiza a variável i com o elemento atual do array
+aload <arraySlot>     ; carrega referência do array
+iload <currentSlot>   ; carrega índice atual
+<loadInstruction>     ; carrega elemento do array (iaload, faload, etc.)
+istore <varSlot>      ; salva elemento no slot da variável i
 
 <bodyStmt>            ; executa o corpo do iterate
 
