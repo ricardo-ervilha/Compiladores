@@ -25,44 +25,57 @@ import javax.print.attribute.HashAttributeSet;
 import util.Debug;
 
 public class CPPVisitor extends Visitor{
-    // variável global que pega os templates
+    // * Variável que contém os templates
     private STGroup groupTemplate;
 
+    /**
+     * * Dado um o nome de uma função, retorna a qual abstract data ela pertence. 
+    */
     HashMap<String, String> nameFuncsOnAbstractData;
 
+    /**
+     * * Mapeia um o nome de um vetor para o tamanho dele.
+     */
     HashMap<String, String> MapNameToLength;
+    
+    /* Variáveis auxiliares para a execução do código */
     String nameArray;
     String length;
     String currentFuncName;
     String currentAbstractData;
 
+    /* Caminho e nome do arquivo para ser salvo o .cpp */
     String genFilePath;
 
+    /* Flag para ajudar na questão do array */
     boolean flagForArrayData = false;
 
-    // variável global para saber variaveis e tipos
+    // * Variável que vem do semântico para ter controle do nome das variáveis e tipos.
     TyEnv<LocalEnv<SType>> env;
 
-    // lista de funções do programa
+    /* Listas auxiliares para ajudar a montar funções e declarações da "data" */
     ArrayList<ST> funcs;
     ArrayList<ST> data_declarations;
 
-    ST type;
-    ST stmt; // GERAL
-    ST expr; // GUARDA RESUTLADO DAS EXPRESSOES
+    ST type; // ST de tipos
+    ST stmt;  // ST de stmts, geralmente comandos
+    ST expr;  // stmt de expressões
 
-    // VARIAVEL GLOBAL QUE TEM A STRING DO QUE É UM PARAMETRO (nome + stmt_type)
+    // ST para os parâmetros
     ST param;
 
-    // VARIAVEL GLOBAL QUE TEM A STRING DO BLOCO ATUAL de comandos
+    // Lista de ST's para o caso do block ficar concatenando
     ArrayList<ST> blockCmds;
 
-    /* para os laços, coloco um nome diferente */
+    /* Para os laços, uso um nome bem diferente das variáveis */
     String var_name =  "__while_var_";
     int id_var_loop = 0; // gerencia a quantidade de laços aninhados
 
     public CPPVisitor(TyEnv<LocalEnv<SType>> env, String genFilePath){
+        /* carrega o .stg */
         groupTemplate = new STGroupFile("./template/cpp.stg");
+        
+        /* declaração das variaveis do visitor */
         this.env = env;
         this.MapNameToLength = new HashMap<String, String>();
         nameFuncsOnAbstractData = new HashMap<String, String>();
@@ -80,7 +93,7 @@ public class CPPVisitor extends Visitor{
         else if(s instanceof STyBool)
             return "bool";
         else if(s instanceof STyArr){
-            
+            /* caso seja Array tem que ficar concatenando * pra ser ponteiro */
             SType aux = ((STyArr) s);
             String pointers = "";
             while(aux instanceof STyArr){
@@ -89,7 +102,7 @@ public class CPPVisitor extends Visitor{
             }
             return recoverType(aux).concat(pointers);
         }else if(s instanceof STyData){
-            return ((STyData)s).getTypeName().concat("*");
+            return ((STyData)s).getTypeName().concat("*"); // ! caso seja um Data adiciona *. Convencionei que todo data por padrão é ponteiro
         }
         return "";
     }
@@ -107,12 +120,14 @@ public class CPPVisitor extends Visitor{
         // declarações de funções por causa do C++
         ArrayList<ST> decl_funcs = new ArrayList<ST>(); 
 
+        /* percorre os data's e abstract data's */
         for(Def f: p.getDefinitions()){
             if(!(f instanceof Fun)){
                 f.accept(this);
             }            
         }
 
+        /* percorre para colocar as declarações de funções */
         for(Def f : p.getDefinitions()){
             if(f instanceof Fun){
                 ST aux = groupTemplate.getInstanceOf("decl_func");
@@ -160,9 +175,13 @@ public class CPPVisitor extends Visitor{
         template.add("decl_funcs", decl_funcs);
         template.add("funcs", funcs);
 
-        this.writeCode(template);
+        this.writeCode(template); // chama para escrever o arquivo
     }
 
+    /**
+     * * Função auxiliar que recebe o template com todo o código cpp e escreve no arquivo. O arquivo vai estar na mesma pasta do arquivo .lan, e terá extensão .cpp
+     * @param template
+     */
     public void writeCode(ST template) {
         try (FileWriter writer = new FileWriter(genFilePath)) {
             writer.write(template.render());
@@ -184,16 +203,16 @@ public class CPPVisitor extends Visitor{
         else
             fun.add("name", p.getID());
 
-        currentFuncName = p.getID(); // SALVA PARA O ITERATE
+        currentFuncName = p.getID(); // salvar a função atual (útil para o iterate)
 
-        // pega o ambiente especifico dessa função
+        // pega o ambiente especifico dessa função vindo do semântico
         LocalEnv<SType> local = env.get(p.getID());
 		Set<String> keys = local.getKeys();
 
         // pega os retornos
         List<Type> returns = p.getReturnTypes();
 
-        // lista para guardar os tipos que resolve dps de visitar
+        // lista para guardar os tipos de retorno que resolve dps de visitar
         ArrayList<ST> types = new ArrayList<ST>();
         for(Type t : returns){
             if(t instanceof TYID)
@@ -203,7 +222,7 @@ public class CPPVisitor extends Visitor{
         }
         fun.add("types", types); // joga no template as strings
 
-
+        /* resolve parâmetros */
         ArrayList<ST> params = new ArrayList<ST>();
         if(p.getParams() != null){
             for (Param parametro : p.getParams().getParamList()) {
@@ -231,12 +250,9 @@ public class CPPVisitor extends Visitor{
         fun.add("vardecls", vardecls); // adiciona declaração de VARIAVEIS
 
 
-
         // chama para resolver os comandos
         blockCmds = new ArrayList<ST>();
         p.getCmd().accept(this);
-
-        
 
         fun.add("blockCmds", blockCmds);
         
@@ -247,7 +263,7 @@ public class CPPVisitor extends Visitor{
     public  void visit(Param e){
         Debug.log("Visit Param");
         param = groupTemplate.getInstanceOf("param");
-        if(e.getType() instanceof TYID)
+        if(e.getType() instanceof TYID) // se for de um tipo criado, tem que ter ponteiro junto
             flagForArrayData = true;
         e.getType().accept(this);
 		param.add("name", e.getId());
@@ -267,10 +283,10 @@ public class CPPVisitor extends Visitor{
     public  void visit(TYID e){
         Debug.log("Visit TYID");
         type = groupTemplate.getInstanceOf("id");
-        if(flagForArrayData)
+        if(flagForArrayData) // se for de um tipo criado, tem que ter ponteiro junto
             type.add("name", e.getName().concat("*"));
         else
-            type.add("name", e.getName());
+            type.add("name", e.getName()); // senão é só o nome do tipo msm
         flagForArrayData = false;
     }
 
@@ -305,7 +321,7 @@ public class CPPVisitor extends Visitor{
         ST aux = groupTemplate.getInstanceOf("struct_def");
         aux.add("name", p.getTypeId());
         ArrayList<ST> dcls_aux = new ArrayList<ST>();
-        for(Node n : p.getDeclarations()){
+        for(Node n : p.getDeclarations()){ // RESOLVE AS DECLARAÇÕES DOS ATRIBUTOS DA STRUCT
             n.accept(this);
             dcls_aux.add(stmt);
         }
@@ -324,10 +340,10 @@ public class CPPVisitor extends Visitor{
         ArrayList<ST> dcls_aux = new ArrayList<ST>();
         ArrayList<ST> abstract_funs_aux = new ArrayList<ST>();
         for(Node n : p.getDeclFuns()){
-            if(n instanceof Decl){
+            if(n instanceof Decl){ // RESOLVE AS DECLARAÇÕES DOS ATRIBUTOS DA STRUCT (similar ao anterior)
                 n.accept(this);
                 dcls_aux.add(stmt);
-            }else{
+            }else{ // caso seja função do tipo abstrato
                 currentFuncName = ((FunAbstractData) n).getID();
                 n.accept(this);
                 abstract_funs_aux.add(stmt);
@@ -381,6 +397,7 @@ public class CPPVisitor extends Visitor{
         fun.add("types", types); // joga no template as strings
 
 
+        /* resolve os parametros */
         ArrayList<ST> params = new ArrayList<ST>();
         if(f.getParams() != null){
             for (Param parametro : f.getParams().getParamList()) {
@@ -419,23 +436,25 @@ public class CPPVisitor extends Visitor{
 
     @Override 
     public void visit(Params p){
-        // nada
+        // pass
     }
 
 
     @Override
     public  void visit(ArrayExpr e){
+        //'new' type ('[' e=exp ']'): instanciar array
         Debug.log("Visit ArrayExpr");
         
         ST expr_arr = groupTemplate.getInstanceOf("new_array");
         
-        flagForArrayData = true;
+        flagForArrayData = true; // com certeza é ponteiro: no minimo tem uma *
         e.getType().accept(this);
         expr_arr.add("type", type);
         
+        /* resolve o tamanho final */
         e.getExp().accept(this);
         expr_arr.add("index", expr);
-        length = expr.render();
+        length = expr.render(); /* salva o length para salvar no hashmap */
         
         expr = expr_arr;
 
@@ -454,8 +473,8 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public void visit(CmdAssign p){
-        expr = null;
         Debug.log("Visit CmdAssign");
+        expr = null;
         stmt = groupTemplate.getInstanceOf("attr");
 
         p.getLvalue().accept(this);
@@ -467,7 +486,7 @@ public class CPPVisitor extends Visitor{
         stmt.add("expr", expr);
 
         if(p.getExpression() instanceof ArrayExpr){
-            MapNameToLength.put(nameArray, length);
+            MapNameToLength.put(nameArray, length); // se for instanciar array tem q colocar o length pra saber dps...
         }
 
     }
@@ -475,22 +494,24 @@ public class CPPVisitor extends Visitor{
     @Override
     public  void visit(CmdFuncCall p)
     {
+        // ID '(' exps? ') < >
         stmt = groupTemplate.getInstanceOf("func_call");
         ArrayList<ST> vars = new ArrayList<ST>();
         int id = 0;
-        if(!p.getLvalues().isEmpty()){
-                for(LValue l : p.getLvalues()){
+        if(!p.getLvalues().isEmpty()){ // verifica pois pode acontecer de ser só chamada de função sem passar <>
+            for(LValue l : p.getLvalues()){
                 expr = null;
                 l.accept(this);
                 ST aux = groupTemplate.getInstanceOf("var_unpacking");
                 aux.add("var", expr);
                 aux.add("id", id);
-                id++;
+                id++; // incrementa o id pra ir pegando cada um deles no get<>()
                 vars.add(aux);
             }  
             stmt.add("flag", "");
         }
         
+        /* ressolve os parametros */
         ArrayList<ST> param_exprs = new ArrayList<>();
         if(p.getExps() != null){
             for(Expr q : p.getExps().getExpressions()){
@@ -500,6 +521,7 @@ public class CPPVisitor extends Visitor{
             }
         }
 
+        /* resolve pra passar NAMESPACE:: */
         if(nameFuncsOnAbstractData.get(p.getId()) != null){
             stmt.add("namespaceClass", nameFuncsOnAbstractData.get(p.getId()));
         }
@@ -581,8 +603,8 @@ public class CPPVisitor extends Visitor{
         expr = null;
         Debug.log("Visit CmdIterate");
         ArrayList<ST> aux_cmdsBlock = blockCmds; // chega blocos parciais para ele
-        ST aux = null; // VAI ARMAZENAR A STRING
-        if (p.getCondition() instanceof ExpItCond) {
+        ST aux = null; // VAI ARMAZENAR A STRING FINAL
+        if (p.getCondition() instanceof ExpItCond) { // loop com expr
             // caso seja loop com numero tipo while(10)
 
             aux = groupTemplate.getInstanceOf("while");
@@ -593,12 +615,12 @@ public class CPPVisitor extends Visitor{
             
             aux.add("var_name", var_name + Integer.toString(id_var_loop)); // usa um nome criado
             aux.add("id", id_var_loop);
-            id_var_loop = id_var_loop + 1;
+            id_var_loop = id_var_loop + 1; // aumenta um caso tenha proximo loop
             blockCmds = new ArrayList<ST>(); // crio novo bloco pra esse iterate
             p.getBody().accept(this);
             
             aux.add("cmds", blockCmds);
-            id_var_loop = id_var_loop - 1;
+            id_var_loop = id_var_loop - 1; // diminuo um pois resolveu
         }else{
             // loop tem id
             IdItCond q = (IdItCond) p.getCondition();
@@ -621,7 +643,7 @@ public class CPPVisitor extends Visitor{
                 
                 aux.add("cmds", blockCmds);
 
-            }else{
+            }else{ // caso fosse variavel
                 aux = groupTemplate.getInstanceOf("while");
                 aux.add("var_name", q.getId());
                 aux.add("id", id_var_loop);
@@ -762,9 +784,9 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public void visit(Diff e){
-       ST aux = groupTemplate.getInstanceOf("diff_expr");
+        ST aux = groupTemplate.getInstanceOf("diff_expr");
 
-       expr = null;
+        expr = null;
         e.getLeft().accept(this);
         aux.add("left_expr", expr);
         
@@ -814,6 +836,7 @@ public class CPPVisitor extends Visitor{
         ST aux = groupTemplate.getInstanceOf("func_call_access");
         aux.add("name", e.getFunctionName());
 
+        /* resolve parâmetros */
         ArrayList<ST> param_exprs = new ArrayList<>();
         if(e.getExps() != null){
             for(Expr q : e.getExps().getExpressions()){
@@ -824,6 +847,7 @@ public class CPPVisitor extends Visitor{
         }
         aux.add("params", param_exprs);
 
+        /* QUESTÃO DO NAMESPACE:: */
         if(nameFuncsOnAbstractData.get(e.getFunctionName()) != null){
             aux.add("namespaceClass", nameFuncsOnAbstractData.get(e.getFunctionName()));
         }
@@ -837,6 +861,7 @@ public class CPPVisitor extends Visitor{
     
     @Override
     public  void visit(VarExpr e){
+        // * 'new' btype
         e.getType().accept(this);
         ST aux = groupTemplate.getInstanceOf("new_var");
         aux.add("type", type);
@@ -846,6 +871,8 @@ public class CPPVisitor extends Visitor{
 
     @Override
     public  void visit(CharValue e){
+        // resolve o problema do char value pra ter compatibilidade no c++
+        // por exemplo: x = '\065' => x = static_cast<char>(65);
         Debug.log("Visit CharValue");
         String v = e.getValue();
         if (v.matches("'\\\\[0-7]{3}'")) {
@@ -898,13 +925,15 @@ public class CPPVisitor extends Visitor{
         aux_lvalue_magic_johnson.add("stmt2", aux_expr);
 
         expr = null;
-        e.getIndex().accept(this);
+        e.getIndex().accept(this);// tem que resolver o '[' ']'
         ST expr_index = groupTemplate.getInstanceOf("array_access");
         expr_index.add("expr", expr);
         
         expr = groupTemplate.getInstanceOf("stmt_lvalue");
-        expr.add("stmt1", aux_lvalue_magic_johnson);
-        expr.add("stmt2", expr_index);
+        expr.add("stmt1", aux_lvalue_magic_johnson); // juntar o anterior 
+        expr.add("stmt2", expr_index); // com o índice
+
+        /* Lvalue'[' <expr> ']' */
     }
 
     @Override
@@ -912,8 +941,9 @@ public class CPPVisitor extends Visitor{
         Debug.log("Visit ID");
         ST aux = expr;
         expr = groupTemplate.getInstanceOf("stmt_lvalue");
-        expr.add("stmt1", e.getName());
-        expr.add("stmt2", aux);
+        expr.add("stmt1", e.getName()); // concatena ID
+        expr.add("stmt2", aux); // o que tinha antes
+        /* ID<aux> */
     }
 
     @Override
@@ -929,13 +959,14 @@ public class CPPVisitor extends Visitor{
         
         aux_lvalue_magic_johnson.add("stmt2", aux_IDLVALUE);
         aux_lvalue_magic_johnson.add("stmt1", expr);
+        /* lvalue<ID> */
 
         expr = aux_lvalue_magic_johnson;
     }
 
     @Override
     public  void visit(IdItCond e){
-        
+        //pass   
     }
     
 

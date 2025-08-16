@@ -1,12 +1,11 @@
 group java;
 
-/*Definição da estrutura geral do programa C++
-Programa tem:
- cabeçalho
- uso do namespace std
- chama main auxiliar
- e tem outras funções
-*/
+/**
+ * * Estrutura geral de um programa C++:
+ * @decl_funcs: declarações das funções p/ caso venham em ordens diferentes.
+ * @funcs: cabeçalho e corpo das funções.
+ * @data_decls: definição dos dados e dados abstratos.
+ */
 program(decl_funcs, funcs, deta_decls) ::= <<
 #include \<iostream>
 #include \<tuple>
@@ -25,7 +24,12 @@ int main(int argc, char* argv[]) {
 <funcs; separator="\n\n">
 >>
 
-/*Declaração de funções no cabeçalho do programa*/
+/**
+ * * Declaração de funções no cabeçalho do programa
+ * @types: lista de tipos do retorno.
+ * @name: nome da função
+ * @params: parâmetros da função.
+ */
 decl_func(types, name, params) ::= <<
 <if(types)>
 tuple\< <types; separator=", "> > _<name>(<params; separator=", ">);
@@ -34,11 +38,15 @@ void _<name>(<params; separator=", ">);
 <endif>    
 >>
 
-/*Estrutura geral das funções do programa
-func tem retorno, parametros, nome e 
-- declaração de variaveis
-- comandos
-*/
+/**
+ * * Estrutura geral de uma função 
+ * @types: lista de tipos do retorno.
+ * @name: nomes da função.
+ * @vardecls: declarações de variável.
+ * @params: parâmetros da função.
+ * @blockCmds: blocos de comandos.
+ * @flagStatic: flag para adicionar static no cabeçalho. Útil para quando a função pertence a uma classe.
+ */
 func(types, flagStatic, name, params, vardecls, blockCmds) ::= <<
 <if(types)>
 <if(flagStatic)>static <endif>tuple\< <types; separator=", "> > _<name>(<params; separator=", ">) {
@@ -50,36 +58,47 @@ func(types, flagStatic, name, params, vardecls, blockCmds) ::= <<
 }
 >>
 
-/*Declaração das variáveis no início das funções.*/
+/**
+ * * Declaração de variáveis no início das funções.
+ * @type: tipo da variável
+ * @name: nome da variável
+ */
 var_decl(type, name) ::= <<
 <type> <name>
 >>
 
-/*Atribuição de valor a variável.*/
+/**
+ * * Atribuição de valor a variável
+ * @var: nome da variável
+ * @expr: valor que será escrito
+ */
 attr(var, expr) ::= <<
 <var> = <expr>;
 >>
 
-/*Parâmetro das funções*/
+/**
+ * * Estrutura de um parâmetro de uma função. similar ao var_decl.
+ */
 param(type, name) ::= "<type> <name>"
 
-/*Nome dos tipos no formato do do C++*/
+// * Nome dos tipos no formato do do C++
 int_type() ::= "int"
 float_type() ::= "float"
 bool_type() ::= "bool"
 char_type() ::= "char"
 
+// * Concatena dois stms. 
 stmt_type(stmt1, stmt2) ::= <<
 <stmt1><stmt2>
 >>
 
-/*Impressão de valor*/
+/*Impressão de valor usando cout*/
 print(expr) ::= "cout \<\< <expr>;"
 
-/*Leitura*/
+/*Leitura de valor usando cin*/
 read(expr) ::= "cin >> <expr>;"
 
-
+//===========================================================================================
 /*Comandos de OPERAÇÕES*/
 mul_expr(left_expr, right_expr) ::= "(<left_expr> * <right_expr>)"
 div_expr(left_expr, right_expr) ::= "(<left_expr> / <right_expr>)"
@@ -92,6 +111,7 @@ diff_expr(left_expr, right_expr) ::= "(<left_expr> != <right_expr>)"
 and_expr(left_expr, right_expr) ::= "(<left_expr> && <right_expr>)"
 not_expr(expr) ::= "!<expr>"
 minus_expr(expr) ::= "-<expr>"
+//===========================================================================================
 
 /*Valores*/
 boolean_expr(value) ::= "<value>"
@@ -99,9 +119,9 @@ float_expr(value) ::= "<value>"
 int_expr(value) ::= "<value>"
 null_expr(value) ::= "<value>"
 char_expr(value) ::= "<value>"
-char_expr_num(value) ::= "static_cast\<char>(<value>)"
+char_expr_num(value) ::= "static_cast\<char>(<value>)" // ! CASO ESPECIAL PARA CHAR'S ASCII
 
-/*CMD if e else*/
+/*Conversão p/ if e else*/
 if(expr, thn, els) ::= <<
 if(<expr>) {
     <thn; separator="\n">
@@ -111,7 +131,14 @@ if(<expr>) {
 <endif>
 >>
 
-/*Loop*/
+/**
+ * * Loop com expr e com var: iterate(expr) ou iterate (i : x)
+ * @type: necessário especificar quando for iterate(expr), pois crio uma variável nova auxiliar.
+ * @id: armazena resultado do cálculo. Útil quando a condição do iterate sofre modificações. (Caso do sort.lan)
+ * @expr: num de iterações
+ * @var_name: nome da variavel. se for expr eu crio um, senão pega o que vem de lá. no exemplo acima seria "i"
+ * @cmds: comandos do loop.
+ */
 while(type, id, expr, var_name, cmds) ::= <<
 int __aux___expr__save__<id> = <expr>;
 for(<if(type)>int<endif> <var_name> = 0 ; <var_name> \< __aux___expr__save__<id>; <var_name>++) {
@@ -119,6 +146,15 @@ for(<if(type)>int<endif> <var_name> = 0 ; <var_name> \< __aux___expr__save__<id>
 }
 >>
 
+/**
+ * * Loop com vetores. iterate(i : v), onde v é array.
+ * @type: necessário para colocar int.
+ * @aux_loop: variavel auxiliar que percorre o loop
+ * @length: tamanho do array
+ * @loop_name: como será chamado baseado no identificador.
+ * @array_name: nome do array em Lang
+ * @cmds: resto dos comandos
+ */
 while_array(type, aux_loop, loop_name, array_name, length, cmds) ::= <<
 for(<if(type)>int<endif> <aux_loop> = 0; <aux_loop> \< <length>; <aux_loop>++){
     <loop_name> = <array_name>[<aux_loop>];
@@ -142,6 +178,7 @@ func_call_access(name, namespaceClass, params, index) ::= <<
 get\< <index> >(<if(namespaceClass)><namespaceClass>::<endif>_<name>(<params; separator=", ">))
 >>
 
+/* Auxiliar para quando for chamar passando variaveis. Precisa usar esse get<>() */
 var_unpacking(var, id) ::= <<
 <var> = get\< <id> >(__return_function_func_call_);
 >>
@@ -163,17 +200,24 @@ pointer() ::= "*"
 /*Acesso a atributo*/
 attr_access(exp) ::= "-><exp>"
 
+// * concatena dois stmts
 stmt_lvalue(stmt1, stmt2) ::= <<
 <stmt1><stmt2>
 >>
 
 // ---------*----------*--------------*-------------
+/* *
+ * Struct para quando for data
+ */
 struct_def(name, var_decls) ::= <<
 struct <name>{
     <var_decls; separator=";\n">;
 };
 >>
 
+/* *
+ * Classe para quando for abstract data
+ */
 class_def(name, var_decls, abstract_funs) ::= <<
 class <name> {
     private:

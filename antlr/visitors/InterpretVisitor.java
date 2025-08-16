@@ -94,7 +94,7 @@ public class InterpretVisitor extends Visitor {
             }
         }
 
-        if(main != null){ // ! P/ caso tenha um programa principal. PS: Semântico já está tratando ?
+        if(main != null){ // ! P/ caso tenha um programa principal. PS: Semântico está tratando tbm.
             main.accept(this);
         }
     }
@@ -533,7 +533,7 @@ public class InterpretVisitor extends Visitor {
 
         if(type instanceof TypeInt || type instanceof TypeFloat || type instanceof TypeBool || type instanceof TypeChar){
             // para tipos simples, basta adicionar nulo.
-            // TODO: aparentemnete por causa do semântico não pode new Int. Então isso ficou inútil...
+            // TODO: aparentemnete por causa do semântico não pode new Int|Float|Bool|Char. Então isso ficou inútil...
             operands.push(null);
         }
         else if(type instanceof TYID){
