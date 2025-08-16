@@ -12,6 +12,9 @@
 
 package src;
 import ast.Node;
+
+import java.io.IOException;
+
 import org.antlr.v4.runtime.CharStream;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
@@ -63,7 +66,12 @@ public class Main {
         
         try {
             // Criar o stream de caracteres do arquivo
-            CharStream stream = CharStreams.fromFileName(filePath);
+            CharStream stream = null;
+            try{
+                stream = CharStreams.fromFileName(filePath);
+            }catch (IOException e) {
+                System.out.println("Erro no caminho do arquivo: " + e.getMessage());
+            }
 
             // Inicializar lexer e parser
             LangLexer lex = new LangLexer(stream);

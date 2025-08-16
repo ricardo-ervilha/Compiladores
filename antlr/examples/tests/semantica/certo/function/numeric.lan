@@ -7,7 +7,7 @@
 
 guessRoot(x :: Float, a :: Float): Float{
     if(x < a*a){
-       return guessRoot(x,a/2)[0];
+       return guessRoot(x,a/2.0)[0]; -- Corrigiu um mas não corrigiu o outro... kkk
     }
     return a;
 }

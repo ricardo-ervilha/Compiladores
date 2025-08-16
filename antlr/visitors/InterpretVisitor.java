@@ -753,6 +753,7 @@ public class InterpretVisitor extends Visitor {
         Debug.log("Visit CmdIF");
         if(!retMode){
             try {
+                currentAccessMode = AccessMode.READ; // tratando o caso especial do teste12.lan... 
                 e.getCondition().accept(this);
                 if ((Boolean) operands.pop()) {
                     e.getThenCmd().accept(this);
