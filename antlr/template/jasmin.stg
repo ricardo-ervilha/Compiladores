@@ -260,6 +260,69 @@ Label<endNum>:        ; fim do loop
 nop
 >>
 
+// ==================== ITERATE COM VARIÁVEL ====================
+
+// Iterate com inteiro e variável: iterate(i:n) onde i vai de 0 até n-1
+iterate_int_with_var(startNum, endNum, countExpr, bodyStmt, totalSlot, currentSlot, varSlot) ::= <<
+<countExpr>           ; coloca o valor n na pilha
+istore <totalSlot>    ; salva n no slot totalSlot (contador total)
+iconst_0              ; coloca 0 na pilha
+istore <currentSlot>  ; salva 0 no slot currentSlot (contador atual)
+
+Label<startNum>:      ; início do loop
+iload <currentSlot>   ; carrega contador atual
+iload <totalSlot>     ; carrega contador total
+if_icmpge Label<endNum>  ; se atual >= total, sai do loop
+
+; Atualiza a variável i com o valor atual do contador
+iload <currentSlot>   ; carrega contador atual
+istore <varSlot>      ; salva no slot da variável i
+
+<bodyStmt>            ; executa o corpo do iterate
+
+iload <currentSlot>   ; carrega contador atual
+iconst_1              ; coloca 1 na pilha
+iadd                  ; incrementa contador
+istore <currentSlot>  ; salva contador incrementado
+goto Label<startNum>  ; volta para o início do loop
+
+Label<endNum>:        ; fim do loop
+nop
+>>
+
+// Iterate com array e variável: iterate(i:array) onde i recebe cada elemento do array
+iterate_array_with_var(startNum, endNum, arrayExpr, bodyStmt, totalSlot, currentSlot, varSlot, arraySlot, loadInstruction) ::= <<
+<arrayExpr>           ; coloca o array na pilha
+dup                   ; duplica referência do array
+arraylength           ; pega o tamanho do array
+istore <totalSlot>    ; salva tamanho no slot totalSlot (contador total)
+astore <arraySlot>    ; salva referência do array
+iconst_0              ; coloca 0 na pilha
+istore <currentSlot>  ; salva 0 no slot currentSlot (contador atual)
+
+Label<startNum>:      ; início do loop
+iload <currentSlot>   ; carrega contador atual
+iload <totalSlot>     ; carrega contador total
+if_icmpge Label<endNum>  ; se atual >= total, sai do loop
+
+; Atualiza a variável i com o elemento atual do array
+aload <arraySlot>     ; carrega referência do array
+iload <currentSlot>   ; carrega índice atual
+<loadInstruction>     ; carrega elemento do array (iaload, faload, etc.)
+istore <varSlot>      ; salva elemento no slot da variável i
+
+<bodyStmt>            ; executa o corpo do iterate
+
+iload <currentSlot>   ; carrega contador atual
+iconst_1              ; coloca 1 na pilha
+iadd                  ; incrementa contador
+istore <currentSlot>  ; salva contador incrementado
+goto Label<startNum>  ; volta para o início do loop
+
+Label<endNum>:        ; fim do loop
+nop
+>>
+
 // ==================== IF-ELSE ====================
 if_else(elseNum, endNum, expr, thenBlock, elseBlock) ::= <<
 <expr>

@@ -570,6 +570,81 @@ public class JasminVisitor extends Visitor {
                 throw new RuntimeException(cmdIterate.getLine() + ", " + cmdIterate.getCol() +
                         ": Tipo não suportado no iterate: " + exprType);
             }
+        } else if (cmdIterate.getCondition() instanceof IdItCond idItCond) { // iterate(i:expr)
+
+            SType exprType = idItCond.getExpression().getSType();
+            int varIndexSlot = localEnv.get(idItCond.getId()).getIndex();
+
+            // Calcula slots disponíveis para este iterate
+            int baseSlot = localEnv.getKeys().size();
+            int totalSlot = baseSlot + (iterateDepth * 2);     // slot para o contador total
+            int currentSlot = baseSlot + (iterateDepth * 2) + 1; // slot para o contador atual
+
+            // Incrementa a profundidade antes de processar o corpo
+            iterateDepth++;
+
+            // Gera o código do corpo do iterate
+            cmdIterate.getBody().accept(this);
+            ST bodyStmt = stmt;
+
+            // Decrementa a profundidade após processar o corpo
+            iterateDepth--;
+
+            if (exprType instanceof STyInt) {
+                // Caso: iterate(i:x) onde x é um int
+                // i vai iterar de 0 até x-1 (x vezes no total)
+
+                idItCond.getExpression().accept(this);
+                ST iterateCountExpr = expr;
+
+                int startLabel = label++;
+                int endLabel = label++;
+
+                ST iterateIntWithVar = groupTemplate.getInstanceOf("iterate_int_with_var");
+                iterateIntWithVar.add("startNum", startLabel);
+                iterateIntWithVar.add("endNum", endLabel);
+                iterateIntWithVar.add("countExpr", iterateCountExpr);
+                iterateIntWithVar.add("bodyStmt", bodyStmt);
+                iterateIntWithVar.add("totalSlot", totalSlot);
+                iterateIntWithVar.add("currentSlot", currentSlot);
+                iterateIntWithVar.add("varSlot", varIndexSlot);
+
+                stmt = iterateIntWithVar;
+
+            } else if (exprType instanceof STyArr) {
+                // Caso: iterate(i:array) onde array é um vetor
+                // i vai receber cada elemento do array a cada iteração
+
+                idItCond.getExpression().accept(this);
+                ST arrayExpr = expr;
+
+                int startLabel = label++;
+                int endLabel = label++;
+
+                // Precisamos saber o tipo do array para usar a instrução correta de load
+                STyArr arrayType = (STyArr) exprType;
+                String loadInstruction;
+
+                loadInstruction = getArrayLoadTemplate(arrayType.getElemType());
+
+                ST iterateArrayWithVar = groupTemplate.getInstanceOf("iterate_array_with_var");
+                iterateArrayWithVar.add("startNum", startLabel);
+                iterateArrayWithVar.add("endNum", endLabel);
+                iterateArrayWithVar.add("arrayExpr", arrayExpr);
+                iterateArrayWithVar.add("bodyStmt", bodyStmt);
+                iterateArrayWithVar.add("totalSlot", totalSlot);
+                iterateArrayWithVar.add("currentSlot", currentSlot);
+                iterateArrayWithVar.add("varSlot", varIndexSlot);
+                iterateArrayWithVar.add("arraySlot", baseSlot + (iterateDepth * 2) + 2); // slot adicional para guardar o array
+                iterateArrayWithVar.add("loadInstruction", loadInstruction);
+
+                stmt = iterateArrayWithVar;
+
+            } else {
+                throw new RuntimeException(idItCond.getLine() + ", " + idItCond.getCol() +
+                        ": Tipo não suportado no iterate: " + exprType);
+            }
+
         }
     }
 
