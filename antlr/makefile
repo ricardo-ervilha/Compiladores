@@ -35,7 +35,7 @@ junit: compile
 	java -cp src:.:antlr-4.8-complete.jar:$(JUNIT_CP) \
       org.junit.runner.JUnitCore src.Tester
 
-lang: compile
+lang: clean compile
 	java -cp .:antlr-4.8-complete.jar:ST-4.3.1.jar src/Main $(flag) $(filepath)
 
 clean:

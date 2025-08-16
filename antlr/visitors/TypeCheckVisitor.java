@@ -43,7 +43,7 @@ public class TypeCheckVisitor extends Visitor {
      * Chave (String): nome do Registro --> <STyData>
      * Valor (STyData): tem nome do tipo, atributos e funcoes do tipo abstrato
      */
-    private HashMap<String, STyData> typeStructs = new HashMap<>();
+    private HashMap<String, STyData> dataTypeEnv = new HashMap<>();
 
     private Set<String> abstractTypes = new HashSet<>();//útil para fazer verificação de acesso apenas se for em um tipo ABS
 
@@ -57,8 +57,8 @@ public class TypeCheckVisitor extends Visitor {
         return this.env;
     }
 
-    public HashMap<String, STyData> getTypeStructs(){
-        return this.typeStructs;
+    public HashMap<String, STyData> getDataTypeEnv(){
+        return this.dataTypeEnv;
     }
 
     public int getNumErrors() {
@@ -91,7 +91,7 @@ public class TypeCheckVisitor extends Visitor {
     }
 
     private boolean isDuplicatedData(String funcId) {
-        return typeStructs.containsKey(funcId);
+        return dataTypeEnv.containsKey(funcId);
     }
 
     @Override
@@ -100,7 +100,7 @@ public class TypeCheckVisitor extends Visitor {
             getDefinitions() pode ser Data, AbstractData ou Fun
             Fun: adiciono no env com os tipos de retorno e argumentos
             Data: visito o DataDecl, considerando que esse visitor só é chamado na declaração
-            AbstractData: adiciono no env as funções do tipo abstrato e os tipo do registro no typeStructs
+            AbstractData: adiciono no env as funções do tipo abstrato e os tipo do registro no dataTypeEnv
          */
         for (Def def : program.getDefinitions()) {
             if (def instanceof Fun f) {
@@ -141,7 +141,8 @@ public class TypeCheckVisitor extends Visitor {
                     logError.add(abstractDataDecl.getLine() + ", " + abstractDataDecl.getCol() + ": Tipo " + typeNameAbs + " já foi declarado.");
                     return;
                 }
-                typeStructs.put(typeNameAbs, null);// colocando antes para permitir auto-referencia
+
+                dataTypeEnv.put(typeNameAbs, null);// colocando antes para permitir auto-referencia
 
                 LinkedHashMap<String, SType> atributosAbs = new LinkedHashMap<>();// atributos do tipo Abstrato
                 LinkedHashMap<String, STyFun> funcsAbs = new LinkedHashMap<>(); // Funções do tipo abstrato, juntamente com argumentos/retorno
@@ -191,7 +192,7 @@ public class TypeCheckVisitor extends Visitor {
 
 
                 STyData sTyData = new STyData(typeNameAbs, atributosAbs, funcsAbs);
-                typeStructs.put(typeNameAbs, sTyData);// coloco o nome do tipo e os campos dele na tabela de Registros
+                dataTypeEnv.put(typeNameAbs, sTyData);// coloco o nome do tipo e os campos dele na tabela de Registros
                 abstractTypes.add(typeNameAbs); // salvo para saber os tipos que são ABS
 
             } else if (def instanceof DataDecl dataDecl) {
@@ -199,7 +200,7 @@ public class TypeCheckVisitor extends Visitor {
                     logError.add(dataDecl.getLine() + ", " + dataDecl.getCol() + ": Tipo " + dataDecl.getTypeId() + " já foi declarado.");
                     return;
                 }
-                typeStructs.put(dataDecl.getTypeId(), null);// colocando antes para permitir auto-referencia
+                dataTypeEnv.put(dataDecl.getTypeId(), null);// colocando antes para permitir auto-referencia
                 dataDecl.accept(this);
             }
         }
@@ -229,13 +230,12 @@ public class TypeCheckVisitor extends Visitor {
 //        env.printTable();
     }
 
-    @Override
-    public void visit(Fun f) {
+    public void addFun(String funcID, Params paramsNode, Cmd cmd, List<Type> returnTypesList){
         retChk = false;//
-        temp = env.get(f.getID());// a função já foi criada na minha tabela env previamente
+        temp = env.get(funcID);// a função já foi criada na minha tabela env previamente
 
         // add na tabela temp cada um dos parametros da função, com o nome e o tipo do parametro
-        List<Param> params = (f.getParams() != null) ? f.getParams().getParamList() : Collections.emptyList();
+        List<Param> params = (paramsNode != null) ? paramsNode.getParamList() : Collections.emptyList();
         for (Param p : params) {
             p.getType().accept(this);
             // p.getId é o nome do parametro, stk.pop é o tipo, eg Int
@@ -243,13 +243,24 @@ public class TypeCheckVisitor extends Visitor {
             temp.set(p.getId(), stk.pop());
         }
 
-        f.getCmd().accept(this);
+        cmd.accept(this);
 
         //se após tipar o corpo da função a flag continua falsa, tem algum erro, deveria ter um retorno
-        if (!f.getReturnTypes().isEmpty() && !retChk) {
-            logError.add(f.getLine() + ", " + f.getCol() + ": Comando de retorno nao encontrado na função " + f.getID() + " para todos os caminhos.");
+        if (!returnTypesList.isEmpty() && !retChk) {
+            logError.add(cmd.getLine() + ", " + cmd.getCol() + ": Comando de retorno nao encontrado na função " + funcID + " para todos os caminhos.");
         }
     }
+
+    @Override
+    public void visit(Fun f) {
+        addFun(f.getID(), f.getParams(), f.getCmd(), f.getReturnTypes());
+    }
+
+    @Override
+    public void visit(FunAbstractData f) {
+        addFun(f.getID(), f.getParams(), f.getCmd(), f.getReturnTypes());
+    }
+
 
     /*
         cmd --> ID ‘(’ [exps] ‘)’ [‘<’ lvalue {‘,’ lvalue} ‘>’ ] ‘;’
@@ -470,36 +481,14 @@ public class TypeCheckVisitor extends Visitor {
         }
 
         STyData sTyData = new STyData(typeName, fields);
-        typeStructs.put(typeName, sTyData);
+        dataTypeEnv.put(typeName, sTyData);
     }
 
     @Override
     public void visit(AbstractDataDecl p) {
-        System.out.println("(AbstractDataDecl) Não deveria entrar aqui...");
+
     }
 
-    @Override
-    public void visit(FunAbstractData f) {
-//        System.out.println(" (FunAbstractData) Não deveria entrar aqui...");
-        retChk = false;//
-        temp = env.get(f.getID());// a função já foi criada na minha tabela env previamente
-
-        // add na tabela temp cada um dos parametros da função, com o nome e o tipo do parametro
-        List<Param> params = (f.getParams() != null) ? f.getParams().getParamList() : Collections.emptyList();
-        for (Param p : params) {
-            p.getType().accept(this);
-            // p.getId é o nome do parametro, stk.pop é o tipo, eg Int
-            // coloca no typeEnv
-            temp.set(p.getId(), stk.pop());
-        }
-
-        f.getCmd().accept(this);
-
-        //se após tipar o corpo da função a flag continua falsa, tem algum erro, deveria ter um retorno
-        if (!f.getReturnTypes().isEmpty() && !retChk) {
-            logError.add(f.getLine() + ", " + f.getCol() + ": Comando de retorno nao encontrado na função " + f.getID() + " para todos os caminhos.");
-        }
-    }
 
     @Override
     public void visit(Decl p) {
@@ -863,10 +852,10 @@ public class TypeCheckVisitor extends Visitor {
         SType type = stk.pop();
         if (STyData.matchStatic(type)) {// Tratamento de tipos criados pelo usuario
             TYID tyid = (TYID) e.getType();
-            // TODO: talvez possa trocar para typeStructs.get(e.getName()), já que os tipos já estao na tabela typeStructs
+            // TODO: talvez possa trocar para dataTypeEnv.get(e.getName()), já que os tipos já estao na tabela dataTypeEnv
             STyData tyData = new STyData(tyid.getName());
             stk.push(tyData); //vai ser usado no CmdAssign
-            //stk.push(typeStructs.get(tyid.getName())); //vai ser usado no CmdAssign
+            //stk.push(dataTypeEnv.get(tyid.getName())); //vai ser usado no CmdAssign
             e.setSType(tyData);
         }
     }
@@ -1137,7 +1126,7 @@ public class TypeCheckVisitor extends Visitor {
      */
     @Override
     public void visit(TYID e) {
-        if (!typeStructs.containsKey(e.getName())) {
+        if (!dataTypeEnv.containsKey(e.getName())) {
             logError.add(e.getLine() + ", " + e.getCol() + ": Tipo " + e.getName() + " não declarado.");
             stk.push(tyerr);
             return;
@@ -1196,7 +1185,7 @@ public class TypeCheckVisitor extends Visitor {
         String typeName = userType.getTypeName();
 
         // Verifico que o ambiente de tipos Data contem o Data com o nome dataName
-        if (!typeStructs.containsKey(typeName)) {
+        if (!dataTypeEnv.containsKey(typeName)) {
             logError.add(e.getLine() + ", " + e.getCol() + ": Tipo de registro não definido: " + typeName);
             stk.push(tyerr);
             return;
@@ -1207,7 +1196,7 @@ public class TypeCheckVisitor extends Visitor {
             // Só permite acesso direto se a função atual for uma das definidas no mesmo tipo
 
             String nomeFuncAtual = temp.getFuncID();
-            LinkedHashMap<String, STyFun> funcsData = typeStructs.get(typeName).getFuncsData();
+            LinkedHashMap<String, STyFun> funcsData = dataTypeEnv.get(typeName).getFuncsData();
             // verifico se estou na função que pode acessar o atributo do tipo abstrato
             if (!funcsData.containsKey(nomeFuncAtual)) {
                 logError.add(e.getLine() + ", " + e.getCol() +
@@ -1219,7 +1208,7 @@ public class TypeCheckVisitor extends Visitor {
         }
 
         // Se tem o dataName, pego o mapeamento de nomes e tipos
-        STyData sTyData = typeStructs.get(typeName); // pego os atributos do tipo
+        STyData sTyData = dataTypeEnv.get(typeName); // pego os atributos do tipo
         Map<String, SType> atributos = sTyData.getAttrsData();
 
         // E verifico se tem o atributo que estou acessando
