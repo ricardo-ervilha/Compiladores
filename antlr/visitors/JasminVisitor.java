@@ -301,7 +301,7 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
-     * @param p
+     * @param cmdFuncCall
      */
     @Override
     public void visit(CmdFuncCall cmdFuncCall) {
@@ -1009,8 +1009,30 @@ public class JasminVisitor extends Visitor {
     @Override
     public void visit(CharValue e) {
         expr = groupTemplate.getInstanceOf("char_expr");
-        expr.add("value", (int) e.getValue().charAt(1));
 
+        String charStr = e.getValue();
+        int charCode;
+
+        if (charStr.length() == 3) {
+            charCode = (int) charStr.charAt(1);
+        } else if (charStr.length() == 4) {
+            char escapeChar = charStr.charAt(2);
+            switch (escapeChar) {
+                case 'n':
+                    charCode = 10;
+                    break;
+                case 't':
+                    charCode = 9;
+                    break;
+                default:
+                    charCode = (int) escapeChar;
+                    break;
+            }
+        } else {
+            charCode = (int) charStr.charAt(1);
+        }
+
+        expr.add("value", charCode);
     }
 
     @Override

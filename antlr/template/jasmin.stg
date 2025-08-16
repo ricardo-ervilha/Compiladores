@@ -84,25 +84,25 @@ invokestatic <class>/<func_name>(<type>)<return_descriptor>
 iprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
-invokevirtual java/io/PrintStream/println(I)V
+invokevirtual java/io/PrintStream/print(I)V
 >>
 
 fprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
-invokevirtual java/io/PrintStream/println(F)V
+invokevirtual java/io/PrintStream/print(F)V
 >>
 
 cprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
-invokevirtual java/io/PrintStream/println(C)V
+invokevirtual java/io/PrintStream/print(C)V
 >>
 
 bprint(expr) ::= <<
 getstatic java/lang/System/out Ljava/io/PrintStream;
 <expr>
-invokevirtual java/io/PrintStream/println(Z)V
+invokevirtual java/io/PrintStream/print(Z)V
 >>
 
 // ==================== COMANDO READ ====================
