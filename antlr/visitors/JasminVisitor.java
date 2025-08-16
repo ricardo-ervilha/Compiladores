@@ -117,7 +117,8 @@ public class JasminVisitor extends Visitor {
         stFun.add("stmt", stmt);
 
 
-        stFun.add("stack", this.maxStackSize); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
+//        stFun.add("stack", this.maxStackSize); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
+        stFun.add("stack", 10); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
         int localVars = localEnv.getKeys().size(); //TODO: arrumar isso, tem que ver uma forma de pegar as variveis pro iterate
 
         // slots extras para iterates aninhados
@@ -374,11 +375,67 @@ public class JasminVisitor extends Visitor {
     }
 
     /**
-     * @param p
+     * @param cmdRead
      */
     @Override
-    public void visit(CmdRead p) {
+    public void visit(CmdRead cmdRead) {
+        LValue lvalue = cmdRead.getLvalue();
 
+        if (lvalue instanceof ID varID) {
+            // Leitura para variável simples
+            int index = localEnv.get(varID.getName()).getIndex();
+            SType sType = varID.getSType();
+
+            if (sType instanceof STyInt) {
+                stmt = groupTemplate.getInstanceOf("iread");
+                stmt.add("indexSlot", index);
+            } else if (sType instanceof STyFloat) {
+                stmt = groupTemplate.getInstanceOf("fread");
+                stmt.add("indexSlot", index);
+            } else if (sType instanceof STyBool) {
+                stmt = groupTemplate.getInstanceOf("bread");
+                stmt.add("indexSlot", index);
+            } else if (sType instanceof STyChar) {
+                stmt = groupTemplate.getInstanceOf("cread");
+                stmt.add("indexSlot", index);
+            } else {
+                throw new RuntimeException(cmdRead.getLine() + ", " + cmdRead.getCol() +
+                        ": Tipo não suportado no read: " + sType);
+            }
+
+        } else if (lvalue instanceof LValueExp arrayAccess) {
+            // Leitura para elemento de array: read(arr[i]);
+
+            // Gera código para referência do array
+            arrayAccess.getLvalue().accept(this);
+            ST arrayRef = expr;
+
+            // Gera código para o índice
+            arrayAccess.getIndex().accept(this);
+            ST arrayIndex = expr;
+
+            SType elementType = arrayAccess.getSType();
+
+            if (elementType instanceof STyInt) {
+                stmt = groupTemplate.getInstanceOf("iread_array");
+            } else if (elementType instanceof STyFloat) {
+                stmt = groupTemplate.getInstanceOf("fread_array");
+            } else if (elementType instanceof STyBool) {
+                stmt = groupTemplate.getInstanceOf("bread_array");
+            } else if (elementType instanceof STyChar) {
+                stmt = groupTemplate.getInstanceOf("cread_array");
+            } else {
+                throw new RuntimeException(cmdRead.getLine() + ", " + cmdRead.getCol() +
+                        ": Tipo não suportado no read para array: " + elementType);
+            }
+
+            stmt.add("arrayRef", arrayRef);
+            stmt.add("indexExpr", arrayIndex);
+
+        } else {
+            throw new RuntimeException(cmdRead.getLine() + ", " + cmdRead.getCol() +
+                    ": Tipo de lvalue não suportado no read: " + lvalue.getClass().getSimpleName());
+        }
     }
 
     /**
