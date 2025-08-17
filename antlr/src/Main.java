@@ -176,7 +176,7 @@ public class Main {
             System.err.println(interpretException.getMessage());
             System.exit(1);
         } catch (Exception e) {
-            e.printStackTrace(); // TODO: remover quando entregar o trabalho, isso imprime a stackTrace facilitando o debug
+//            e.printStackTrace(); // TODO: remover quando entregar o trabalho, isso imprime a stackTrace facilitando o debug
             System.err.println(e.getMessage());
             System.out.println("reject");
             System.exit(1);

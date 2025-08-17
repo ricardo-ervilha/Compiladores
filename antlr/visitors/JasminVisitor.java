@@ -245,10 +245,6 @@ public class JasminVisitor extends Visitor {
         ST rhsExpr = expr;
 
 
-        // LHS
-        // cmdAssign.getLvalue().accept(this);// TODO: precisa?
-        //ST lhsCode = expr; // ou um campo separado se preferir TODO: precisa?
-
 
         if (cmdAssign.getLvalue() instanceof ID varID) {// LHS é variavel simples
             int index = localEnv.get(varID.getName()).getIndex();

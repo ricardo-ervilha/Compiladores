@@ -601,51 +601,6 @@ public class TypeCheckVisitor extends Visitor {
         typeArithmeticBinOp(e, "/");
     }
 
-    /**
-     * [Bool,Bool] → Bool
-     *
-     * @param n
-     * @param opName
-     */
-    /*private void typeRelationalBinOp(Expr n, String opName) {
-        SType tyr = stk.pop();
-        SType tyl = stk.pop();
-
-        if (tyl.match(tyr) && (tyl.match(tyint) || tyl.match(tyfloat) || tyl.match(tychar))) {
-            stk.push(tybool);
-            n.setSType(tybool);
-        } else if ((opName.equals("==") || opName.equals("!=")) && tyr.match(tynull)) {
-            // aqui sabemos que o nado direito é null
-            // o lado esquerdo pode ser um StyData
-            // ou o tipo base do vetor pode se um StyData
-
-            if (tyl instanceof STyData) {
-                stk.push(tybool);
-                n.setSType(tybool);
-            } else if (tyl instanceof STyArr) {
-                SType base = tyl;
-                while (base instanceof STyArr arr) {
-                    base = arr.getElemType();
-                }
-                if (base instanceof STyData) {
-                    stk.push(tybool);
-                    n.setSType(tybool);
-                } else {
-                    logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName +
-                            " não se aplica aos tipos " + tyl + " e " + tyr);
-                    stk.push(tyerr);
-                }
-            }else{
-                logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName +
-                        " não se aplica aos tipos " + tyl + " e " + tyr);
-                stk.push(tyerr);
-            }
-        } else {
-            logError.add(n.getLine() + ", " + n.getCol() + ": Operador " + opName +
-                    " não se aplica aos tipos " + tyl + " e " + tyr);
-            stk.push(tyerr);
-        }
-    }*/
     private void typeRelationalBinOp(Expr n, String opName) {
         SType tyl = stk.pop();
         SType tyr = stk.pop();
@@ -852,7 +807,6 @@ public class TypeCheckVisitor extends Visitor {
         SType type = stk.pop();
         if (STyData.matchStatic(type)) {// Tratamento de tipos criados pelo usuario
             TYID tyid = (TYID) e.getType();
-            // TODO: talvez possa trocar para dataTypeEnv.get(e.getName()), já que os tipos já estao na tabela dataTypeEnv
             STyData tyData = new STyData(tyid.getName());
             stk.push(tyData); //vai ser usado no CmdAssign
             //stk.push(dataTypeEnv.get(tyid.getName())); //vai ser usado no CmdAssign
