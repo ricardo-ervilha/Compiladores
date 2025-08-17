@@ -117,12 +117,12 @@ public class JasminVisitor extends Visitor {
         stFun.add("stmt", stmt);
 
 
-//        stFun.add("stack", this.maxStackSize); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
+        stFun.add("stack", this.maxStackSize);
         stFun.add("stack", 10); // tamanho máximo da pilha. Coloquei 10, mas tem que calcular baseado no tamanho das subexpressões
-        int localVars = localEnv.getKeys().size(); //TODO: arrumar isso, tem que ver uma forma de pegar as variveis pro iterate
+        int localVars = localEnv.getKeys().size();
 
         // slots extras para iterates aninhados
-        int extraSlotsForIterates = 20;// TODO: calcular quantos iterates tenho ca função
+        int extraSlotsForIterates = 20;// TODO: calcular quantos iterates tenho cada função
 
         if (f.getReturnTypes().isEmpty()) {
             stFun.add("return_descriptor", "V");
@@ -135,7 +135,7 @@ public class JasminVisitor extends Visitor {
             // então ele mexeu/vai mexer no type !?
             // +1 para array de retorno + slots extras para iterates
             stFun.add("decls", localVars + 1 + extraSlotsForIterates);// número de váriaveis locais, incluíndo os parâmetros
-            f.getReturnTypes().get(0).accept(this);// TODO: por enquanto, pegando apenas o primeiro retorno
+            f.getReturnTypes().get(0).accept(this);
             stFun.add("return_descriptor", "[" + type.render());
         }
 
@@ -278,6 +278,10 @@ public class JasminVisitor extends Visitor {
                 stmt = groupTemplate.getInstanceOf("astore_int_array");
             } else if (sTypeRHS instanceof STyFloat) {
                 stmt = groupTemplate.getInstanceOf("astore_float_array");
+            } else if (sTypeRHS instanceof STyBool) {
+                stmt = groupTemplate.getInstanceOf("astore_boolean_array");
+            } else if (sTypeRHS instanceof STyChar) {
+                stmt = groupTemplate.getInstanceOf("astore_char_array");
             }
 
             //instruções para v[2] = 42 por exemplo
@@ -285,30 +289,22 @@ public class JasminVisitor extends Visitor {
             stmt.add("indexExpr", arrayIndex); // 2
             stmt.add("rhs", rhsExpr); // sipush 42
         } else if (cmdAssign.getLvalue() instanceof IdLValue) {// LHS é acesso a atributo de registro
-            IdLValue fld = (IdLValue) cmdAssign.getLvalue();
-            ST objRef = expr; /* gera código para referência do objeto */
-            ;
-            if (sTypeRHS instanceof STyInt) {
-                stmt = groupTemplate.getInstanceOf("putfield_int");
-            } else if (sTypeRHS instanceof STyFloat) {
-                stmt = groupTemplate.getInstanceOf("putfield_float");
-            }
-            stmt.add("objRef", objRef);
-            stmt.add("fieldName", fld.getId());
-            stmt.add("fieldDescriptor", fld.getLvalue());
-            stmt.add("rhs", rhsExpr);
+//            IdLValue fld = (IdLValue) cmdAssign.getLvalue();
+//            ST objRef = expr;
+//
+//            if (sTypeRHS instanceof STyInt) {
+//                stmt = groupTemplate.getInstanceOf("putfield_int");
+//            } else if (sTypeRHS instanceof STyFloat) {
+//                stmt = groupTemplate.getInstanceOf("putfield_float");
+//            }
+//            stmt.add("objRef", objRef);
+//            stmt.add("fieldName", fld.getId());
+//            stmt.add("fieldDescriptor", fld.getLvalue());
+//            stmt.add("rhs", rhsExpr);
         }
     }
 
-    /**
-     * @param cmdFuncCall
-     */
-    @Override
-    public void visit(CmdFuncCall cmdFuncCall) {
-        String nomeFuncao = cmdFuncCall.getId();
-        List<LValue> variaveis = (cmdFuncCall.getLvalues() != null) ? cmdFuncCall.getLvalues() : new ArrayList<>();
 
-    }
 
     /**
      * @param p
@@ -434,7 +430,7 @@ public class JasminVisitor extends Visitor {
 
         } else {
             throw new RuntimeException(cmdRead.getLine() + ", " + cmdRead.getCol() +
-                    ": Tipo de lvalue não suportado no read: " + lvalue.getClass().getSimpleName());
+                    ": Tipo não suportado no read: " + lvalue.getClass().getSimpleName());
         }
     }
 
@@ -653,7 +649,7 @@ public class JasminVisitor extends Visitor {
         SType sType = binExpr.getSType();
 
         boolean isIntLike = sType instanceof STyInt || sType instanceof STyChar; // int e char tratados igual
-        boolean isFloat = sType instanceof STyFloat;
+
 
         String type = isIntLike ? "i" : "f";
 
@@ -917,12 +913,6 @@ public class JasminVisitor extends Visitor {
         SType[] fun_arg_type = ((STyFun) env.get(e.getFunctionName()).getFuncType()).getParamTypes();
         SType[] fun_ret_type = ((STyFun) env.get(e.getFunctionName()).getFuncType()).getReturnTypes();
 
-        // processando o retorno da função
-//        for (SType t : fun_ret_type) {
-//            processSType(t);// TODO: pegando só 1 retorno, alterar para pegar todos
-//            aux.add("return_descriptor", "["+type.render());
-//        }
-
         // processando os argumentos da função
         for (SType sType : fun_arg_type) {
             processSType(sType);// essa função add o template do tipo na variavel global type
@@ -939,6 +929,103 @@ public class JasminVisitor extends Visitor {
 
 
         expr = aux;
+    }
+
+    /**
+     * Comando de chamada de função: divmod(5, 2) <q, r>;
+     * O retorno da função tem que ficar nas variáveis q e r
+     * Ou poderia ser também divmod(5, 2) <q>; (apenas o primeiro retorno)
+     *
+     * @param cmdFuncCall
+     */
+    @Override
+    public void visit(CmdFuncCall cmdFuncCall) {
+        String nomeFuncao = cmdFuncCall.getId();
+
+        // Gera código para empilhar todos os argumentos da função
+        List<Expr> args = (cmdFuncCall.getExps() != null) ? cmdFuncCall.getExps().getExpressions() : new ArrayList<>();
+        List<ST> argTemplates = new ArrayList<>();
+
+        for (Expr arg : args) {
+            arg.accept(this);
+            argTemplates.add(expr);
+        }
+
+        // Pega informações da função do ambiente
+        STyFun funcType = (STyFun) env.get(nomeFuncao).getFuncType();
+        SType[] paramTypes = funcType.getParamTypes();
+        SType[] returnTypes = funcType.getReturnTypes();
+
+        // Cria template para chamada da função
+        ST funcCall = groupTemplate.getInstanceOf("call_func_cmd");
+        funcCall.add("class", fileName);
+        funcCall.add("func_name", nomeFuncao);
+
+        // Adiciona argumentos
+        for (ST argTemplate : argTemplates) {
+            funcCall.add("args", argTemplate);
+        }
+
+        // Adiciona tipos dos parâmetros para o descriptor
+        for (SType paramType : paramTypes) {
+            processSType(paramType);
+            funcCall.add("param_types", type);
+        }
+
+        // Adiciona tipo de retorno (sempre é array)
+        if (returnTypes.length > 0) {
+            processSType(returnTypes[0]); // Pega o primeiro tipo para o descriptor
+            funcCall.add("return_descriptor", "[" + type.render());
+        } else {
+            funcCall.add("return_descriptor", "V");
+        }
+
+        // Processa as variáveis que vão receber os retornos
+        List<LValue> variaveisRetorno = (cmdFuncCall.getLvalues() != null) ? cmdFuncCall.getLvalues() : new ArrayList<>();
+        List<ST> assignReturnValues = new ArrayList<>();
+
+        // Para cada variável de retorno, gera código para pegar o valor do array e atribuir
+        for (int i = 0; i < variaveisRetorno.size() && i < returnTypes.length; i++) {
+            LValue var = variaveisRetorno.get(i);
+
+            if (var instanceof ID varID) {
+                int indexSlot = localEnv.get(varID.getName()).getIndex();
+                SType returnType = returnTypes[i];
+
+                ST assignReturn = groupTemplate.getInstanceOf("assign_func_return");
+                assignReturn.add("array_idx", i); // índice no array de retorno
+                assignReturn.add("var_slot", indexSlot); // slot da variável
+
+                // Se é a última atribuição, não duplica o array
+                boolean isLast = (i == variaveisRetorno.size() - 1) || (i == returnTypes.length - 1);
+                assignReturn.add("is_last", isLast);
+
+
+                // Determina qual instrução usar baseado no tipo
+                if (returnType instanceof STyInt) {
+                    assignReturn.add("load_instruction", "iaload");
+                    assignReturn.add("store_instruction", "istore");
+                } else if (returnType instanceof STyBool) {
+                    assignReturn.add("load_instruction", "baload");
+                    assignReturn.add("store_instruction", "istore");
+                } else if (returnType instanceof STyChar) {
+                    assignReturn.add("load_instruction", "caload");
+                    assignReturn.add("store_instruction", "istore");
+                } else if (returnType instanceof STyFloat) {
+                    assignReturn.add("load_instruction", "faload");
+                    assignReturn.add("store_instruction", "fstore");
+                } else if (returnType instanceof STyArr) {
+                    assignReturn.add("load_instruction", "aaload");
+                    assignReturn.add("store_instruction", "astore");
+                }
+
+                assignReturnValues.add(assignReturn);
+            }
+        }
+
+        funcCall.add("return_assignments", assignReturnValues);
+
+        stmt = funcCall;
     }
 
     /**
@@ -1060,13 +1147,13 @@ public class JasminVisitor extends Visitor {
     @Override
     public void visit(TrueValue e) {
         expr = groupTemplate.getInstanceOf("boolean_true");
-        expr.add("value", true);
+//        expr.add("value", true);
     }
 
     @Override
     public void visit(FalseValue e) {
         expr = groupTemplate.getInstanceOf("boolean_false");
-        expr.add("value", false);
+//        expr.add("value", false);
     }
 
     @Override

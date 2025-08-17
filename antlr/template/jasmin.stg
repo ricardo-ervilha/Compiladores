@@ -77,8 +77,25 @@ invokestatic <class>/<func_name>(<type>)<return_descriptor>
 >>
 
 // ==================== COMANDO DE CHAMADA DE FUNÇÃO ====================
-// talvez não precise desse templa, pdendo usar de cima
-// comando e expressão são a mesma coisa !?
+
+call_func_cmd(class, func_name, param_types, return_descriptor, args, return_assignments) ::= <<
+; Chamada da função <func_name>
+<args; separator="\n">
+invokestatic <class>/<func_name>(<param_types>)<return_descriptor>
+
+; Atribuições dos valores de retorno
+<return_assignments; separator="\n">
+>>
+
+// Template para atribuir um valor de retorno a uma variável
+// Pega um elemento do array de retorno e atribui a uma variável local
+assign_func_return(array_idx, var_slot, load_instruction, store_instruction, is_last) ::= <<
+; Atribuir retorno[<array_idx>] para variável no slot <var_slot>
+<if(!is_last)>dup<endif>                     ; duplica referência do array (se não for a última)
+sipush <array_idx>      ; índice do elemento no array
+<load_instruction>      ; carrega elemento do array (iaload, faload, etc.)
+<store_instruction> <var_slot>  ; armazena no slot da variável
+>>
 
 // ==================== PRINTS ====================
 iprint(expr) ::= <<
@@ -117,18 +134,15 @@ istore <indexSlot>
 >>
 
 fread(indexSlot) ::= <<
-; --- Leitura de um Float ---
 new java/util/Scanner
 dup
 getstatic java/lang/System/in Ljava/io/InputStream;
-
 invokespecial java/util/Scanner/\<init>(Ljava/io/InputStream;)V
 invokevirtual java/util/Scanner/nextFloat()F
 fstore <indexSlot>
 >>
 
 bread(indexSlot) ::= <<
-; --- Leitura de um Booleano ---
 new java/util/Scanner
 dup
 getstatic java/lang/System/in Ljava/io/InputStream;
@@ -137,9 +151,7 @@ invokevirtual java/util/Scanner/nextBoolean()Z
 istore <indexSlot>
 >>
 
-// Lê um caractere da entrada padrão e o armazena no slot <indexSlot>
 cread(indexSlot) ::= <<
-; --- Leitura de um Caractere ---
 new java/util/Scanner
 dup
 getstatic java/lang/System/in Ljava/io/InputStream;
@@ -152,9 +164,7 @@ istore <indexSlot>
 
 // ==================== COMANDO READ PARA ARRAYS ====================
 
-// Lê um valor inteiro e armazena em um elemento de array
 iread_array(arrayRef, indexExpr) ::= <<
-; --- Leitura de Inteiro para Array ---
 <arrayRef>              ; carrega referência do array
 <indexExpr>             ; carrega índice do array
 new java/util/Scanner
@@ -165,9 +175,7 @@ invokevirtual java/util/Scanner/nextInt()I
 iastore                 ; armazena no array[index]
 >>
 
-// Lê um valor float e armazena em um elemento de array
 fread_array(arrayRef, indexExpr) ::= <<
-; --- Leitura de Float para Array ---
 <arrayRef>
 <indexExpr>
 new java/util/Scanner
@@ -180,7 +188,6 @@ fastore
 
 // Lê um valor booleano e armazena em um elemento de array
 bread_array(arrayRef, indexExpr) ::= <<
-; --- Leitura de Booleano para Array ---
 <arrayRef>
 <indexExpr>
 new java/util/Scanner
@@ -191,9 +198,7 @@ invokevirtual java/util/Scanner/nextBoolean()Z
 bastore
 >>
 
-// Lê um caractere e armazena em um elemento de array
 cread_array(arrayRef, indexExpr) ::= <<
-; --- Leitura de Caractere para Array ---
 <arrayRef>
 <indexExpr>
 new java/util/Scanner
@@ -205,9 +210,6 @@ iconst_0
 invokevirtual java/lang/String/charAt(I)C
 castore
 >>
-
-
-
 
 // ==================== ITERATE ====================
 
@@ -410,6 +412,20 @@ astore_float_array(arrayRef, indexExpr, rhs) ::= <<
 fastore
 >>
 
+astore_boolean_array(arrayRef, indexExpr, rhs) ::= <<
+<arrayRef>
+<indexExpr>
+<rhs>
+bastore
+>>
+
+astore_char_array(arrayRef, indexExpr, rhs) ::= <<
+<arrayRef>
+<indexExpr>
+<rhs>
+castore
+>>
+
 // ==================== STORE REGISTRO ====================
 putfield_int(objRef, fieldName, fieldDescriptor, rhs) ::= <<
 <objRef>
@@ -439,10 +455,6 @@ aload <num>
 <expr>
 iastore
 >>
-
-
-
-
 
 
 // Operadores Binários e Unários: Aritméticos e Relacionais
